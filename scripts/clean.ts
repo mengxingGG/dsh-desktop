@@ -68,6 +68,11 @@ export class RepositoryCleaner {
     const canonicalRoot = await realpath(this.root)
 
     await this.addIfPresent(targets, join(this.root, '.dsh-build'), canonicalRoot)
+    await this.addIfPresent(targets, join(this.root, 'DeepSeek-Harness.exe'), canonicalRoot)
+    await this.addIfPresent(targets, join(this.root, 'DeepSeek-Harness.AppImage'), canonicalRoot)
+    await this.addIfPresent(targets, join(this.root, 'DeepSeek-Harness.app'), canonicalRoot)
+    await this.addIfPresent(targets, join(this.root, 'apps/desktop/dist'), canonicalRoot)
+    await this.addIfPresent(targets, join(this.root, 'apps/web/dist'), canonicalRoot)
 
     // These checks cover legacy root-level incremental state emitted by older configs.
     await this.addIfPresent(targets, join(this.root, '.typecheck'), canonicalRoot)

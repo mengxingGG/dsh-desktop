@@ -112,6 +112,27 @@ function anchorPathSpec(argument: string, cwd: string): string {
 }
 
 /**
+ * Select the pnpm launcher available to a CLI process.
+ * @param args - pnpm arguments after filesystem specs are anchored.
+ * @param environment - process environment that may name a JavaScript pnpm entry.
+ * @param platform - host platform controlling `.cmd` shell use.
+ * @param nodeExecutable - Node.js executable for a JavaScript pnpm entry.
+ * @returns spawn command, arguments, and shell mode.
+ */
+export function resolvePluginPnpmInvocation(
+  args: readonly string[],
+  environment: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+  nodeExecutable: string = process.execPath,
+): { command: string; args: string[]; shell: boolean } {
+  const pnpmExecPath = environment.npm_execpath
+  const usePnpmScript = pnpmExecPath !== undefined && /(?:^|[/\\])pnpm\.[cm]?js$/i.test(pnpmExecPath)
+  return usePnpmScript
+    ? { command: nodeExecutable, args: [pnpmExecPath, ...args], shell: false }
+    : { command: 'pnpm', args: [...args], shell: platform === 'win32' }
+}
+
+/**
  * Run one `dsh plugin` invocation: init if needed, forward to pnpm, reconcile.
  * @param profile - the profile name.
  * @param args - pnpm arguments with relative path specs anchored to the invoking directory.
@@ -126,10 +147,12 @@ export function runPlugin(profile: string, args: readonly string[]): number {
   const before = readProfileManifest(NAME, dir)
   // Windows resolves pnpm through its .cmd shim, which spawn() refuses
   // without a shell since the CVE-2024-27980 hardening.
-  const result = spawnSync('pnpm', args.map(argument => anchorPathSpec(argument, process.cwd())), {
+  const anchoredArgs = args.map(argument => anchorPathSpec(argument, process.cwd()))
+  const invocation = resolvePluginPnpmInvocation(anchoredArgs)
+  const result = spawnSync(invocation.command, invocation.args, {
     cwd: dir,
     stdio: 'inherit',
-    shell: process.platform === 'win32',
+    shell: invocation.shell,
   })
   if (result.error !== undefined) {
     const code = (result.error as NodeJS.ErrnoException).code

@@ -1,0 +1,73 @@
+{
+  "name": "@deepseek-ai/dsh-desktop",
+  "description": "Cross-platform Electron shell for the DeepSeek Harness Web application",
+  "version": "0.1.1-rc.2",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "apps/desktop"
+  },
+  "type": "module",
+  "main": "lib/main.js",
+  "files": [
+    "lib/*.js",
+    "renderer"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -b && tsdown",
+    "build:app": "tsx scripts/build-app.ts",
+    "stage:installer": "tsx scripts/prepare-installer.ts",
+    "start": "electron .",
+    "dist": "tsx scripts/build-installer.ts",
+    "dist:win": "tsx scripts/build-installer.ts win",
+    "dist:mac": "tsx scripts/build-installer.ts mac",
+    "dist:linux": "tsx scripts/build-installer.ts linux"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh": "workspace:^",
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
+    "pnpm": "11.7.0"
+  },
+  "build": {
+    "appId": "ai.deepseek.harness.desktop",
+    "productName": "DeepSeek Harness",
+    "asar": true,
+    "npmRebuild": false,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "lib/**/*",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "win": {
+      "artifactName": "DeepSeek-Harness-Setup-${version}-${arch}.${ext}",
+      "target": [
+        "nsis"
+      ]
+    },
+    "mac": {
+      "artifactName": "DeepSeek-Harness-${version}-${arch}.${ext}",
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "artifactName": "DeepSeek-Harness-${version}-${arch}.${ext}",
+      "category": "Development",
+      "target": [
+        "deb"
+      ]
+    }
+  }
+}

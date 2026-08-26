@@ -7,6 +7,8 @@ packages:
   - native/landlock-run/packages/*
   # Product assemblies over the package tier; apps/cli owns the `dsh` bin.
   - apps/*
+  # Private dependency-only deploy root for the desktop installer's bundled backend.
+  - apps/desktop/runtime
   - website
   # The runnable demo leaves join as ONE workspace member: examples/package.json
   # declares the union of every leaf's cordis.yml plugins as workspace:*, so a
@@ -38,6 +40,10 @@ peerDependencyRules:
 # default and only allow scripts we need. esbuild (native binary) and lefthook
 # (git hooks) genuinely need theirs.
 allowBuilds:
+  # Electron downloads the pinned cross-platform desktop runtime used by apps/desktop.
+  electron: true
+  # The Windows installer selects the matching bundled 7-Zip binary at install time.
+  electron-winstaller: true
   esbuild: true
   lefthook: true
   # Cross-platform boundary for the persistent PTY backend, including ConPTY on Windows.

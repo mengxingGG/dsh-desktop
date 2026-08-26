@@ -43,6 +43,9 @@
       "path": "../../host/plugin-inventory"
     },
     {
+      "path": "../../host/plugin-marketplace-github"
+    },
+    {
       "path": "../../interaction/commands"
     },
     {

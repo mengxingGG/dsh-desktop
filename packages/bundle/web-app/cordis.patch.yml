@@ -100,6 +100,17 @@
     - id: plugin-inventory
       name: '@deepseek-ai/dsh-host-plugin-inventory'
 
+    # GitHub discovery and reviewed profile installation for the built-in
+    # Plugins settings marketplace.
+    - id: plugin-marketplace
+      name: '@deepseek-ai/dsh-host-plugin-marketplace-github'
+
+    # Version-pinned MIT community plugin: provider balances, subscription
+    # quotas, and local token/cache usage analytics. It remains a normal
+    # dual-face row so deployments can disable or replace it.
+    - id: usage-stats
+      name: '@ychris12138/dsh-usage-stats'
+
     # The API gateway: the transport-agnostic dispatch face every client shape
     # shares. The base layer's agent-default-model service owns the default model.
     - id: api-gateway
@@ -205,6 +216,9 @@
 
     - id: ui-settings-plugin-inventory
       name: '@deepseek-ai/dsh-client-ui-settings-plugin-inventory'
+
+    - id: ui-settings-plugin-marketplace
+      name: '@deepseek-ai/dsh-client-ui-settings-plugin-marketplace'
 
     - id: ui-conversation
       name: '@deepseek-ai/dsh-client-ui-conversation'

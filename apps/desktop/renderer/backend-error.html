@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DeepSeek Harness 启动失败</title>
+  <link rel="stylesheet" href="shell.css">
+</head>
+<body class="centered-page">
+  <main class="status-card error-card">
+    <span class="error-mark" aria-hidden="true">!</span>
+    <h1>本机 Web 服务未能启动</h1>
+    <p id="message">请检查运行时和构建产物。</p>
+    <details id="log-section" hidden>
+      <summary>诊断日志</summary>
+      <pre id="logs"></pre>
+    </details>
+    <p class="hint">开发环境先运行 <code>pnpm run build</code>。随后可退出并重新打开桌面应用。</p>
+  </main>
+  <script src="backend-error.js"></script>
+</body>
+</html>

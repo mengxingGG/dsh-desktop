@@ -14,6 +14,7 @@
     "native/landlock-run",
     "native/landlock-run/packages/*",
     "apps/*",
+    "apps/desktop/runtime",
     "website"
   ],
   "scripts": {
@@ -144,6 +145,12 @@
     "demo:acp": "node --import tsx packages/examples/acp-demo/src/bin.ts --config examples/acp-agent/cordis.yml",
     "mock:llm": "node --import tsx packages/test-support/llm-mock-server/src/bin.ts",
     "dev:web": "tsx scripts/dev-web.ts --poll",
+    "desktop": "pnpm run build && pnpm --filter @deepseek-ai/dsh-desktop start",
+    "build:desktop:app": "pnpm --filter @deepseek-ai/dsh-desktop build:app",
+    "desktop:dist": "pnpm run build && pnpm --filter @deepseek-ai/dsh-desktop dist",
+    "desktop:dist:win": "pnpm run build && pnpm --filter @deepseek-ai/dsh-desktop dist:win",
+    "desktop:dist:mac": "pnpm run build && pnpm --filter @deepseek-ai/dsh-desktop dist:mac",
+    "desktop:dist:linux": "pnpm run build && pnpm --filter @deepseek-ai/dsh-desktop dist:linux",
     "postinstall": "node scripts/install-lefthook.mjs"
   },
   "devDependencies": {

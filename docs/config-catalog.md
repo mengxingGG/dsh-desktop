@@ -855,6 +855,30 @@ export interface Config {
 
 Source: [`packages/host/frontend-static/src/index.ts:28`](../packages/host/frontend-static/src/index.ts)
 
+<a id="deepseek-aidsh-host-plugin-marketplace-github"></a>
+
+## `@deepseek-ai/dsh-host-plugin-marketplace-github`
+
+```ts config-catalog
+/** Deployment controls resolved before the Remote becomes active. */
+export interface Config {
+  /** GitHub topic required by keyword and blank searches. */
+  readonly topic?: string
+  /** Maximum number of repositories validated for one search. */
+  readonly searchMaxResults?: number
+  /** Per-request GitHub timeout in milliseconds. */
+  readonly requestTimeoutMs?: number
+  /** Plugin installation process timeout in milliseconds. */
+  readonly installTimeoutMs?: number
+  /** dsh profile changed by a successful installation. */
+  readonly profile?: string
+  /** Host environment variable containing the optional GitHub token. */
+  readonly tokenEnv?: string
+}
+```
+
+Source: [`packages/host/plugin-marketplace-github/src/index.ts:25`](../packages/host/plugin-marketplace-github/src/index.ts)
+
 <a id="deepseek-aidsh-host-webserver"></a>
 
 ## `@deepseek-ai/dsh-host-webserver`
@@ -3252,6 +3276,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-client-ui-settings-general` ([`packages/client/ui-settings-general/src/index.ts`](../packages/client/ui-settings-general/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-settings-models` ([`packages/client/ui-settings-models/src/index.ts`](../packages/client/ui-settings-models/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-settings-plugin-inventory` ([`packages/client/ui-settings-plugin-inventory/src/index.ts`](../packages/client/ui-settings-plugin-inventory/src/index.ts))
+- `@deepseek-ai/dsh-client-ui-settings-plugin-marketplace` ([`packages/client/ui-settings-plugin-marketplace/src/index.ts`](../packages/client/ui-settings-plugin-marketplace/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-settings-plugins` ([`packages/client/ui-settings-plugins/src/index.ts`](../packages/client/ui-settings-plugins/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-sidebar` ([`packages/client/ui-sidebar/src/index.ts`](../packages/client/ui-sidebar/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-skill` ([`packages/client/ui-skill/src/index.ts`](../packages/client/ui-skill/src/index.ts))

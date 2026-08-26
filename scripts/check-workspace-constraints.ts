@@ -20,6 +20,7 @@ const workspaceGlobs = [
   { dir: 'native', depth: 1 },
   { dir: 'native/landlock-run/packages', depth: 1 },
   { dir: 'apps', depth: 1 },
+  { dir: 'apps/desktop', depth: 1 },
 ] as const
 const vendoredPackages = new Set([
   '@deepseek-ai/cordis',
@@ -58,6 +59,7 @@ const releaseMemberDirectory = /^(?:packages\/(?!experimental\/)[^/]+\/[^/]+|app
 const localArtifactDirs = new Set(['node_modules'])
 const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh': ['lib/*.js', 'config'],
+  '@deepseek-ai/dsh-desktop': ['lib/*.js', 'renderer'],
   // The Web build emits sourcemaps for browser debugging; publishing them is
   // what the payload policy forbids, so the bundle ships without them.
   '@deepseek-ai/dsh-web-frontend': ['dist', '!dist/**/*.map'],

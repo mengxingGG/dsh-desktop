@@ -15,6 +15,7 @@
   ],
   "ignoreWorkspaces": [
     "vendor/*",
+    "apps/desktop/runtime",
     "python/sdk-runtime"
   ],
   "ignoreDependencies": [
@@ -155,6 +156,16 @@
       ],
       "project": [
         "src/**/*.ts",
+        "tests/**/*.tsx"
+      ]
+    },
+    "packages/client/ui-settings-plugin-marketplace": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
         "tests/**/*.tsx"
       ]
     },
@@ -640,6 +651,17 @@
         "@deepseek-ai/.+"
       ]
     },
+    "apps/desktop": {
+      "entry": [
+        "src/main.ts",
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "scripts/**/*.ts",
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ]
+    },
     "packages/subagent/subagent-dsh-sdk": {
       "entry": [
         "tests/**/*.spec.ts",
@@ -662,7 +684,8 @@
     },
     "packages/bundle/web-app": {
       "ignoreDependencies": [
-        "@deepseek-ai/.+"
+        "@deepseek-ai/.+",
+        "@ychris12138/dsh-usage-stats"
       ]
     }
   }
