@@ -36,6 +36,9 @@ concurrency:
 jobs:
   lifecycle:
     name: Issue lifecycle
+    # The workflow mutates the official Project through a dedicated GitHub App.
+    # Forks opt in only after configuring that App and the repository variable.
+    if: vars.DSH_ISSUE_MANAGEMENT_ENABLED == 'true'
     # Runs on every pull_request_review event so the check reports success rather
     # than a gray "skipped" segment. The token-creating and board-mutating steps
     # are gated at step level (a skipped step does not gray the job): only a
