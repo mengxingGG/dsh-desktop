@@ -30,7 +30,7 @@
     "@deepseek-ai/dsh": "workspace:^",
     "electron": "^43.4.1",
     "electron-builder": "^26.15.3",
-    "pnpm": "11.7.0"
+    "pnpm": "11.17.0"
   },
   "build": {
     "appId": "ai.deepseek.harness.desktop",
