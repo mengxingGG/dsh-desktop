@@ -36,6 +36,7 @@
   "build": {
     "appId": "ai.deepseek.harness.desktop",
     "productName": "DeepSeek Harness",
+    "executableName": "DeepSeek-Harness",
     "asar": true,
     "npmRebuild": false,
     "asarUnpack": [
