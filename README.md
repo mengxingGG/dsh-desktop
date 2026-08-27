@@ -47,7 +47,7 @@ pnpm dsh web
 
 ### Desktop application
 
-Source builds also write a direct desktop shell for the current operating system to the repository root: `DeepSeek-Harness.exe` on Windows, `DeepSeek-Harness.AppImage` on Linux, or `DeepSeek-Harness.app` on macOS. The shell starts `dsh web` as a hidden loopback backend and hosts the existing Web application in a native window; it requires the built checkout and a compatible system Node.js installation.
+On Windows and Linux, source builds also write a direct desktop shell to the repository root: `DeepSeek-Harness.exe` on Windows or `DeepSeek-Harness.AppImage` on Linux. The shell starts `dsh web` as a hidden loopback backend and hosts the existing Web application in a native window; it requires the built checkout and a compatible system Node.js installation.
 
 ```sh
 pnpm run build
@@ -58,9 +58,10 @@ Self-contained installers include Electron, Node.js, pnpm, the built CLI and Web
 
 ```sh
 pnpm run desktop:dist:win
-pnpm run desktop:dist:mac
 pnpm run desktop:dist:linux
 ```
+
+The downstream desktop distribution does not publish a macOS shell or installer because it has not completed native installation and runtime verification. The core Harness and Web application remain available on macOS.
 
 See the [desktop application reference](apps/desktop/README.md) for artifact paths, lifecycle behavior, security controls, and platform limitations.
 

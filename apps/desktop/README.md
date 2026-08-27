@@ -8,8 +8,8 @@ The desktop app is an Electron shell over the existing `dsh web` profile. It own
 
 | Mode | Artifact | Runtime contents |
 |---|---|---|
-| Direct shell | `DeepSeek-Harness.exe` on Windows, `DeepSeek-Harness.AppImage` on Linux, or `DeepSeek-Harness.app` on macOS at the repository root | Electron only. It locates the built checkout and starts its CLI with a compatible system Node.js installation. |
-| Installer | NSIS installer on Windows, DMG on macOS, or DEB on Linux under `apps/desktop/dist/installers` | Electron, Node.js, pnpm, the built CLI and Web assets, and the production dependency closure. |
+| Direct shell | `DeepSeek-Harness.exe` on Windows or `DeepSeek-Harness.AppImage` on Linux at the repository root | Electron only. It locates the built checkout and starts its CLI with a compatible system Node.js installation. |
+| Installer | NSIS installer on Windows or DEB on Linux under `apps/desktop/dist/installers` | Electron, Node.js, pnpm, the built CLI and Web assets, and the production dependency closure. |
 
 The direct shell is part of the ordinary repository build and is meant for the checkout that produced it. The installer is self-contained and does not require a checkout, Node.js, or pnpm on the destination machine.
 
@@ -17,11 +17,10 @@ The direct shell is part of the ordinary repository build and is meant for the c
 
 | Command | Result |
 |---|---|
-| `pnpm run build` | Build the repository and write the direct shell for the current host to the repository root. |
+| `pnpm run build` | Build the repository and, on Windows or Linux, write the direct shell for the current host to the repository root. |
 | `pnpm run desktop` | Run the complete build, then launch the desktop app from the checkout. |
 | `pnpm run desktop:dist` | Build the repository and the current host's installer. |
 | `pnpm run desktop:dist:win` | Build the Windows NSIS installer on Windows. |
-| `pnpm run desktop:dist:mac` | Build the macOS DMG on macOS. |
 | `pnpm run desktop:dist:linux` | Build the Linux DEB on Linux. |
 
 Installer builds are host-native. A platform-specific command fails when invoked from another operating system instead of attempting an unsupported cross-build.
@@ -59,5 +58,6 @@ The shell adds no request tokens and does not change cache reuse; the plugins mo
 ## Known Limitations and Deferred Work
 
 - **Signing is release-owned** — local builds are unsigned unless the release environment supplies platform signing credentials, so operating systems may display an untrusted-publisher warning.
+- **macOS desktop artifacts are not published** — the downstream project has not completed native installation and runtime verification on macOS. The core Harness and Web application remain available there.
 - **The direct shell is not standalone** — moving it away from its built checkout requires `DSH_DESKTOP_PROJECT_ROOT`, and the destination still needs a compatible Node.js installation.
 - **Linux packaging is DEB-only** — the repository does not currently produce RPM, Flatpak, or Snap packages.

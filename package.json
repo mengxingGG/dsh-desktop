@@ -149,7 +149,6 @@
     "build:desktop:app": "pnpm --filter @deepseek-ai/dsh-desktop build:app",
     "desktop:dist": "pnpm run build && pnpm --filter @deepseek-ai/dsh-desktop dist",
     "desktop:dist:win": "pnpm run build && pnpm --filter @deepseek-ai/dsh-desktop dist:win",
-    "desktop:dist:mac": "pnpm run build && pnpm --filter @deepseek-ai/dsh-desktop dist:mac",
     "desktop:dist:linux": "pnpm run build && pnpm --filter @deepseek-ai/dsh-desktop dist:linux",
     "postinstall": "node scripts/install-lefthook.mjs"
   },

@@ -8,8 +8,8 @@
 
 | 模式 | 产物 | 运行时内容 |
 |---|---|---|
-| 直接运行壳 | Windows 下根目录中的 `DeepSeek-Harness.exe`、Linux 下的 `DeepSeek-Harness.AppImage` 或 macOS 下的 `DeepSeek-Harness.app` | 仅含 Electron。它定位已构建的检出目录，并通过兼容的系统 Node.js 启动其中的 CLI。 |
-| 安装包 | `apps/desktop/dist/installers` 下的 Windows NSIS 安装程序、macOS DMG 或 Linux DEB | Electron、Node.js、pnpm、已构建的 CLI 与 Web 产物，以及完整生产依赖闭包。 |
+| 直接运行壳 | Windows 下根目录中的 `DeepSeek-Harness.exe` 或 Linux 下的 `DeepSeek-Harness.AppImage` | 仅含 Electron。它定位已构建的检出目录，并通过兼容的系统 Node.js 启动其中的 CLI。 |
+| 安装包 | `apps/desktop/dist/installers` 下的 Windows NSIS 安装程序或 Linux DEB | Electron、Node.js、pnpm、已构建的 CLI 与 Web 产物，以及完整生产依赖闭包。 |
 
 直接运行壳属于仓库常规构建，供生成它的检出目录使用。安装包自包含，目标机器不需要检出目录、Node.js 或 pnpm。
 
@@ -17,11 +17,10 @@
 
 | 命令 | 结果 |
 |---|---|
-| `pnpm run build` | 构建仓库，并把当前宿主平台的直接运行壳写入仓库根目录。 |
+| `pnpm run build` | 构建仓库，并在 Windows 或 Linux 上把当前宿主平台的直接运行壳写入仓库根目录。 |
 | `pnpm run desktop` | 执行完整构建，然后从检出目录启动桌面应用。 |
 | `pnpm run desktop:dist` | 构建仓库和当前宿主平台的安装包。 |
 | `pnpm run desktop:dist:win` | 在 Windows 上构建 Windows NSIS 安装程序。 |
-| `pnpm run desktop:dist:mac` | 在 macOS 上构建 macOS DMG。 |
 | `pnpm run desktop:dist:linux` | 在 Linux 上构建 Linux DEB。 |
 
 安装包采用宿主平台原生构建。若从其他操作系统调用平台专用命令，该命令会明确失败，而不会尝试不受支持的交叉构建。
@@ -59,5 +58,6 @@ Electron 主进程把 `dsh web --no-open --host 127.0.0.1 --port 0` 作为隐藏
 ## 已知限制与延后工作
 
 - **签名归发布流程负责**——除非发布环境提供各平台签名凭据，否则本地构建未签名，操作系统可能显示发布者不受信任的警告。
+- **不发布 macOS 桌面产物**——下游项目尚未在 macOS 上完成原生安装与运行时验证；Harness 核心与 Web 应用仍可在 macOS 上使用。
 - **直接运行壳并非独立程序**——把它移出已构建检出目录后需要设置 `DSH_DESKTOP_PROJECT_ROOT`，且目标机器仍需兼容的 Node.js。
 - **Linux 仅提供 DEB**——仓库目前不生成 RPM、Flatpak 或 Snap 软件包。

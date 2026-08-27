@@ -24,11 +24,6 @@
     "artifactName": "DeepSeek-Harness-Setup-${version}-${arch}.${ext}",
     "target": ["nsis"]
   },
-  "mac": {
-    "artifactName": "DeepSeek-Harness-${version}-${arch}.${ext}",
-    "category": "public.app-category.developer-tools",
-    "target": ["dmg"]
-  },
   "linux": {
     "artifactName": "DeepSeek-Harness-${version}-${arch}.${ext}",
     "category": "Development",

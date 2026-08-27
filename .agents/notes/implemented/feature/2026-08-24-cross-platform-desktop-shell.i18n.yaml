@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-24-cross-platform-desktop-shell.md
-2026-08-24-cross-platform-desktop-shell.md: b5eb53f3d5f1baedd1cbea93fee9380df61ae1a2
-2026-08-24-cross-platform-desktop-shell.zh.md: 59b739cc6cfcfe432a0bb6c6c32a547733854108
+2026-08-24-cross-platform-desktop-shell.md: 09c67eaca8a3596f2f2bd4b6b51ca00bea38bac1
+2026-08-24-cross-platform-desktop-shell.zh.md: 9500e63ec1d5d74bea4b08f2d8f60dedd9754cdf

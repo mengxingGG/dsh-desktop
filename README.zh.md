@@ -51,7 +51,7 @@ pnpm dsh web
 
 ### 桌面应用
 
-源码构建还会在仓库根目录写入当前操作系统的桌面直接运行壳：Windows 为 `DeepSeek-Harness.exe`，Linux 为 `DeepSeek-Harness.AppImage`，macOS 为 `DeepSeek-Harness.app`。桌面壳把 `dsh web` 作为隐藏的回环后端启动，并在原生窗口中承载现有 Web 应用；它需要已构建的检出目录和兼容的系统 Node.js。
+在 Windows 和 Linux 上，源码构建还会把桌面直接运行壳写入仓库根目录：Windows 为 `DeepSeek-Harness.exe`，Linux 为 `DeepSeek-Harness.AppImage`。桌面壳把 `dsh web` 作为隐藏的回环后端启动，并在原生窗口中承载现有 Web 应用；它需要已构建的检出目录和兼容的系统 Node.js。
 
 ```sh
 pnpm run build
@@ -62,9 +62,10 @@ pnpm run desktop
 
 ```sh
 pnpm run desktop:dist:win
-pnpm run desktop:dist:mac
 pnpm run desktop:dist:linux
 ```
+
+由于尚未完成原生安装与运行时验证，本下游桌面发行版不发布 macOS 桌面壳或安装包。Harness 核心与 Web 应用仍可在 macOS 上使用。
 
 产物路径、生命周期行为、安全控制和平台限制详见[桌面应用参考](apps/desktop/README.zh.md)。
 

@@ -27,6 +27,15 @@ function runScript(script: string, environment: NodeJS.ProcessEnv): void {
   }
 }
 
+/**
+ * Report whether the root build produces a direct desktop artifact on a host platform.
+ * @param platform - Node.js host platform.
+ * @returns Whether the desktop artifact builder supports the platform.
+ */
+export function supportsDirectDesktopArtifact(platform: NodeJS.Platform): boolean {
+  return platform === 'win32' || platform === 'linux'
+}
+
 /** Run the full build selected by `--profile` or `DSH_BUILD_CLIENT_PROFILE`. */
 function main(): void {
   const { values } = parseArgs({
@@ -44,7 +53,9 @@ function main(): void {
   rmSync(resolve(root, CLIENT_BUILD_RECORD_PATH), { force: true })
   runScript('build:lib', buildEnvironment)
   runScript('build:web', buildEnvironment)
-  runScript('build:desktop:app', buildEnvironment)
+  if (supportsDirectDesktopArtifact(process.platform)) {
+    runScript('build:desktop:app', buildEnvironment)
+  }
   const record = writeClientBuildRecord(root, clientEnvironment)
   console.log(
     `build: recorded ${String(record.artifacts.fileCount)} client artifact(s) with ${String(Object.keys(record.environment).length)} public value(s)`,

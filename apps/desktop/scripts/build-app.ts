@@ -10,19 +10,6 @@ const appDir = resolve(import.meta.dirname, '..')
 const repositoryRoot = resolve(appDir, '..', '..')
 const outputDir = resolve(appDir, 'dist', `app-build-${String(process.pid)}`)
 
-async function findMacApp(directory: string): Promise<string> {
-  const entries = await readdir(directory, { withFileTypes: true })
-  for (const entry of entries) {
-    const path = join(directory, entry.name)
-    if (entry.isDirectory() && entry.name.endsWith('.app')) return path
-    if (entry.isDirectory()) {
-      const nested = await findMacApp(path).catch(() => undefined)
-      if (nested !== undefined) return nested
-    }
-  }
-  throw new Error('desktop app build: electron-builder produced no .app bundle')
-}
-
 async function electronBuilderCli(): Promise<string> {
   const manifestPath = require.resolve('electron-builder/package.json')
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
@@ -56,17 +43,11 @@ async function runElectronBuilder(args: readonly string[]): Promise<void> {
 
 /** Build and publish one double-clickable artifact for the current host platform. */
 export async function buildDesktopApp(): Promise<string> {
+  if (process.platform !== 'win32' && process.platform !== 'linux') {
+    throw new Error(`desktop app build does not support ${process.platform}`)
+  }
   await rm(outputDir, { recursive: true, force: true, maxRetries: 6, retryDelay: 250 })
   await mkdir(outputDir, { recursive: true })
-  if (process.platform === 'darwin') {
-    await runElectronBuilder(['--mac', '--dir', '--publish', 'never', `--config.directories.output=${outputDir}`])
-    const source = await findMacApp(outputDir)
-    const target = resolve(repositoryRoot, 'DeepSeek-Harness.app')
-    await rm(target, { recursive: true, force: true })
-    await cp(source, target, { recursive: true })
-    return target
-  }
-
   const windows = process.platform === 'win32'
   const extension = windows ? '.exe' : '.AppImage'
   await runElectronBuilder([

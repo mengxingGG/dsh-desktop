@@ -9,11 +9,10 @@ import { prepareInstallerRuntime } from './prepare-installer.ts'
 const require = createRequire(import.meta.url)
 const appDir = resolve(import.meta.dirname, '..')
 
-type TargetPlatform = 'win' | 'mac' | 'linux'
+type TargetPlatform = 'win' | 'linux'
 
 function currentTarget(): TargetPlatform {
   if (process.platform === 'win32') return 'win'
-  if (process.platform === 'darwin') return 'mac'
   if (process.platform === 'linux') return 'linux'
   throw new Error(`desktop installer does not support ${process.platform}`)
 }
@@ -34,7 +33,7 @@ export async function buildInstaller(requested = currentTarget()): Promise<void>
   }
   await rm(resolve(appDir, 'dist', 'installers'), { recursive: true, force: true, maxRetries: 6, retryDelay: 250 })
   await prepareInstallerRuntime()
-  const target = requested === 'win' ? 'nsis' : requested === 'mac' ? 'dmg' : 'deb'
+  const target = requested === 'win' ? 'nsis' : 'deb'
   const child = spawn(process.execPath, [
     await builderCli(), `--${requested}`, target,
     '--publish', 'never', '--config', 'electron-builder.installer.json',
