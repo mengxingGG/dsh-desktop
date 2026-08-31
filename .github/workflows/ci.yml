@@ -426,7 +426,7 @@ jobs:
     name: windows node 24 / build
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Enable Developer Mode (symlink support)
@@ -519,7 +519,7 @@ jobs:
     name: windows node 24 / native tests
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Enable Developer Mode (symlink support)
@@ -561,7 +561,7 @@ jobs:
     env:
       DSH_PUBLINT_CONCURRENCY: '8'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Enable Developer Mode (symlink support)
