@@ -4,3 +4,5 @@
 #   pnpm run verify-translation-pairing --write packages/api/remotes/README.md
 README.md: a46bcd6355982d886ce41f0303c1f43b44290620
 README.zh.md: 094bc2aabcbc1ae4e5ca4d6672c4447e3744b0c5
+README.md: a46bcd6355982d886ce41f0303c1f43b44290620
+README.zh.md: 094bc2aabcbc1ae4e5ca4d6672c4447e3744b0c5

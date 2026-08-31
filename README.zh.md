@@ -4,11 +4,24 @@
 
 DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness（智能体框架）。
 
-它采用**一切皆插件**的架构，并由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper)。
+它构建于**一切皆插件**的架构之上，由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512)。
+
+文档：[https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
 
 ## 开发者预览
 
-DeepSeek Harness 目前处于 _开发者预览_ 阶段，正在快速迭代。**未来将出现破坏兼容性的变更。**
+DeepSeek Harness 处于 _开发者预览_ 阶段，正在快速迭代。**未来将出现破坏兼容性的变更。**
+
+运行本项目前，请阅读[安全说明](SAFETY.zh.md)。
+
+## 下游维护
+
+本仓库作为基于 DeepSeek Harness 的社区下游发行版维护，并非 DeepSeek 官方发行版。下游改动继续采用 MIT 许可证；必须保留上游版权、许可证与第三方声明。
+
+1. 创建个人 fork 后，使用 `upstream` 指向 `deepseek-ai/deepseek-harness`，使用 `origin` 指向下游仓库。
+2. 至少每周获取一次官方 `master` 与标签，并检查新增提交、发行版、安全修复和破坏兼容性的变更。
+3. 通过临时同步分支合入适用的上游更新。下游功能继续隔离为应用或插件，避免因冲突而 fork Harness 核心。
+4. 每次发布下游版本前，确认已完成最新官方更新检查，并重新执行依赖安装、检查、完整构建与桌面运行时验证。
 
 ## 下游维护
 
@@ -83,7 +96,7 @@ pnpm run desktop:dist:linux
 
 ## 社区与支持
 
-- 欢迎通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。
+- 通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。
 - 为你的插件仓库添加 [`dsh-plugin`](https://github.com/topics/dsh-plugin) 话题，便于被发现。
 - 欢迎加入 DeepSeek Harness 企微群：扫码添加企微小助手并填写入群问卷，完成后小助手会邀请你入群。
 
