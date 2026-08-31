@@ -72,7 +72,7 @@ jobs:
         run: node ./scripts/verify-launcher-binary.mjs ${{ matrix.dir }}
 
       - name: Upload prebuild artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
           path: native/landlock-run/${{ matrix.dir }}/bin/*
@@ -108,7 +108,7 @@ jobs:
           RELEASE_PUBLISH: ${{ inputs.publish }}
 
       - name: Download prebuild artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: prebuild-*
           path: native/landlock-run/.release/prebuild-artifacts
@@ -130,7 +130,7 @@ jobs:
           NALR_REQUIRE_LANDLOCK: 1
 
       - name: Upload npm tarballs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: npm-tarballs
           path: native/landlock-run/dist/npm/*
@@ -159,7 +159,7 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Download npm tarballs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: npm-tarballs
           path: native/landlock-run/dist/npm
