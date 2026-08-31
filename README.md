@@ -4,11 +4,24 @@ English | [中文](README.zh.md)
 
 DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
 
-It uses an architecture where **everything is a plugin**, and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
+It is built on an **everything-is-a-plugin** architecture and powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512).
+
+Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
 
 ## Developer preview
 
-DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
+DeepSeek Harness is in _developer preview_ and iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
+
+Review the [safety notice](SAFETY.md) before running the project.
+
+## Downstream maintenance
+
+This repository is maintained as a community downstream distribution based on DeepSeek Harness, not as an official DeepSeek release. Downstream changes remain MIT-licensed; retain the upstream copyright, license, and third-party notices.
+
+1. After creating the personal fork, use `upstream` for `deepseek-ai/deepseek-harness` and `origin` for the downstream repository.
+2. At least once a week, fetch official `master` and tags, then review new commits, releases, security fixes, and compatibility-breaking changes.
+3. Integrate applicable upstream changes through a temporary sync branch. Keep downstream features isolated as applications or plugins so conflicts do not require forking the Harness core.
+4. Before each downstream release, confirm the official update review is current and rerun dependency installation, checks, the complete build, and desktop runtime verification.
 
 ## Downstream maintenance
 
@@ -79,7 +92,7 @@ Provider credentials remain on the Host and never enter browser responses. The p
 
 ## Community and support
 
-- Feel free to submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
+- Submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
 - Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
 - Join <a href="https://discord.gg/Ycq5dCaS4">DeepSeek Harness Discord community</a>.
 
