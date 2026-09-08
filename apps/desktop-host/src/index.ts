@@ -14,7 +14,6 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import {
   boot,
-  composeEntries,
   loadLayeredEnv,
   loadProfileDirectory,
   loadOverlayPatches,
@@ -163,17 +162,6 @@ function desktopPatches(projectDir: string, allowLinkedPackages: boolean): Patch
     profile.patches,
     loadOverlayPatches('dsh desktop', DESKTOP_PATCH),
   ]
-  const rows = new Map(composeEntries(layers).flatMap(row => typeof row.id === 'string' ? [[row.id, row] as const] : []))
-  const agentPresets = rows.get('agent-presets')
-  if (agentPresets !== undefined) {
-    layers.push([{
-      id: 'agent-presets',
-      config: {
-        ...(agentPresets.config ?? {}) as Record<string, unknown>,
-        roots: [{ path: join(dshRoot, 'config', 'agent-presets'), trust: 'system' }],
-      },
-    }])
-  }
   return layers.flat()
 }
 

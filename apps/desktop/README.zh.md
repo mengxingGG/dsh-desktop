@@ -23,9 +23,9 @@
 
 Electron 拥有保留 profile `$DSH_HOME/profiles/desktop`。其 manifest 通过 `dsh.profile.bundles` 列出内置与已安装插件 bundle，`node_modules` 则同时包含精确版本的 `@deepseek-ai/dsh`、与之匹配的私有 `@deepseek-ai/dsh-desktop-host` 和所有桌面插件。把 Electron 专用进程入口与 overlay 放入私有应用包，可以避免 Desktop 实现成为公共 CLI 包的一部分。CLI 不能启动或修改该 profile。Electron 始终调用自身内置的 Node.js 与 pnpm，并把 store 固定在 `$DSH_HOME/desktop/pnpm/store`；它绝不使用系统 pnpm 或调用方的 npm/pnpm 配置。
 
-dsh 主渲染进程获得桌面协议标记和打开专用插件窗口的操作。独立插件窗口获得结构化的列出、安装、移除、更新和更新检查操作；两个渲染进程都拿不到文件系统、原始 Electron IPC、shell 或任意 pnpm 参数。
+dsh 主渲染进程获得桌面协议标记和打开专用插件窗口的操作。独立插件窗口获得结构化的列出、安装、移除、更新和更新检查操作；两个渲染进程都拿不到文件系统、原始 Electron IPC、shell 或任意 pnpm 参数。 每个沙盒 preload 都构建为独立文件。
 
-桌面 profile 包含原生 Crew 及其属于 Session 的右侧栏标签页。Windows 关闭窗口可选择收起、彻底退出或取消。彻底退出先确认活动工作、准备任务所有者、刷新 Session 存储，再终止后端进程树。插件变更和更新安装拒绝重启活动 Host。用量统计通过固定版本的兼容补丁使用可信私有 Fetch 通道和官方 Session 只读句柄。
+桌面 profile 包含原生 Crew 及其属于 Session 的右侧栏标签页。Windows 关闭窗口可选择收起、彻底退出或取消。彻底退出先确认活动工作、准备任务所有者、刷新 Session 存储，再终止后端进程树。插件变更和更新安装拒绝重启活动 Host。用量统计通过固定版本的兼容补丁使用可信私有 Fetch 通道和官方 Session 只读句柄。 Agent 选择器与设置列表保留组合包提供的预设，包括可选的编排模式；标准模式仍是默认值。
 
 Electron 根据应用 locale 选择类型化的中英文字典，并以英文作为 fallback。菜单、原生对话框与插件管理渲染进程使用同一 locale 数据；仓库的 Client UI i18n gate 会检查这些桌面源文件。
 
