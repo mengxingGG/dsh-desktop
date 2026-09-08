@@ -46,6 +46,8 @@ Vendored CLIs, build-only and test-only executables, direct in-process plugin mo
 
 The Python SDK follows the same application architecture. Its runtime wheel packages the normal `dsh` CLI as `deepseek-harness-sdk-runtime-<platform>-<arch>`, and the client launches `dsh --profile sdk` with an explicit Harness home by default. The minimal example selects the shipped `sdk-minimal` profile. Python exposes profile selection and ordered patch files rather than a complete Cordis tree; persistent external plugins are installed through `dsh plugin`. The removed private direct-config carrier has no compatibility bin or fallback parser.
 
+The [desktop exit protocol](../.agents/notes/implemented/feature/2026-09-05-windows-tray-durable-exit.md) uses `dsh-cmdline` application events to stop producers before Agent factories close their Sessions, then checks persistence before terminating the backend tree. Agent-loop contributes its existing factory teardown and active-work observation; the desktop remains a Web-profile host and does not change turn or Session event vocabulary.
+
 ## Core packages
 
 Here are some core packages that contribute to the Cordis tree.

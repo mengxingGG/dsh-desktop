@@ -7,7 +7,7 @@
   "include": ["src"],
   "references": [
     { "path": "../../../vendor/cordis" },
-    { "path": "../agent-team" },
+    { "path": "../../subagent/agent-team" },
     { "path": "../../api/remotes/tsconfig.client.json" },
     { "path": "../../api/session-controller/tsconfig.client.json" },
     { "path": "../../client/locale" },

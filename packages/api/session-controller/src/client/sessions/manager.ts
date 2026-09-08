@@ -189,6 +189,18 @@ export class SessionManager {
    * @param address - catalog-derived parent and child ids.
    */
   selectSubagent(address: SubagentAddress): void {
+    this.retainSubagent(address)
+    this.selected = address.childSessionId
+    this.completedNotifications.delete(address.childSessionId)
+    void this.refreshSubagents(address.childSessionId)
+    this.notifier.notifyNow()
+  }
+
+  /**
+   * Retain read authority for a healthy catalog child without selecting it.
+   * @param address - exact direct-parent address from the current catalog.
+   */
+  retainSubagent(address: SubagentAddress): void {
     const catalog = this.catalogs.get(address.parentSessionId)
     const entry = catalog?.entries.find(candidate => candidate.id === address.childSessionId)
     if (entry === undefined || entry.kind !== 'child' || entry.mode !== address.mode) {
@@ -196,10 +208,6 @@ export class SessionManager {
     }
     this.addresses.set(address.childSessionId, address)
     this.sessions.get(address.childSessionId)?.configureSubagent(address, catalog?.parentAvailable)
-    this.selected = address.childSessionId
-    this.completedNotifications.delete(address.childSessionId)
-    void this.refreshSubagents(address.childSessionId)
-    this.notifier.notifyNow()
   }
 
   /** Clear the selection (the layout falls to the no-session view state). */

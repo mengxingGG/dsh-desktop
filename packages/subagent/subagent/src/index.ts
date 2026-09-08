@@ -69,6 +69,7 @@ import type {
   ContinuableStart,
   ContinuableStartSpec,
   SubagentInterruptAuthority,
+  SubagentSettlementNoticeInfo,
   SubagentSendMessageOptions,
 } from './continuation.ts'
 import { listChildren as listSubagentChildren, listDescendants as listSubagentDescendants } from './list-children.ts'
@@ -124,6 +125,7 @@ export type {
   ContinuableStart,
   ContinuableStartSpec,
   SubagentInterruptAuthority,
+  SubagentSettlementNoticeInfo,
   SubagentSendMessageOptions,
   SubagentSettledMessageSource,
 } from './continuation.ts'
@@ -170,6 +172,14 @@ declare module '@deepseek-ai/cordis' {
      * @mode emit
      */
     'subagent/end'(this: Scoped<SubagentRuntime>, info: SubagentRunEndInfo): void
+    /**
+     * Let a product workflow suppress the generic parent notice for a child it
+     * durably owns and replaces with its own recorded notification. Returning
+     * `true` suppresses only that notice; absence preserves default delivery.
+     * @param info - Parent, child, provider, and terminal outcome identity.
+     * @mode bail
+     */
+    'subagent/settlement-notice'(info: SubagentSettlementNoticeInfo): true | void
   }
 }
 

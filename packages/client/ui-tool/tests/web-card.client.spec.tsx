@@ -231,6 +231,7 @@ describe('DetailsPanel web Output section', () => {
     return render(
       <DetailsPanel
         renderSlot={renderToolDetails(t)}
+        renderSlotChain={(_key, _owner, options) => options?.fallback ?? null}
         SessionProvider={({ children }) => children}
         sessionId={SID}
         useSession={bindSnapshotSelector(session)}
@@ -252,6 +253,7 @@ describe('DetailsPanel web Output section', () => {
         useStore={bindSnapshotSelector(chat)}
         actions={chat.actions}
         closeDetails={vi.fn()}
+        openDetails={vi.fn()}
         t={chatT}
       />,
     )
@@ -267,7 +269,7 @@ describe('DetailsPanel web Output section', () => {
   }
 
   it('renders the search card at full source allowance', () => {
-    const view = mount(snapshot({ nodes: [settledSearch()] }), { turnSeq: 10, callId: 'c1', toolName: 'web_search' })
+    const view = mount(snapshot({ nodes: [settledSearch()] }), { kind: 'tool', turnSeq: 10, callId: 'c1', toolName: 'web_search' })
     expect(view.getByText('Titled')).toBeTruthy()
     expect(view.getByText('excerpt')).toBeTruthy()
     // The Input JSON section survives beside it.
@@ -275,7 +277,7 @@ describe('DetailsPanel web Output section', () => {
   })
 
   it('renders the fetch card and keeps the fetched body below it', () => {
-    const view = mount(snapshot({ nodes: [settledFetch()] }), { turnSeq: 11, callId: 'c2', toolName: 'web_fetch' })
+    const view = mount(snapshot({ nodes: [settledFetch()] }), { kind: 'tool', turnSeq: 11, callId: 'c2', toolName: 'web_fetch' })
     const card = view.container.querySelector('[data-web="fetch"]')
     expect(card?.querySelector('a')?.getAttribute('href')).toBe('https://example.com/page')
     expect(view.getByText('HTTP 200')).toBeTruthy()
@@ -288,7 +290,7 @@ describe('DetailsPanel web Output section', () => {
   it('a non-web result keeps the flattened pre form', () => {
     const view = mount(snapshot({
       nodes: [settledSearch({ meta: undefined })],
-    }), { turnSeq: 10, callId: 'c1', toolName: 'web_search' })
+    }), { kind: 'tool', turnSeq: 10, callId: 'c1', toolName: 'web_search' })
     expect(view.container.querySelector('[data-web]')).toBeNull()
     const output = view.getByText('输出').closest('section')
     expect(output?.querySelector('pre')?.textContent).toContain('search text')

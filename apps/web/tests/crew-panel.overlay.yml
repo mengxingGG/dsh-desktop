@@ -1,0 +1,66 @@
+# Equivalent to the native Crew Host and Web profile layers over the scaffold's
+# stable base and Web bundles.
+- insert:
+    - id: crew-profile-presets
+      name: '@deepseek-ai/dsh-crew-profile'
+
+    - id: crew-preferences
+      name: '@deepseek-ai/dsh-crew/preferences'
+
+    - id: invariants
+      name: '@deepseek-ai/dsh-invariants'
+      config:
+        enabled: true
+        package_allowlist:
+          - '^@deepseek-ai/dsh-(agent-team|crew)$'
+
+    - id: agent-team
+      name: '@deepseek-ai/dsh-agent-team'
+      config:
+        maxMembers: 8
+        maxTasks: 256
+        maxPendingMessagesPerMember: 64
+        maxMessageBytes: 65536
+        disposalTimeoutMs: 5000
+
+    - id: agent-team-invariant
+      name: '@deepseek-ai/dsh-agent-team/invariant'
+
+    - id: crew
+      name: '@deepseek-ai/dsh-crew'
+      inject: [crewProfilePresets]
+      config:
+        nativeProvider: spawn
+        maxConcurrentWorkers: 4
+        notificationBatchWindowMs: 250
+        workerTurnTimeoutMs: 900000
+        maxAutomaticRepairs: 1
+        maxReviewRounds: 2
+        allowedTestPrograms: [pnpm, npm, node]
+        commitPolicy:
+          maxMessageLength: 200
+          requireNamedBranch: true
+        roles: !!js ctx.crewProfilePresets.workerRoles
+
+    - id: crew-invariant
+      name: '@deepseek-ai/dsh-crew/invariant'
+
+    - id: tool-crew
+      name: '@deepseek-ai/dsh-tool-crew'
+      inject: [crewProfilePresets]
+      config:
+        requireRolePresets: true
+        roleTools: !!js ctx.crewProfilePresets.roleTools
+
+# The scaffold restates the roster row after every overlay, so this row is here
+# to keep the layer equal to the shipped Web patch; a scenario that needs the
+# Crew preset root passes `agentPresets` instead.
+- id: agent-presets
+  inject: [crewProfilePresets]
+  config:
+    default: standard
+    roots: !!js ctx.crewProfilePresets.agentPresetRoots
+
+- insert:
+    - id: ui-crew
+      name: '@deepseek-ai/dsh-client-ui-crew'

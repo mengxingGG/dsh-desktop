@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { join, sep } from 'node:path'
 import type { Browser, Locator, Page } from 'playwright'
 import { chromium } from 'playwright'
-import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, onTestFailed, vi } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { logPath } from '../../../packages/session/session-persistence-jsonl/src/format.ts'
 import {
@@ -141,8 +141,44 @@ describe('web e2e: workspace management (create / rename / flat view / hover aff
       // The real workspace materializes in the tree as a group row.
       await expect.poll(() => page.getByText(name, { exact: true }).count(), { timeout: 10_000 }).toBeGreaterThanOrEqual(1)
     }
-    await add('alpha-ws')
-    await add('beta-ws')
+    const opening = Promise.withResolvers<undefined>()
+    const createSession = scaffold.ctx.sessionController.create.bind(scaffold.ctx.sessionController)
+    const create = vi.spyOn(scaffold.ctx.sessionController, 'create').mockImplementationOnce(async (request) => {
+      await opening.promise
+      return await createSession(request)
+    })
+    try {
+      await add('alpha-ws')
+      await expect.poll(() => create.mock.calls.length, { timeout: 15_000 }).toBe(1)
+      // Workspace creation precedes its blank Session. Complete that Session
+      // while the user is already editing a second workspace path.
+      await page.getByRole('button', { name: 'Add workspace' }).click()
+      const directory = page.getByRole('dialog', { name: 'Select Workspace Directory' })
+      await directory.getByRole('button', { name: 'Edit path' }).click()
+      const pathInput = directory.getByRole('textbox', { name: 'Edit path' })
+      const pathDraft = join(scaffold.workspaceCwd, 'unfinished-directory')
+      await pathInput.fill(pathDraft)
+      opening.resolve(undefined)
+      await page.locator('[data-composer-input][contenteditable="true"]')
+        .waitFor({ timeout: 15_000 })
+      await expect.poll(() => page.evaluate(() => ({
+        pathEditors: document.querySelectorAll('input[aria-label="Edit path"]').length,
+        focusedControl: document.activeElement?.getAttribute('aria-label'),
+      })), { timeout: 5_000 }).toEqual({ pathEditors: 1, focusedControl: 'Edit path' })
+      await page.keyboard.type('-still-editing')
+      expect(await pathInput.inputValue()).toBe(`${pathDraft}-still-editing`)
+      await page.keyboard.press('Escape')
+      await directory.getByRole('button', { name: 'Cancel', exact: true }).click()
+      await add('beta-ws')
+      // The new Session row moves alpha's hover target when it appears.
+      const betaGroup = page.locator('[role="treeitem"]').filter({ hasText: 'beta-ws' }).first()
+        .locator('xpath=ancestor::*[contains(@class, "groupSection")][1]')
+      await betaGroup.getByRole('treeitem').filter({ hasText: 'New Session' })
+        .waitFor({ timeout: 15_000 })
+    } finally {
+      opening.resolve(undefined)
+      create.mockRestore()
+    }
     // Durable on the host: both registered, newest first (create prepends),
     // each titled after the folder the dialog made.
     const titles = scaffold.ctx.workspaceRegistry.list().map(workspace => workspace.title)

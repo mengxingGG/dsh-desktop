@@ -8,6 +8,7 @@ The setup tutorial takes a new contributor from prerequisites to a checked check
 
 ### Prerequisites
 
+- Windows is the primary development platform; Linux is secondary. macOS compatibility code is retained without active development, native CI, or release validation; see the [maintenance scope](../.agents/notes/implemented/process/2026-09-05-windows-linux-maintenance-scope.md).
 - Node.js supports 22.19+ and 24+. CI covers 22.19, 24, and 26; see the [Node engine floor Agent Note](../.agents/notes/implemented/process/2026-07-06-node-engine-floor.md).
 - Corepack-enabled pnpm. The repo pins `pnpm@11.7.0` in `package.json`; run `corepack enable` if `pnpm --version` does not resolve through Corepack.
 - Git 2.26 or newer; hook setup enables Git's worktree-specific configuration extension.

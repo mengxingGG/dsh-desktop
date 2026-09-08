@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-experimental-agent-team-web-profile` is the private Web layer for [Agent Teams](../agent-team/README.md). Add it after `@deepseek-ai/dsh-web-app` and [`@deepseek-ai/dsh-experimental-agent-team-profile`](../agent-team-profile/README.md) to show the Team roster, task board, and teammate navigation in the browser. Removing either experimental layer leaves the stable base and Web composition unchanged. Official releases exclude this package, so it is available only from a source checkout.
+`dsh-experimental-agent-team-web-profile` is the private Web layer for [Agent Teams](../../subagent/agent-team/README.md). Add it after `@deepseek-ai/dsh-web-app` and [`@deepseek-ai/dsh-experimental-agent-team-profile`](../agent-team-profile/README.md) to show the Team roster, task board, and teammate navigation in the browser. Removing either experimental layer leaves the stable base and Web composition unchanged. Official releases exclude this package, so it is available only from a source checkout.
 
 ## Table of Contents
 

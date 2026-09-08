@@ -53,6 +53,22 @@ export interface AppReady {
 }
 
 declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Ask plugins whether application-owned work outside live Agent turns and jobs remains active.
+     * @mode bail
+     * @returns true when this plugin owns active work; otherwise delegate with undefined.
+     */
+    'app/active-work'(): true | undefined
+    /**
+     * Stop work before application teardown, preserving failures for the exit requester.
+     * Producers stop admitting and drain work before the agents phase closes live Sessions.
+     * Listeners must join repeated calls and reject when shutdown cannot be verified.
+     * @mode parallel
+     * @param stage - ordered phase selected by the application shutdown owner.
+     */
+    'app/prepare-exit'(stage: 'producers' | 'agents'): Promise<void> | void
+  }
   interface Context {
     /** The invocation's inner arguments; provided by a launcher before the tree mounts. */
     cmdlineArgs?: CmdlineArgs

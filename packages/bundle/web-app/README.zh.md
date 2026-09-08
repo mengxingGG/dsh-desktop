@@ -79,6 +79,8 @@ patch 会替换目标行的整个 `config`，因此每个 Web 行都重述自己
 
 URL 行与浏览器交接都是就绪信号：监督方一观察到该行就发起 RPC，浏览器一打开就请求页面，因此两者只在 Loader 配置树结算且 Connection 认证可用后运行——在没有 Loader 的手工构建树中则立即运行。启动中途被释放的树不会宣告任何内容。
 
+桌面壳只为自有子进程挂载 [`desktop.patch.yml`](desktop.patch.yml)。它的 [IPC 插件](src/desktop.ts)检查实际工作并协调[持久退出协议](../../../.agents/notes/implemented/feature/2026-09-05-windows-tray-durable-exit.zh.md)；普通浏览器启动不暴露关停端点。明确挂载但缺少继承的父进程 IPC 或启动器退出服务时，会在启动阶段失败。
+
 ### LAN 信任采样
 
 `resolveLanTrust` 在启动时只采样一次网络：loopback 绑定（`127.0.0.1`）不派生任何 LAN 地址，绑定所有网卡则会加入每个非 internal IPv4 字面量。派生字面量加上显式的 `--trusted-host` 权威标识组成 `/api` 浏览器信任栅栏，打印的 LAN URL 始终与该栅栏一致。

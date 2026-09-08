@@ -10,6 +10,8 @@ Python SDK 单元测试驱动 fake peer，而打包运行时工作流可以在�
 
 ## Decision
 
+[平台维护范围](../process/2026-09-05-windows-linux-maintenance-scope.zh.md)限定为 Windows 和 Linux；保留的 macOS 实现与历史测量不代表主动维护或发布承诺。
+
 ### 安装产物边界
 
 必需的 Python 运行时工作流先构建纯 SDK wheel 包与各平台运行时 wheel 包，再进行行为测试。每个原生目标都把这两个本地文件安装进新的 Python 3.10 虚拟环境，切换到仓库外的临时目录，清除 `PYTHONPATH` 与 `DSH_RUNTIME_MODE`，并且只调用公开 Python 模块与打包后的可执行文件。
@@ -20,7 +22,7 @@ Python SDK 单元测试驱动 fake peer，而打包运行时工作流可以在�
 
 每个目标都会在安装后运行完整的打包运行时场景。一个本地 SSE mock 模型提供确定性输出，公开 SDK 则覆盖默认 SDK profile、有序 patch overlay、通过 `dsh plugin` 安装外部 bundle、持久 PTY 与 editor 行为、worker thread 代码与 workflow 执行、基于 ripgrep 的搜索、外部 stdio MCP 发现与执行、模型可见及持久化快照、Zstandard 持久化、直接 JSON-RPC 与关闭。Restart 快照针对同一持久化根目录启动两个完整 SDK 运行时进程，并固定其彼此隔离的模型历史、高层结果与独立持久日志。安装后运行取代 wheel 构建前的源码 SDK 运行，因此可执行文件与 wheel 包共同接受一次验证，而不是维护两套行为清单。
 
-Linux 另外保留 manylinux 2.28 干净安装冒烟测试与 GLIBC 检查。macOS 保留部署目标与原生 helper 检查。这些平台约束补充共同黑盒行为，不能替代它。
+Linux 另外保留 manylinux 2.28 干净安装冒烟测试与 GLIBC 检查。macOS 不参与原生 CI。这些平台约束补充共同黑盒行为，不能替代它。
 
 ### 真实 DeepSeek API
 
@@ -38,7 +40,7 @@ Fork 与 Dependabot 拉取请求永远不会获得仓库密钥。它们的原生
 
 ## Alternatives considered
 
-**只保留 Linux x64 必需载体。** 否决：五个已发布目标的原生 addon、可执行文件构建、wheel 包标签与 helper 文件不同。等到发布时才发现问题，对每个 Python SDK 安装都会按平台选择的产物而言太晚。
+**只保留 Linux x64 必需载体。** 否决：三个维护中的目标的原生 addon、可执行文件构建、wheel 包标签与 helper 文件不同。等到发布时才发现问题，对每个 Python SDK 安装都会按平台选择的产物而言太晚。
 
 **在 wheel 构建前运行完整行为，并保留两个很小的安装后冒烟测试。** 否决：这只能证明可执行文件配合源码 import 工作，再通过 distribution 证明很少的行为。干净安装环境是在同一批场景中验证用户实际安装内容的更强位置。
 
@@ -48,4 +50,4 @@ Fork 与 Dependabot 拉取请求永远不会获得仓库密钥。它们的原生
 
 ## Consequences
 
-每个拉取请求都会承担五个原生可执行文件及 wheel 包构建，并运行确定性的安装后产物场景。可信的同仓库拉取请求还会在每个目标上承担一次双轮 DeepSeek 任务。相应地，必需结果描述 Python 用户实际安装的文件，在合并前证明每个已发布载体，并且不能通过导入 checkout 或静默跳过真实提供方而通过。
+每个拉取请求都会承担三个原生可执行文件及 wheel 包构建，并运行确定性的安装后产物场景。可信的同仓库拉取请求还会在每个目标上承担一次双轮 DeepSeek 任务。相应地，必需结果描述 Python 用户实际安装的文件，在合并前证明每个已发布载体，并且不能通过导入 checkout 或静默跳过真实提供方而通过。

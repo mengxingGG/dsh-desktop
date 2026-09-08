@@ -112,6 +112,11 @@ export class ReactLoopAgent implements Agent {
     return this.phase.kind === 'idle' || this.phase.kind === 'maintenance' ? 'idle' : 'running'
   }
 
+  /** Whether the driver or between-turn maintenance still owns work. */
+  get hasActiveWork(): boolean {
+    return this.phase.kind !== 'idle'
+  }
+
   /** Commit a phase and publish its externally visible status transition. */
   private setPhase(next: Phase): void {
     const previousStatus = this.status

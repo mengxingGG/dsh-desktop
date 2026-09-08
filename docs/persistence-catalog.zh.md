@@ -115,7 +115,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }
 ```
 
-来源：[`packages/core/agent/src/types.ts:58`](../packages/core/agent/src/types.ts)
+来源：[`packages/core/agent/src/types.ts:60`](../packages/core/agent/src/types.ts)
 
 ### `agent-preset/*`
 
@@ -200,7 +200,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }
 ```
 
-来源：[`packages/interaction/user-approval/src/index.ts:32`](../packages/interaction/user-approval/src/index.ts)
+来源：[`packages/interaction/user-approval/src/index.ts:33`](../packages/interaction/user-approval/src/index.ts)
 
 ### `assistant/*`
 
@@ -403,6 +403,112 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 来源：[`packages/compaction/compaction/src/types.ts:34`](../packages/compaction/compaction/src/types.ts)
 
+### `crew/*`
+
+<a id="crewcommit--log-only"></a>
+
+#### `crew/commit` — log-only
+
+```ts persistence-catalog
+/** Immutable local commit attempt. */
+'crew/commit': { version: 1; teamId: TeamId; commit: CrewCommitSnapshot }
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md)
+
+来源：[`packages/subagent/crew/src/types.ts:587`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewconfiguration--log-only"></a>
+
+#### `crew/configuration` — log-only
+
+```ts persistence-catalog
+/** Immutable native Crew configuration stored in the Team Lead Session. */
+'crew/configuration': { version: 1; teamId: TeamId; configuration: CrewConfigurationSnapshot }
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md)
+
+来源：[`packages/subagent/crew/src/types.ts:573`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewintegration--log-only"></a>
+
+#### `crew/integration` — log-only
+
+```ts persistence-catalog
+/** Whole integration value stored on every revision. */
+'crew/integration': { version: 1; teamId: TeamId; integration: CrewIntegrationSnapshot }
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md)
+
+来源：[`packages/subagent/crew/src/types.ts:583`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewnotification--log-only"></a>
+
+#### `crew/notification` — log-only
+
+```ts persistence-catalog
+/** Whole manager-notification value stored on queue and delivery. */
+'crew/notification': { version: 1; teamId: TeamId; notification: CrewNotificationSnapshot }
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md)
+
+来源：[`packages/subagent/crew/src/types.ts:585`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewreport--log-only"></a>
+
+#### `crew/report` — log-only
+
+```ts persistence-catalog
+/** Immutable structured worker report. */
+'crew/report': { version: 1; teamId: TeamId; report: CrewReportSnapshot }
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md)
+
+来源：[`packages/subagent/crew/src/types.ts:577`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewreview--log-only"></a>
+
+#### `crew/review` — log-only
+
+```ts persistence-catalog
+/** Immutable review result. */
+'crew/review': { version: 1; teamId: TeamId; review: CrewReviewSnapshot }
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md)
+
+来源：[`packages/subagent/crew/src/types.ts:581`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewverification--log-only"></a>
+
+#### `crew/verification` — log-only
+
+```ts persistence-catalog
+/** Immutable host verification. */
+'crew/verification': { version: 1; teamId: TeamId; verification: CrewVerificationSnapshot }
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md)
+
+来源：[`packages/subagent/crew/src/types.ts:579`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewwork-item--log-only"></a>
+
+#### `crew/work-item` — log-only
+
+```ts persistence-catalog
+/** Whole Crew work-item value stored on every revision. */
+'crew/work-item': { version: 1; teamId: TeamId; workItem: CrewWorkItemSnapshot }
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md)
+
+来源：[`packages/subagent/crew/src/types.ts:575`](../packages/subagent/crew/src/types.ts)
+
 ### `feedback/*`
 
 <a id="feedbackrecord--log-only"></a>
@@ -522,7 +628,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'model/selection': ModelSelection
 ```
 
-来源：[`packages/api/session-controller/src/types.ts:41`](../packages/api/session-controller/src/types.ts)
+来源：[`packages/api/session-controller/src/types.ts:40`](../packages/api/session-controller/src/types.ts)
 
 ### `permission/*`
 
@@ -573,7 +679,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'request/context': RequestContext
 ```
 
-来源：[`packages/core/session/src/types.ts:341`](../packages/core/session/src/types.ts)
+来源：[`packages/core/session/src/types.ts:352`](../packages/core/session/src/types.ts)
 
 <a id="requestheader--log-only"></a>
 
@@ -592,7 +698,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }
 ```
 
-来源：[`packages/core/session/src/types.ts:331`](../packages/core/session/src/types.ts)
+来源：[`packages/core/session/src/types.ts:342`](../packages/core/session/src/types.ts)
 
 ### `sandbox/*`
 
@@ -729,7 +835,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'step/end': { turn: number; step: number }
 ```
 
-来源：[`packages/core/session/src/types.ts:281`](../packages/core/session/src/types.ts)
+来源：[`packages/core/session/src/types.ts:280`](../packages/core/session/src/types.ts)
 
 <a id="stepstart--log-only"></a>
 
@@ -740,7 +846,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'step/start': { turn: number; step: number }
 ```
 
-来源：[`packages/core/session/src/types.ts:279`](../packages/core/session/src/types.ts)
+来源：[`packages/core/session/src/types.ts:278`](../packages/core/session/src/types.ts)
 
 ### `subagent/*`
 
@@ -793,7 +899,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 类型：[TeamId](subsystems/agent-team.zh.md) · [TeamMemberSnapshot](subsystems/agent-team.zh.md)
 
-来源：[`packages/experimental/agent-team/src/types.ts:204`](../packages/experimental/agent-team/src/types.ts)
+来源：[`packages/subagent/agent-team/src/types.ts:235`](../packages/subagent/agent-team/src/types.ts)
 
 <a id="teammessagedelivered--log-only"></a>
 
@@ -811,7 +917,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 类型：[TeamId](subsystems/agent-team.zh.md) · [TeamMessageId](subsystems/agent-team.zh.md)
 
-来源：[`packages/experimental/agent-team/src/types.ts:210`](../packages/experimental/agent-team/src/types.ts)
+来源：[`packages/subagent/agent-team/src/types.ts:241`](../packages/subagent/agent-team/src/types.ts)
 
 <a id="teammessagequeued--log-only"></a>
 
@@ -824,7 +930,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 类型：[TeamId](subsystems/agent-team.zh.md) · [TeamMessageSnapshot](subsystems/agent-team.zh.md)
 
-来源：[`packages/experimental/agent-team/src/types.ts:208`](../packages/experimental/agent-team/src/types.ts)
+来源：[`packages/subagent/agent-team/src/types.ts:239`](../packages/subagent/agent-team/src/types.ts)
 
 <a id="teamtask--log-only"></a>
 
@@ -837,7 +943,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 类型：[TeamId](subsystems/agent-team.zh.md) · [TeamTaskSnapshot](subsystems/agent-team.zh.md)
 
-来源：[`packages/experimental/agent-team/src/types.ts:206`](../packages/experimental/agent-team/src/types.ts)
+来源：[`packages/subagent/agent-team/src/types.ts:237`](../packages/subagent/agent-team/src/types.ts)
 
 ### `todo/*`
 
@@ -871,7 +977,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 类型：[ToolCallId](subsystems/core.zh.md)
 
-来源：[`packages/core/session/src/types.ts:308`](../packages/core/session/src/types.ts)
+来源：[`packages/core/session/src/types.ts:319`](../packages/core/session/src/types.ts)
 
 <a id="toolcode-dispatch--log-only"></a>
 
@@ -896,7 +1002,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'tool/code-dispatch': PtcDispatchEventData
 ```
 
-来源：[`packages/core/tools/src/types.ts:56`](../packages/core/tools/src/types.ts)
+来源：[`packages/core/tools/src/types.ts:67`](../packages/core/tools/src/types.ts)
 
 <a id="toolcode-dispatch-start--log-only"></a>
 
@@ -919,7 +1025,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'tool/code-dispatch-start': PtcDispatchStartEventData
 ```
 
-来源：[`packages/core/tools/src/types.ts:40`](../packages/core/tools/src/types.ts)
+来源：[`packages/core/tools/src/types.ts:51`](../packages/core/tools/src/types.ts)
 
 <a id="toolresult--surface"></a>
 
@@ -946,7 +1052,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }
 ```
 
-来源：[`packages/core/session/src/types.ts:320`](../packages/core/session/src/types.ts)
+来源：[`packages/core/session/src/types.ts:331`](../packages/core/session/src/types.ts)
 
 ### `tool-workflow/*`
 
@@ -1026,7 +1132,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 类型：[TurnEndReason](subsystems/session.zh.md)
 
-来源：[`packages/core/session/src/types.ts:277`](../packages/core/session/src/types.ts)
+来源：[`packages/core/session/src/types.ts:276`](../packages/core/session/src/types.ts)
 
 <a id="turnstart--log-only"></a>
 
@@ -1042,7 +1148,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'turn/start': { turn: number }
 ```
 
-来源：[`packages/core/session/src/types.ts:268`](../packages/core/session/src/types.ts)
+来源：[`packages/core/session/src/types.ts:267`](../packages/core/session/src/types.ts)
 
 ### `user/*`
 
@@ -1061,7 +1167,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'user/message': UserMessage
 ```
 
-来源：[`packages/core/session/src/types.ts:289`](../packages/core/session/src/types.ts)
+来源：[`packages/core/session/src/types.ts:288`](../packages/core/session/src/types.ts)
 
 ### `web/*`
 

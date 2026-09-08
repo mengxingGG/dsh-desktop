@@ -124,6 +124,7 @@ export interface PathLinkInfo {
   mode: number
   type: 'file' | 'directory' | 'symlink' | 'other'
   size: number
+  linkCount: number
 }
 
 /** One local directory child with a resolved target and cheap metadata. */
@@ -251,6 +252,7 @@ export async function probeNoFollow(absolutePath: string): Promise<PathLinkInfo 
     mode: Number(info.mode & 0o777n),
     type: pathLinkType(info),
     size: Number(info.size),
+    linkCount: Number(info.nlink),
   }
 }
 

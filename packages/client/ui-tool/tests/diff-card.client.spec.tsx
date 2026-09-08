@@ -379,6 +379,7 @@ describe('DetailsPanel diff Output section', () => {
     return render(
       <DetailsPanel
         renderSlot={renderToolDetails(t)}
+        renderSlotChain={(_key, _owner, options) => options?.fallback ?? null}
         SessionProvider={({ children }) => children}
         sessionId={SID}
         useSession={bindSnapshotSelector(session)}
@@ -400,6 +401,7 @@ describe('DetailsPanel diff Output section', () => {
         useStore={bindSnapshotSelector(chat)}
         actions={chat.actions}
         closeDetails={vi.fn()}
+        openDetails={vi.fn()}
         t={chatT}
       />,
     )
@@ -414,7 +416,7 @@ describe('DetailsPanel diff Output section', () => {
     return toolChatSnapshot(nodes, runningCalls)
   }
 
-  const target: SelectionTarget = { turnSeq: 10, callId: 'c1', toolName: 'edit' }
+  const target: SelectionTarget = { kind: 'tool', turnSeq: 10, callId: 'c1', toolName: 'edit' }
 
   it('renders the applied diff at full height, keeping the JSON Input section', () => {
     const view = mount(snapshot({ nodes: [settled()] }), target)

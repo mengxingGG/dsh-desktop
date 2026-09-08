@@ -34,6 +34,9 @@ subagent 组是委派能力家族：它让 agent（智能体）把任务交给�
 | [`subagent-dsh-sdk/`](subagent-dsh-sdk/README.zh.md) | 经 TypeScript SDK 运行进程外 Harness 子 agent | 注册到 `ctx.subagents` |
 | [`tool-subagent/`](tool-subagent/README.zh.md) | 向模型公开委派 | 注册到 `ctx.tools` |
 | [`tool-subagent-control/`](tool-subagent-control/README.zh.md) | 向模型公开相邻 Agent 消息、中断与列举 | 注册到 `ctx.tools` |
+| [`agent-team/`](agent-team/README.zh.md) | 具名 teammate，成员之间持久消息与共享任务板 | `ctx.agentTeams` |
+| [`crew/`](crew/README.zh.md) | Team 支撑的软件工作流、持久证据、恢复与宿主操作 | `ctx.crew` |
+| [`tool-crew/`](tool-crew/README.zh.md) | 按角色限制的厂长、工人、审查、整合与提交工具 | 按作用域注册工具到 `ctx.tools` |
 
 -----
 

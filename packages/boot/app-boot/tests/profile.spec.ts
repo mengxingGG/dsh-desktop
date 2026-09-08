@@ -256,10 +256,41 @@ describe('loadProfile', () => {
     ])
   })
 
+  it('adds Crew to the legacy Web tuple while preserving settings and user patches', () => {
+    const anchor = stageInstallation({
+      '@deepseek-ai/dsh-base': { patch: '[]\n' },
+      '@deepseek-ai/dsh-web-app': { patch: '[]\n' },
+      '@deepseek-ai/dsh-crew-profile': { patch: '[]\n' },
+      '@deepseek-ai/dsh-crew-web-profile': { patch: '[]\n' },
+      custom: { patch: '[]\n' },
+    })
+    const home = tmp()
+    const dir = resolveProfileDir('web', home)
+    const old = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
+    initProfile(dir, old, 'startup')
+    const before = readProfileManifest('t', dir)
+    before.dependencies = { custom: '1.0.0' }
+    writeProfileManifest(dir, before)
+    const patch = readFileSync(join(dir, PROFILE_PATCH_FILENAME), 'utf8')
+    loadProfile('t', 'web', anchor, home)
+    expect(readProfileManifest('t', dir)).toMatchObject({
+      dependencies: { custom: '1.0.0' },
+      dsh: { profile: { bundles: PROFILE_TEMPLATES.web!.bundles, patchReload: 'startup' } },
+    })
+    expect(readFileSync(join(dir, PROFILE_PATCH_FILENAME), 'utf8')).toBe(patch)
+    const customHome = tmp()
+    const customDir = resolveProfileDir('web', customHome)
+    initProfile(customDir, [...old, 'custom'])
+    loadProfile('t', 'web', anchor, customHome)
+    expect(readProfileManifest('t', customDir).dsh?.profile?.bundles).toEqual([...old, 'custom'])
+  })
+
   it('adds a shipped reload default only to an exact stock tuple and preserves explicit choices', () => {
     const anchor = stageInstallation({
       '@deepseek-ai/dsh-base': { patch: '[]\n' },
       '@deepseek-ai/dsh-web-app': { patch: '[]\n' },
+      '@deepseek-ai/dsh-crew-profile': { patch: '[]\n' },
+      '@deepseek-ai/dsh-crew-web-profile': { patch: '[]\n' },
     })
     const stockHome = tmp()
     const stock = resolveProfileDir('web', stockHome)

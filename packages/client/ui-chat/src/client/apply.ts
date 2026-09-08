@@ -26,6 +26,7 @@ import { registerChatNodeRenderers } from './chat/register-node-renderers.ts'
 import { StatsLine } from './chat/StatsLine.tsx'
 import { registerConversationNodes } from './conversation-nodes/register.ts'
 import { DetailsPanel } from './details/DetailsPanel.tsx'
+import { ChatDetailsController } from './details/service.ts'
 import { en, NS, zh } from './locale.ts'
 import { TranscriptViewRow, type TranscriptViewRowInjected } from './settings/TranscriptViewRow.tsx'
 import { createChatStore } from './stores.ts'
@@ -75,6 +76,20 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-chat: dictionaries')
   const t = ctx.locale.bind(NS)
   const chatStore = createChatStore()
+  const details = new ChatDetailsController(ctx.layout)
+  ctx.effect(() => {
+    const disposeService = ctx.reflect.provide('chatDetails', details)
+    const retainLiveSessions = (): void => {
+      details.retain(new Set(Object.keys(ctx.sessions.list.getSnapshot().byId)))
+    }
+    const unsubscribe = ctx.sessions.list.subscribe(retainLiveSessions)
+    retainLiveSessions()
+    return () => {
+      unsubscribe()
+      details.clear()
+      void disposeService()
+    }
+  }, 'ui-chat: details service')
   const chatScrollPositions = new Map<SessionId, ChatScrollPosition>()
   const transcriptView = new TranscriptViewPolicy(
     ctx.settingsScope.bind<ChatSettings>({ namespace: CHAT_SETTINGS_NAMESPACE }),
@@ -106,6 +121,7 @@ export function apply(ctx: Context): void {
       inject: (sessionId: SessionId, actions: BoundActions<typeof chatStore>): ChatViewInjected => {
         const binding = ctx.sessions.binding(sessionId)
         if (binding === undefined) throw new Error(`ui-chat: unknown session "${sessionId}"`)
+        details.attach(sessionId, actions)
         const session = binding.session
         const chat = chatSource(binding)
         return {
@@ -115,8 +131,7 @@ export function apply(ctx: Context): void {
             chatNodeProcess: key => chat.getSnapshot().nodes.processSource(key),
           },
           openDetails: (target) => {
-            actions.select(target)
-            ctx.layout.openDetails()
+            details.open(sessionId, target)
           },
           fileMentions: (owner: TurnTailOwnerProps) => ctx.get('chatFileMentions')?.forClosing(owner),
           openFile: async (path) => {
@@ -163,8 +178,15 @@ export function apply(ctx: Context): void {
   ctx.slots.inject('details', () => ctx.slots.register({
     name: 'details',
     locale: NS,
-    children: { 'conversation.details.tool': { kind: 'single', scope: 'session' } },
+    children: {
+      'conversation.details.view': { kind: 'chain', scope: 'session' },
+      'conversation.details.tool': { kind: 'single', scope: 'session' },
+    },
     store: chatStore,
-    inject: (): DetailsInjected => ({ closeDetails: () => { ctx.layout.closeDetails() } }),
+    inject: (sessionId: SessionId, actions: BoundActions<typeof chatStore>): DetailsInjected => ({
+      closeDetails: () => { actions.select(null); ctx.layout.closeDetails() },
+      openDetails: (selection) => { details.open(sessionId, selection) },
+    }),
   }, DetailsPanel))
+
 }

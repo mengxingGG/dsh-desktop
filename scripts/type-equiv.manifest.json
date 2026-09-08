@@ -315,22 +315,22 @@
     {
       "doc": "docs/subsystems/agent-team.md",
       "symbol": "TeamMemberSnapshot",
-      "source": "packages/experimental/agent-team/src/types.ts"
+      "source": "packages/subagent/agent-team/src/types.ts"
     },
     {
       "doc": "docs/subsystems/agent-team.md",
       "symbol": "TeamMessageSnapshot",
-      "source": "packages/experimental/agent-team/src/types.ts"
+      "source": "packages/subagent/agent-team/src/types.ts"
     },
     {
       "doc": "docs/subsystems/agent-team.md",
       "symbol": "TeamMessageSource",
-      "source": "packages/experimental/agent-team/src/types.ts"
+      "source": "packages/subagent/agent-team/src/types.ts"
     },
     {
       "doc": "docs/subsystems/agent-team.md",
       "symbol": "TeamTaskSnapshot",
-      "source": "packages/experimental/agent-team/src/types.ts"
+      "source": "packages/subagent/agent-team/src/types.ts"
     },
     {
       "doc": "docs/subsystems/commands.md",
@@ -829,7 +829,7 @@
     {
       "doc": "docs/subsystems/tools.md",
       "symbol": "ToolRestriction",
-      "source": "packages/core/tools/src/index.ts"
+      "source": "packages/core/tools/src/types.ts"
     },
     {
       "doc": "docs/subsystems/tools.md",
@@ -1348,6 +1348,11 @@
     },
     {
       "doc": "docs/subsystems/subagent.md",
+      "symbol": "SubagentSettlementNoticeInfo",
+      "source": "packages/subagent/subagent/src/continuation.ts"
+    },
+    {
+      "doc": "docs/subsystems/subagent.md",
       "symbol": "SubagentSendMessageOptions",
       "source": "packages/subagent/subagent/src/continuation.ts"
     },
@@ -1384,7 +1389,7 @@
     {
       "doc": "docs/subsystems/subagent.md",
       "symbol": "SubagentStopReasonMap",
-      "source": "packages/subagent/subagent/src/types.ts"
+      "source": "packages/subagent/subagent/src/stop-reason.ts"
     },
     {
       "doc": "docs/subsystems/subagent.md",
@@ -1934,7 +1939,7 @@
     {
       "doc": "docs/subsystems/core.md",
       "symbol": "AgentOptions",
-      "source": "packages/core/agent/src/runtime-types.ts"
+      "source": "packages/core/agent/src/options.ts"
     },
     {
       "doc": "docs/subsystems/feedback.md",

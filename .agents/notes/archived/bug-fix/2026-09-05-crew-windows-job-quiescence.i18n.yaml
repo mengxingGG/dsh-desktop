@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-05-crew-windows-job-quiescence.md
+2026-09-05-crew-windows-job-quiescence.md: c86be2135c9d6849ec81317c3f36f8bb3b3de323
+2026-09-05-crew-windows-job-quiescence.zh.md: c286523eb44b1efe2153ff9b9ff9ca34c42d0770

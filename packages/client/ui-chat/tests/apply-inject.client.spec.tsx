@@ -115,8 +115,8 @@ describe('Chat inject API', () => {
   it('writes Chat selection before opening details', async () => {
     const b = await bench()
     const { instance, injected } = b.chatViewApi(ROOT)
-    injected.openDetails({ turnSeq: 2, callId: 'c1' })
-    expect(instance.store.getSnapshot().selection).toEqual({ turnSeq: 2, callId: 'c1' })
+    injected.openDetails({ kind: 'tool', turnSeq: 2, callId: 'c1' })
+    expect(instance.store.getSnapshot().selection).toEqual({ kind: 'tool', turnSeq: 2, callId: 'c1' })
     expect(b.layout.openDetails).toHaveBeenCalledOnce()
     expect(b.runtime.storeOf('details', ROOT)).toBe(instance)
     expect(b.runtime.storeOf('conversation.session', ROOT)).not.toBe(instance)
@@ -152,10 +152,13 @@ describe('Chat inject API', () => {
   it('closes details while sharing selection through the Chat store', async () => {
     const b = await bench()
     const entry = b.runtime.slots.entries('details')[0]!
-    const injected = (entry.inject as unknown as () => DetailsInjected)()
-    expect(Object.keys(injected)).toEqual(['closeDetails'])
+    const { instance } = b.chatViewApi(ROOT)
+    instance.actions.select({ kind: 'tool', turnSeq: 2, callId: 'closed-call' })
+    const injected = (entry.inject as unknown as (sessionId: SessionId, actions: ChatActions) => DetailsInjected)(ROOT, instance.actions)
+    expect(Object.keys(injected)).toEqual(['closeDetails', 'openDetails'])
     injected.closeDetails()
     expect(b.layout.closeDetails).toHaveBeenCalledOnce()
+    expect(instance.store.getSnapshot().selection).toBeNull()
     expect(b.runtime.storeOf('details', ROOT)).toBe(b.runtime.storeOf('conversation.view', ROOT))
     await b.runtime.dispose()
   })

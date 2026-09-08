@@ -24,6 +24,8 @@ Web GUI 以一条真实组装链交付——chromium 页面 → client 插件 bu
 
 ### 确定性规则
 
+主机侧 fixture 请求使用 scaffold 自己持有的 Undici dispatcher，其 DNS 查询固定选择回环地址，而 HTTP 保留 fixture 的公开 authority、路径和 cookie。这样，受信任的远程 authority 场景仍会经过真实 Host 检查，但不依赖机器的 DNS 或代理映射。浏览器请求保留远程 origin。初始化回滚和正常收尾都会关闭 dispatcher；token 交换响应的 body 在复用前取消。`scaffold-http.spec.ts` 使用真实的动态端口监听器核对收到的 authority 与 cookie，测试域名采用不能依赖 DNS 的 `.invalid`。
+
 回放模式下浏览器断言的屏障栈，按序：（1）host 侧 `await agent.whenIdle()` 加超时，以进程内 `turn/end` 为锚——空闲翻转发生在持久化落盘之后，一次等待同时覆盖轮次完成与持久性；（2）浏览器安定轮询（流式输出节点已卸载、最终文本可见）。录制模式下，日志采收在 `whenIdle()` 之后、scaffold 释放之前进行，此时运行中的会话仍然可用。单独监听进程内 `turn/end` 是错误屏障（它先于 SSE 帧到达浏览器、先于 fsync 触发）；禁止轮询持久化文件来充当轮次完成或持久性屏障（NFS 上慢，且被 `whenIdle` 取代），但工具控制的临时就绪标记可以仅作为该完成屏障之前的交互门控进行轮询；`networkidle` 被彻底禁止（SSE 流保持打开时它永不解析）。导航断言会在页面加载前同时监听 `session.list` 和 `workspace.list` 的初始响应，随后等待播种数据投影到 DOM；仅凭 shell 已挂载不能判定就绪，因为较晚完成的 bootstrap 可能替换受控状态。
 
 不做单次瞬态 DOM 断言：从 replay yield 到 React commit 的每一跳都可能合并 chunk，采样 `[data-streaming]` 天然就是竞态。流式增量性通过有序 `agent/assistant-stream` follow path 断言，最终持久 `assistant/message` 或 `assistant/attempt` 则嵌入 replay 使用的精确 stream。`dsh-llm-replay` 的可选 `paceMs`（默认缺省 = burst）只是让浏览器观察到真正增量 SSE 的真实感旋钮；正确性绝不依赖它，且 pace wait 期间 abort 会即时取消。

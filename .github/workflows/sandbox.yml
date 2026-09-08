@@ -29,14 +29,13 @@ jobs:
   # an OS×runner matrix — bwrap and Landlock on Linux (separate legs: the
   # Landlock files force the bwrap rung off, so each leg proves exactly one
   # rung; Landlock twice, once per architecture, each confining through the
-  # locally built launcher), Seatbelt on macOS (sandbox-exec ships with
-  # the OS). One node
+  # locally built launcher). One node
   # version only: kernel confinement does not vary by node, and ci.yml's
   # node matrix already covers the node axis.
   #
   # The e2e files self-skip where their runner is absent, so a leg that lost
-  # its runner (no bwrap, kernel without Landlock, macOS without
-  # sandbox-exec) would otherwise pass as a false green — the same trap
+  # its runner (no bwrap or a kernel without Landlock) would otherwise pass
+  # as a false green — the same trap
   # e2e.yml's key preflight guards against. Each leg therefore asserts BOTH
   # its platform files actually ran: `Test Files  2 passed (2)`, no skips.
   sandbox-e2e:
@@ -50,8 +49,6 @@ jobs:
             runner: landlock
           - os: ubuntu-24.04-arm
             runner: landlock
-          - os: macos-latest
-            runner: seatbelt
     name: sandbox e2e (${{ matrix.runner }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
@@ -86,14 +83,6 @@ jobs:
           sudo apt-get install -yq musl-tools
           pnpm --dir native/landlock-run run build:ts
           pnpm --dir native/landlock-run run build:native
-
-      # The unit suite runs on ubuntu in `checks`; this is the one darwin leg
-      # in the workflow, so run it here too — the platform-dependent unit
-      # expectations (Seatbelt path canonicalization: /tmp IS /private/tmp)
-      # take their darwin branch only on this runner.
-      - name: Unit tests (darwin parity)
-        if: matrix.runner == 'seatbelt'
-        run: pnpm run test
 
       - name: Sandbox e2e (real kernel confinement, world-verified)
         # NO_COLOR: vitest force-enables ANSI color under GITHUB_ACTIONS even

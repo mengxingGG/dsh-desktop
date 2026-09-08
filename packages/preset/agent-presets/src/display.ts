@@ -13,6 +13,7 @@ export type BuiltInPresetCopyKey =
   | 'presetPtcName' | 'presetPtcDescription'
   | 'presetMinimalName' | 'presetMinimalDescription'
   | 'presetCordisName' | 'presetCordisDescription'
+  | 'presetCrewManagerName' | 'presetCrewManagerDescription'
 
 /** Preset roster fields needed to resolve display copy. */
 export interface PresetDisplaySource {
@@ -44,6 +45,10 @@ const BUILT_IN_PRESET_KEYS: Readonly<Partial<Record<string, PresetLocaleKeys>>> 
   ptc: { name: 'presetPtcName', description: 'presetPtcDescription' },
   minimal: { name: 'presetMinimalName', description: 'presetMinimalDescription' },
   cordis: { name: 'presetCordisName', description: 'presetCordisDescription' },
+  // Shipped by `dsh-crew-profile`, not by this package's own `presets/` root.
+  // The fold keys on the id a `system` root supplies, so a bundle-owned preset
+  // carries localized copy from the same single home as the built-in four.
+  'crew-manager': { name: 'presetCrewManagerName', description: 'presetCrewManagerDescription' },
 }
 
 /**

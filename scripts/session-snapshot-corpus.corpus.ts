@@ -22,11 +22,12 @@ import { assertV2SnapshotCorpusPolicy } from './session-snapshot-corpus-policy.t
 
 const repoRoot = resolve(import.meta.dirname, '..')
 const corpusRoot = join(repoRoot, 'snapshots')
-const profiles = ['acp', 'sdk', 'session', 'web'] as const
+const profiles = ['acp', 'crew-native', 'sdk', 'session', 'web'] as const
 const snapshotAdapters = [
   'apps/web/tests/message-feedback-protocol.snapshot.ts',
   'apps/web/tests/minimal-preset.snapshot.ts',
   'snapshots/acp/acp.snapshot.ts',
+  'snapshots/crew-native/crew-native.snapshot.ts',
   'snapshots/sdk/sdk.snapshot.ts',
   'snapshots/session/headless.snapshot.ts',
 ] as const

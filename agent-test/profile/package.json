@@ -1,0 +1,16 @@
+{
+  "name": "dsh-profile-native-crew-real-provider-smoke",
+  "private": true,
+  "dependencies": {
+    "@deepseek-ai/dsh-crew-profile": "workspace:^"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless",
+        "@deepseek-ai/dsh-crew-profile"
+      ]
+    }
+  }
+}

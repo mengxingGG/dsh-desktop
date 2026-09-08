@@ -1,3 +1,6 @@
+- button "Usage/Balance":
+  - img
+  - text: Usage/Balance
 - button "Settings":
   - img
   - text: Settings

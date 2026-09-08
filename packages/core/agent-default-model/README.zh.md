@@ -47,7 +47,7 @@ kind: "package-reference"
 
 ### 读取与更改默认值
 
-`currentSelection()` 为新创建的 agent 返回一份独立的 `{ provider, model, reasoningEffort? }`；`saveSelection()` 为后续 agent 保存完整选择。
+`currentSelection()` 为新创建的 agent 返回一份独立的 `{ provider, model, reasoningEffort? }`；`saveSelection()` 为后续 agent 保存完整选择。入口可将精确 Agent 传给 `currentSelection(agent)`，以应用已注册的岗位默认值。入口优先采用显式 Session 选择和已记录的请求头。
 
 ```text
 const selection = ctx.agentDefaultModel.currentSelection()
@@ -75,11 +75,11 @@ await ctx.agentDefaultModel.saveSelection({ provider, model, reasoningEffort: 'h
 | 文件 | 职责 |
 |---|---|
 | [`src/index.ts`](src/index.ts) | 插件入口：`AgentDefaultModelConfig` 服务、设置分节安装、`currentSelection`/`saveSelection` |
-| — | 不发布运行时不变式伴生入口；唯一的可变值关系由 settings 校验负责。 |
+| — | 不发布运行时不变式伴生入口；settings 校验与精确 Agent 解析器注册各自负责其可变值。 |
 
 ### 行为说明
 
-两个公开方法都是对该真源的薄读写：`currentSelection()` 返回全新独立对象，调用方持有它不会别名化服务状态；`saveSelection()` 在存在 `ctx.settings` 时写入完整选择。
+`currentSelection()` 返回全新独立对象，`saveSelection()` 在存在 `ctx.settings` 时写入完整选择。`register(agent, resolve)` 为该精确 Agent 安装一个实时解析器；重复注册会被拒绝，调用方通过 effect 管理其释放函数。解析器不写入全局设置或 Session 模型选择。
 
 </details>
 
@@ -113,7 +113,7 @@ await ctx.agentDefaultModel.saveSelection({ provider, model, reasoningEffort: 'h
 
 这些限制界定该服务的范围。它们是当前包约束，不是任务积压。
 
-- **单一的进程级默认值**——该服务只拥有一个默认值；按会话的模型选择仍由入口负责。
+- **单一的进程级设置默认值**——只有调用方传入对应精确 Agent 时，岗位解析器才生效；按会话的模型选择仍由入口负责。
 - **没有设置提供方时无法保留**——未挂载设置提供方时，`saveSelection()` 无法为后续 agent 保留选择。
 
 <a id="dev-note"></a>

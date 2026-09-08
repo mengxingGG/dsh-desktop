@@ -2016,6 +2016,22 @@ describe('continuable adjacent-Agent delivery', () => {
 })
 
 describe('continuable settlement delivery', () => {
+  it('lets a durable product owner suppress the generic parent notice', async () => {
+    const { ctx, parent } = await setup([textResponse('the answer')])
+    const suppressed: SessionId[] = []
+    ctx.on('subagent/settlement-notice', (info) => {
+      if (info.parentSessionId !== parent.id) return
+      suppressed.push(info.childSessionId)
+      return true
+    })
+
+    const started = await ctx.subagents.startContinuable(startSpec(parent))
+    await waitNoActivation(ctx, started.childId)
+
+    expect(suppressed).toEqual([started.childId])
+    expect(settlementNotices(parent)).toEqual([])
+  })
+
   it('tells the parent what the child finished with, without being asked', async () => {
     const { ctx, parent } = await setup([textResponse('the answer'), textResponse('parent ack')])
     const started = await ctx.subagents.startContinuable(startSpec(parent))

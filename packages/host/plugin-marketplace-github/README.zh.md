@@ -1,6 +1,13 @@
+---
+description: "Web 插件市场的 GitHub 发现与 profile 安装提供方，负责校验 bundle 搜索结果并托管安装进程。"
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-host-plugin-marketplace-github
 
 [English](README.md) | 中文
+
+## 概述
 
 面向 Web 插件市场的 GitHub 发现与 profile 安装提供方。`PluginMarketplaceGateway` 注册带有 `search` 和 `add` 方法的 `pluginMarketplace` Typert Remote。[`api-remotes`](../../api/remotes/README.zh.md) 挂载生成的 Client 贡献；本包不声明同进程 Client API。
 
@@ -8,6 +15,16 @@
 
 安装会重新获取所选仓库及其 manifest，再运行普通的隐藏 `dsh plugin --profile <profile> add github:<owner/repository>` 路径。同一时间只运行一次安装。服务 dispose（资源释放）会取消正在运行的进程树；只有 profile 修改成功退出后，Remote 才会报告成功。安装成功后必须重启 profile，新 bundle 才会激活。
 
+## 目录
+
+- [配置](#configuration)
+- [模型体验](#model-experience)
+- [已知限制与暂缓事项](#known-limitations-and-deferred-work)
+- [开发备注](#dev-note)
+
+-----
+
+<a id="configuration"></a>
 ## 配置
 
 | 配置键 | 默认值 | 用途 |
@@ -21,6 +38,7 @@
 
 浏览器永远不能传入 token。安装器会在启动第三方包脚本前，删除名称中包含 `KEY`、`SECRET`、`TOKEN` 或 `PASSWORD` 的继承环境变量，同时保留 `dsh plugin` 所需的 profile 与内置包管理器环境。
 
+<a id="model-experience"></a>
 ## 模型体验
 
 无，因为该 Host Remote 不注册提示词、工具、消息或提供方输入。
@@ -31,6 +49,20 @@
 
 ## 已知限制与暂缓事项
 
+<a id="known-limitations-and-deferred-work"></a>
+
 - **受 GitHub 可用性与限额约束** —— 未认证搜索使用 GitHub 较低的 API 限额；GitHub 短暂故障会阻止发现和 manifest 复核。
 - **安装会执行第三方代码** —— manifest 校验只能证明 dsh bundle 结构，不能证明信任度、安全性、维护质量或兼容性；浏览器调用 `add` 前必须取得用户明确确认。
 - **仅提供安装** —— Remote 不会在免重启情况下激活 bundle，也不提供更新、移除、签名验证、内容精选或依赖冲突解决。
+
+<a id="dev-note"></a>
+### 开发备注
+
+<details>
+<summary>维护者工作上下文——点击展开</summary>
+
+无。
+
+</details>
+
+**运行时不变量：** 不发布配套 companion。Remote 负责串行安装，并在服务卸载时取消其进程树。

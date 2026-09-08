@@ -5,13 +5,11 @@
  * Fiber + ctx.extend scope tag; one scope per session, agent id === session
  * id), stable SessionBinding cache, breadcrumb-route projection.
  *
- * Scope lifecycle is stage-driven: a scope is minted lazily on first
- * resolution (pure — resolution has no side effects and is render-safe);
- * the event window and deferred teardown key off the STAGED session, which
- * follows `list.current` exactly. Staging is the open signal: the window
- * opens ⟺ the session is on stage (the stage is `current`; the staged
- * state can widen to a multi-pane list later). A session leaving the list
- * tears its scope down immediately unless it is the staged one, whose scope
+ * The selected Session and explicitly retained child observations own open
+ * event windows. Secondary observations do not change `list.current`.
+ * A session leaving the list tears its scope down unless it is selected or
+ * retained by an observation; the last observer releases an unselected child.
+ * The selected Session's scope
  * survives frozen (read-only view) until the stage moves on.
  */
 import type { Context, Fiber } from '@deepseek-ai/cordis'
@@ -134,6 +132,13 @@ export interface SessionBinding {
   readonly ctx: AgentContext
 }
 
+/** A secondary view's ownership of a followed child Session. */
+export interface SessionObservation {
+  readonly binding: SessionBinding
+  /** Release this view once; the last off-stage observer tears down its follow stream. */
+  dispose(): void
+}
+
 // Scope primitives live in ../scope.ts (the client mirror of host
 // dsh-scope, keyed by Agent identity); re-exported here so existing
 // consumers keep their import site.
@@ -202,6 +207,8 @@ export class ClientSessions implements ISessions {
   private readonly selection: SnapshotStore<SessionSelection>
 
   private readonly scopes = new Map<SessionId, ScopeRecord>()
+  private readonly observations = new Map<SessionId, number>()
+  private disposed = false
   /** In-flight scope drops remain here after records leave `scopes`, so root disposal can await quiescence. */
   private readonly scopeDrops = new Set<Promise<void>>()
   /**
@@ -250,6 +257,8 @@ export class ClientSessions implements ISessions {
       this.followCurrent()
     })
     rootCtx.effect(() => async () => {
+      this.disposed = true
+      this.observations.clear()
       disposeStageFollower()
       disposeManagerProjection()
       const scopes = [...this.scopes]
@@ -277,6 +286,36 @@ export class ClientSessions implements ISessions {
    */
   openSubagent(address: SubagentAddress): void {
     this.manager.selectSubagent(address)
+  }
+
+  /**
+   * Follow a child in a secondary read-only view without changing the main selection.
+   * @param address - catalog-derived direct-parent address.
+   * @returns an idempotently disposable observation of the shared Session binding.
+   */
+  observeSubagent(address: SubagentAddress): SessionObservation {
+    if (this.disposed) throw new Error('sessions.observeSubagent: service disposed')
+    this.manager.retainSubagent(address)
+    const id = address.childSessionId
+    this.observations.set(id, (this.observations.get(id) ?? 0) + 1)
+    const record = this.scopes.get(id) ?? this.materializeScope(id)
+    void record.session.open()
+    let released = false
+    return {
+      binding: record.binding,
+      dispose: () => {
+        if (released || this.disposed) return
+        released = true
+        const remaining = (this.observations.get(id) ?? 0) - 1
+        if (remaining > 0) this.observations.set(id, remaining)
+        else this.observations.delete(id)
+        if (remaining === 0 && id !== this.watched && this.scopes.get(id) === record) {
+          this.scopes.delete(id)
+          this.deferredRemovals.delete(id)
+          this.startScopeDrop(id, record)
+        }
+      },
+    }
   }
 
   /**
@@ -570,7 +609,7 @@ export class ClientSessions implements ISessions {
   /** The one aliveness predicate shared by scope mint and prune: host-listed or currently addressed. */
   private eligible(id: SessionId): boolean {
     const { ids, current } = this.list.getSnapshot()
-    return current === id || ids.includes(id)
+    return current === id || ids.includes(id) || this.observations.has(id)
   }
 
   /** Project the manager's list snapshot into the store (title derivation is display-only). */

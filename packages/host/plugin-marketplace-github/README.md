@@ -1,12 +1,28 @@
+---
+description: "GitHub discovery and profile installation provider for the Web plugin marketplace, with validated bundle search and process-owned installation."
+kind: "package-reference"
+---
+
 # @deepseek-ai/dsh-host-plugin-marketplace-github
 
 English | [中文](README.zh.md)
+
+## Summary
 
 GitHub discovery and profile installation provider for the Web plugin marketplace. `PluginMarketplaceGateway` registers the `pluginMarketplace` Typert Remote with `search` and `add` methods. [`api-remotes`](../../api/remotes/README.md) mounts the generated Client contribution; the package declares no same-process Client API.
 
 Search accepts a keyword, an exact `owner/repository` identity, or a GitHub repository URL. A blank keyword requests popular repositories carrying the configured topic. Every result is public and non-archived, and its root `package.json` declares a valid npm package name plus `dsh.bundle.patch`; repositories that fail any check are omitted. Results contain the repository identity, package name, description, source URL, default branch, stars, forks, license, and update time used by the browser cards.
 
 Installation re-fetches the selected repository and manifest, then runs the ordinary hidden `dsh plugin --profile <profile> add github:<owner/repository>` path. Only one installation runs at a time. Service disposal cancels an active process tree, and the Remote reports success only after the profile mutation exits successfully. A successful installation requires a profile restart before the new bundle becomes active.
+
+## Table of Contents
+
+- [Configuration](#configuration)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+- [Dev Note](#dev-note)
+
+-----
 
 ## Configuration
 
@@ -21,6 +37,7 @@ Installation re-fetches the selected repository and manifest, then runs the ordi
 
 The token is never accepted from the browser. The installer removes inherited environment variables whose names contain `KEY`, `SECRET`, `TOKEN`, or `PASSWORD` before it starts third-party package scripts, while retaining the profile and bundled-package-manager environment required by `dsh plugin`.
 
+<a id="model-experience"></a>
 ## Model Experience
 
 None, as this Host Remote registers no prompt, tool, message, or provider input.
@@ -31,6 +48,20 @@ None; search and installation never assemble model input.
 
 ## Known Limitations and Deferred Work
 
+<a id="known-limitations-and-deferred-work"></a>
+
 - **GitHub availability and limits apply** — unauthenticated search has GitHub's lower API allowance, and transient GitHub failures prevent discovery and manifest revalidation.
 - **Installation executes third-party code** — manifest validation proves dsh bundle structure, not trust, safety, maintenance quality, or compatibility; the browser must obtain explicit user confirmation before invoking `add`.
 - **Install only** — the Remote does not activate a bundle without restart and does not provide update, removal, signature verification, curation, or dependency-conflict resolution.
+
+<a id="dev-note"></a>
+### Dev Note
+
+<details>
+<summary>Working context for maintainers — click to expand</summary>
+
+None.
+
+</details>
+
+**Runtime invariant:** No companion is published. The Remote owns serialized installation and cancels its process tree when the service unloads.

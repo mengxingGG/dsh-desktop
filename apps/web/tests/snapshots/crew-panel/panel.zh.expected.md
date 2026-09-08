@@ -1,0 +1,42 @@
+- text: Crew 工作台
+- button "关闭 Crew 工作台":
+  - img
+- region "项目状态":
+  - text: 厂长
+  - strong: 协调执行
+  - text: 仓库
+  - strong: {{cwd}}
+- heading "活动工人 1" [level=2]
+- button "browser-module 已规划 · —" [pressed]:
+  - strong: browser-module
+  - text: 已规划 · —
+- heading "已结束工人 0" [level=2]
+- text: 还没有已结束工人
+- region "选择子智能体记录"
+- region "子智能体实时记录":
+  - heading "子智能体实时记录" [level=3]
+  - paragraph: 无
+  - paragraph: 尚无运行记录。
+- 'region "模块: browser-module"':
+  - heading "browser-module" [level=3]
+  - paragraph: 只读证据；此处不能继续工人会话。
+  - term: 阶段
+  - definition: 已规划
+  - term: 角色
+  - definition: 开发
+  - term: 子 Session
+  - definition: —
+  - term: 原因
+  - definition: 无
+  - term: 变更路径
+  - definition: 无
+  - term: 越界路径
+  - definition: 无
+  - term: 缺失产物
+  - definition: 无
+- region "整合证据":
+  - heading "整合证据" [level=3]
+  - paragraph: 无
+- region "提交门禁":
+  - heading "提交门禁" [level=3]
+  - paragraph: 尚无提交请求；提交审批只会出现在厂长对话中。

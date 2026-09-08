@@ -32,6 +32,8 @@ Low-level Win32 process library consumed by the Windows ACL sandbox. It owns the
 
 The Windows ACL sandbox adds SID, DACL, grant, workspace, and public child policy above these primitives.
 
+The experimental Crew LPAC runner also reuses the binding extension, `STARTUPINFOW`, `PROCESS_INFORMATION`, `ProcessInfoOutput`, and `buildCommandLine` exports. Crew owns its AppContainer policy, explicit environment block, and process lifetime; these exports do not make the restricted-token spawn helpers AppContainer-aware.
+
 <a id="header-verification"></a>
 
 <a id="header-verification"></a>

@@ -1,0 +1,9 @@
+version: 1
+scenario: crew-command-evidence
+profile: web
+composition: crew-native
+recording: authored
+header:
+  class: crew-native
+session:
+  source: ../../crew-native/two-module/session.v2.jsonl

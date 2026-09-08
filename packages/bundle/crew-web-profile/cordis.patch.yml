@@ -1,0 +1,22 @@
+# Native Crew details supplement the ordinary Web application and user presets.
+
+# The preset roster gains the Crew orchestration preset as a second read-only
+# `system` root. This row belongs to `dsh-web-app`, so the patch sits in the
+# Web layer rather than the Host one: a headless profile carrying
+# `dsh-crew-profile` has no roster to patch, and a Loader warning there would
+# be noise.
+#
+# A patch replaces the targeted row's whole `config`, so `default` is restated.
+# It stays `standard`: selecting Crew orchestration is the user's per-session
+# choice, and the default Agent keeps deciding for itself when Crew is worth
+# it. The shipped root is still prepended by `includeShippedRoot`, so the four
+# built-in presets remain listed ahead of this one.
+- id: agent-presets
+  inject: [crewProfilePresets]
+  config:
+    default: standard
+    roots: !!js ctx.crewProfilePresets.agentPresetRoots
+
+- insert:
+    - id: ui-crew
+      name: '@deepseek-ai/dsh-client-ui-crew'

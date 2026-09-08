@@ -204,7 +204,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation.chat.assistant-actions\', () => ctx.slots.register(\n      { name: \'conversation.chat.assistant-actions\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-chat/src/client/contract/slots.ts:227',
+    source: 'packages/client/ui-chat/src/client/contract/slots.ts:244',
   },
   {
     key: 'conversation.chat.commandview',
@@ -249,7 +249,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     occupants: [],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation.chat.commandview\', () => ctx.slots.register(\n      { name: \'conversation.chat.commandview\', key: \'<one key the owner dispatches>\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-chat/src/client/contract/slots.ts:215',
+    source: 'packages/client/ui-chat/src/client/contract/slots.ts:232',
   },
   {
     key: 'conversation.chat.node',
@@ -314,7 +314,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation.chat.node\', () => ctx.slots.register(\n      { name: \'conversation.chat.node\', key: \'<one key the owner dispatches>\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-chat/src/client/contract/slots.ts:196',
+    source: 'packages/client/ui-chat/src/client/contract/slots.ts:213',
   },
   {
     key: 'conversation.chat.turnTail',
@@ -359,7 +359,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation.chat.turnTail\', () => ctx.slots.register(\n      { name: \'conversation.chat.turnTail\', select: owner => null },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-chat/src/client/contract/slots.ts:221',
+    source: 'packages/client/ui-chat/src/client/contract/slots.ts:238',
   },
   {
     key: 'conversation.composer',
@@ -503,11 +503,11 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     key: 'conversation.details.tool',
     kind: 'single',
     scope: 'session',
-    summary: 'Whole details-panel body for the selected Tool call.',
-    doc: 'Whole details-panel body for the selected Tool call. The component receives\nthe running or settled block and optional workspace root. A registration\nreplaces the shipped Tool details renderer; absence uses the raw fallback.',
+    summary: 'Output body for the selected Tool call.',
+    doc: 'Output body for the selected Tool call. The component receives\nthe running or settled block and optional workspace root. A registration\nreplaces the shipped Tool details renderer; absence uses the raw fallback.',
     registerOptions: [],
     ownerProps: [
-      '/** Tool block rendered in the details panel. */\nexport interface DetailsToolOwnerProps {\n  block: ToolCallBlock\n  cwd?: string | undefined\n}',
+      '/** Tool block rendered by a specialized Tool detail card. */\nexport interface DetailsToolOwnerProps {\n  block: ToolCallBlock\n  cwd?: string | undefined\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -533,7 +533,52 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation.details.tool\', () => ctx.slots.register(\n      { name: \'conversation.details.tool\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-chat/src/client/contract/slots.ts:233',
+    source: 'packages/client/ui-chat/src/client/contract/slots.ts:255',
+  },
+  {
+    key: 'conversation.details.view',
+    kind: 'chain',
+    scope: 'session',
+    summary: 'Selector-routed right-column view.',
+    doc: 'Selector-routed right-column view. Each selection kind elects one whole\ndetails surface; all-declined selections use Chat\'s empty fallback.',
+    registerOptions: [
+      {
+        name: 'select',
+        requirement: 'required',
+        type: '(owner) => unknown | null',
+        doc: 'Pure routing selector. Entries are tried in ascending order; the first non-null result wins and arrives as the component\'s `matched` prop. All-null falls through to the owner\'s fallback.',
+      },
+    ],
+    ownerProps: [
+      '/** Selection and navigation actions owned by the shared details column. */\nexport interface DetailsViewOwnerProps {\n  selection: DetailsSelection\n  closeDetails: () => void\n  openDetails: (selection: DetailsSelection) => void\n}',
+    ],
+    ownerPropsReferences: [
+      'DetailsSelection',
+    ],
+    standardProps: [
+      'useWorkspaces: SnapshotSelectorHook<WorkspaceSnapshot>',
+      'useSessions: UseSessions',
+      'useSessionPendingInteraction: UseSessionPendingInteraction',
+      'useWorkspaces: SnapshotSelectorHook<WorkspaceSnapshot>',
+      'useChat: UseChat',
+      'useConversation: UseConversation',
+      'useInput: SnapshotSelectorHook<InputState>',
+      'inputActions: InputActions',
+      'useSession: SessionSnapshotSelector',
+      'sessionId: SessionId',
+      'useProjection: UseProjection',
+      'useTrajectory: UseTrajectory',
+    ],
+    keyDomain: '',
+    hookContext: '',
+    slotInject: '',
+    declaredBy: 'an entry in \'details\' (client-ui-chat), so it exists while that entry is mounted',
+    occupants: [
+      'client-ui-crew CrewDetailsView',
+    ],
+    replaceRisk: 'none',
+    example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation.details.view\', () => ctx.slots.register(\n      { name: \'conversation.details.view\', select: owner => null },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
+    source: 'packages/client/ui-chat/src/client/contract/slots.ts:249',
   },
   {
     key: 'conversation.hero.agentPreset',
@@ -1012,7 +1057,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation.message.images\', () => ctx.slots.register(\n      { name: \'conversation.message.images\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-chat/src/client/contract/slots.ts:209',
+    source: 'packages/client/ui-chat/src/client/contract/slots.ts:226',
   },
   {
     key: 'conversation.session',
@@ -1132,6 +1177,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     declaredBy: 'an entry in \'conversation.session.header\' (client-ui-conversation), so it exists while that entry is mounted',
     occupants: [
       'client-ui-agent-preset AgentPresetLabel id \'agent-preset\'',
+      'client-ui-crew CrewAction id \'crew\'',
       'client-ui-jobs JobListAction id \'job-list\'',
       'client-ui-schedule ScheduleCatalogAction id \'schedule-catalog\'',
       'experimental-client-ui-agent-team TeamAction id \'agent-team\'',
@@ -1807,6 +1853,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     declaredBy: 'an entry in \'sidebar.settings\' (client-ui-settings-general), so it exists while that entry is mounted',
     occupants: [
       'client-ui-agent-preset AgentPresetSection id \'agent-presets\'',
+      'client-ui-crew CrewSettings id \'crew\'',
       'client-ui-settings-general GeneralSection id \'general\'',
       'client-ui-settings-models ModelsSection id \'models\'',
       'client-ui-settings-plugins PluginsSettingsSection id \'plugins\'',

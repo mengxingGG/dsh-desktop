@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-experimental-agent-team-profile` is a private profile layer that enables [Agent Teams](../agent-team/README.md) over `@deepseek-ai/dsh-base`. Its patch inserts the Team domain and Team-scoped tools, disables the overlapping global continuable-child controls, and keeps the ordinary fresh and fork delegation tools as one-shot operations. Add it explicitly to an initialized source-checkout profile; official releases exclude this package.
+`dsh-experimental-agent-team-profile` is a private profile layer that enables [Agent Teams](../../subagent/agent-team/README.md) over `@deepseek-ai/dsh-base`. Its patch inserts the Team domain and Team-scoped tools, disables the overlapping global continuable-child controls, and keeps the ordinary fresh and fork delegation tools as one-shot operations. Add it explicitly to an initialized source-checkout profile; official releases exclude this package.
 
 ## Table of Contents
 
@@ -64,7 +64,7 @@ The package's runtime content is [`cordis.patch.yml`](cordis.patch.yml). Applied
 ## Further Exploration
 
 - [Experimental packages](../README.md) — incubation status and release exclusion.
-- [Agent Teams service](../agent-team/README.md) — durable roster, messaging, and task-board behavior.
+- [Agent Teams service](../../subagent/agent-team/README.md) — durable roster, messaging, and task-board behavior.
 - [Agent Teams tools](../tool-agent-team/README.md) — the Team-scoped model tool surface.
 - [Base bundle](../../bundle/base/README.md) — the profile layer this patch extends.
 

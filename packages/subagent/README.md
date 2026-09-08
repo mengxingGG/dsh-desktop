@@ -34,6 +34,9 @@ The subagent group is the delegation family: it lets an agent hand a task to a c
 | [`subagent-dsh-sdk/`](subagent-dsh-sdk/README.md) | Runs an out-of-process Harness child through the TypeScript SDK | registers on `ctx.subagents` |
 | [`tool-subagent/`](tool-subagent/README.md) | Exposes delegation to the model | registers on `ctx.tools` |
 | [`tool-subagent-control/`](tool-subagent-control/README.md) | Exposes adjacent-Agent messaging, interrupt, and listing to the model | registers on `ctx.tools` |
+| [`agent-team/`](agent-team/README.md) | Named teammates with durable messages and a shared task board | `ctx.agentTeams` |
+| [`crew/`](crew/README.md) | Team-backed software workflow, durable evidence, recovery, and host operations | `ctx.crew` |
+| [`tool-crew/`](tool-crew/README.md) | Role-scoped manager, worker, review, integration, and commit tools | registers scoped tools on `ctx.tools` |
 
 -----
 

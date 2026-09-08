@@ -1,0 +1,144 @@
+- text: Crew workspace
+- button "Close Crew workspace":
+  - img
+- region "Project status":
+  - text: Manager
+  - strong: Awaiting dispatch
+  - text: Repository
+  - strong: {{cwd}}
+- heading "Active workers 0" [level=2]
+- text: No active workers
+- heading "Finished workers 2" [level=2]
+- button "alpha Accepted · …-child-2" [pressed]:
+  - strong: alpha
+  - text: Accepted · …-child-2
+- button "beta Accepted · …-child-3":
+  - strong: beta
+  - text: Accepted · …-child-3
+- region "Select worker activity":
+  - button "Developer · …-child-2" [pressed]
+  - button "Reviewer · …-child-4"
+- region "Live worker activity":
+  - heading "Live worker activity" [level=3]
+  - paragraph: crew-command-evidence-child-2
+  - status: Child Session activity failed to load
+  - alert: Child Session is unavailable in its parent catalog
+- 'region "Module: alpha"':
+  - heading "alpha" [level=3]
+  - paragraph: Read-only evidence; worker conversations cannot be continued here.
+  - term: Stage
+  - definition: Accepted
+  - term: Role
+  - definition: Developer
+  - term: Child Session
+  - definition: …-child-2
+  - term: Reason
+  - definition: Accepted by current passing integration.
+  - term: Changed paths
+  - definition:
+    - list:
+      - listitem: modules/alpha/index.mjs
+  - term: Out-of-scope paths
+  - definition: None
+  - term: Missing artifacts
+  - definition: None
+  - heading "Worker report" [level=4]
+  - paragraph: alpha matches its frozen specification.
+  - heading "Host verification · Passed" [level=4]
+  - paragraph: Host verification passed.
+  - heading "Test commands" [level=5]
+  - list:
+    - listitem:
+      - group:
+        - code: node --check index.mjs
+        - term: Working directory
+        - definition: modules/alpha
+        - term: Exit code
+        - definition: "0"
+        - term: Signal
+        - definition: None
+        - term: Timed out
+        - definition: "No"
+        - heading "Standard output" [level=6]
+        - paragraph: No output
+        - heading "Standard error" [level=6]
+        - paragraph: No output
+  - heading "Review evidence · Passed" [level=4]
+  - paragraph: alpha matches its frozen specification.
+  - term: Review round
+  - definition: "1"
+  - term: Specification revision
+  - definition: "1"
+  - term: Review Session
+  - definition: …-child-4
+  - term: Verification record
+  - definition: {{uuid}}
+  - heading "Issues" [level=5]
+  - paragraph: None
+- region "Integration evidence":
+  - heading "Integration evidence" [level=3]
+  - paragraph: Passed · Alpha and repaired beta satisfy the shared interface.
+  - button "Integrator · Live worker activity"
+  - term: Integration record
+  - definition: {{uuid}}
+  - term: Integration Session
+  - definition: …-child-7
+  - term: Integration-approved paths
+  - definition:
+    - list:
+      - listitem: modules/alpha/index.mjs
+      - listitem: modules/beta/index.mjs
+  - group:
+    - text: Included work items
+    - list:
+      - listitem:
+        - term: Work item
+        - definition: task-1
+        - term: Work-item revision
+        - definition: "6"
+        - term: Verification record
+        - definition: {{uuid}}
+        - term: Review record
+        - definition: {{uuid}}
+      - listitem:
+        - term: Work item
+        - definition: task-2
+        - term: Work-item revision
+        - definition: "10"
+        - term: Verification record
+        - definition: {{uuid}}
+        - term: Review record
+        - definition: {{uuid}}
+  - heading "Test commands" [level=4]
+  - list:
+    - listitem:
+      - group:
+        - code: node --test integration.test.mjs
+        - term: Working directory
+        - definition: tests
+        - term: Exit code
+        - definition: "0"
+        - term: Signal
+        - definition: None
+        - term: Timed out
+        - definition: "No"
+        - heading "Standard output" [level=6]
+        - region "Standard output": ✔ {{uuid}} value ({{duration}}) ℹ tests 1 ℹ suites 0 ℹ pass 1 ℹ fail 0 ℹ cancelled 0 ℹ skipped 0 ℹ todo 0 ℹ duration_ms 44.162663
+        - heading "Standard error" [level=6]
+        - paragraph: No output
+  - heading "Issues" [level=4]
+  - paragraph: None
+- region "Commit gate":
+  - heading "Commit gate" [level=3]
+  - paragraph: "Committed · feat: verify native Crew workflow"
+  - term: Approval call
+  - definition: crew-fixture-28
+  - term: Integration record
+  - definition: {{uuid}}
+  - term: Requested commit paths
+  - definition:
+    - list:
+      - listitem: modules/alpha/index.mjs
+      - listitem: modules/beta/index.mjs
+  - term: Commit hash
+  - definition: 9d4e276ca31b4de8024eb9b64da95138f06ffc59

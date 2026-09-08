@@ -43,7 +43,7 @@ kind: "package-reference"
 <details>
 <summary>实现细节——点击展开</summary>
 
-Client export 挂载来自 [`@deepseek-ai/dsh-experimental-agent-team/remote`](../agent-team/README.zh.md) 的生成式 `ctx.remote.agentTeams` contribution，然后通过 Cordis effect 注册 locale dictionary 与一个 conversation-header slot。Dispose plugin fiber 会移除这两项 registration。
+Client export 挂载来自 [`@deepseek-ai/dsh-agent-team/remote`](../../subagent/agent-team/README.zh.md) 的生成式 `ctx.remote.agentTeams` contribution，然后通过 Cordis effect 注册 locale dictionary 与一个 conversation-header slot。Dispose plugin fiber 会移除这两项 registration。
 
 开始 create 或 update 会让更早的 refresh 失效。成功后会重新读取完整 Team view，使每个 task 的派生字段保持最新。`team-task-conflict` 结果仅在重新读取成功后显示状态陈旧提示；如果重新读取失败，则保留该错误。由于 Team service 把任务文本或 scope 编辑与 dependency 修改公开为独立 action，两者使用两个连续的 compare-and-set mutation。
 
@@ -62,7 +62,7 @@ Client export 挂载来自 [`@deepseek-ai/dsh-experimental-agent-team/remote`](.
 ## 进一步探索
 
 - [Agent Teams Web profile](../agent-team-web-profile/README.zh.md)——挂载本 Client plugin 的源码 checkout bundle。
-- [Agent Teams service](../agent-team/README.zh.md)——权威 roster、task 与 Remote 行为。
+- [Agent Teams service](../../subagent/agent-team/README.zh.md)——权威 roster、task 与 Remote 行为。
 - [会话 UI](../../client/ui-conversation/README.zh.md)——稳定 header slot 与 addressed-subagent 导航表层。
 - [实验性包](../README.zh.md)——孵化状态与发布排除规则。
 

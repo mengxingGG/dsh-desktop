@@ -4,6 +4,7 @@
 // The folder request is intercepted so one real browser click can exercise
 // the full client carrier without launching a native application in CI.
 import { fileURLToPath } from 'node:url'
+import { sep } from 'node:path'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed, vi } from 'vitest'
@@ -165,7 +166,7 @@ describe('web e2e: a finished turn ends with the files it produced', () => {
       ])
       expect(response.status()).toBe(200)
       expect(openPath).toHaveBeenCalledTimes(1)
-      expect(openPath.mock.calls[0]![0]).toMatchObject({ path: `${scaffold.workspaceCwd}/.` })
+      expect(openPath.mock.calls[0]![0]).toMatchObject({ path: `${scaffold.workspaceCwd}${sep}.` })
     } finally {
       openPath.mockRestore()
     }

@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-05-hmr-test-restores-compiler-state.md
+2026-09-05-hmr-test-restores-compiler-state.md: cd9bc3a2e3a8a44f43a37ca0723e01bf4f73eebb
+2026-09-05-hmr-test-restores-compiler-state.zh.md: 282e66601ff37a86eb7155c1b144cd8977ec67bf

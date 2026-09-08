@@ -28,6 +28,10 @@
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "workspace:^",
+    "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-loader-smoke": "workspace:^",
+    "@deepseek-ai/dsh-win32-process": "workspace:^",
+    "@deepseek-ai/dsh-web-app": "workspace:^",
     "electron": "^43.4.1",
     "electron-builder": "^26.15.3",
     "pnpm": "11.19.0"

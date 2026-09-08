@@ -91,7 +91,7 @@ kind: "package-reference"
 
 ### 可继续流程
 
-管理器预留 child 身份、解析持久化描述符、创建（或冷恢复）child、把它安装进 Activation 并提交提示词。模型编写的消息通过固定 Steer 调度跨一条 parent/child 边；host 协议保留内部 Queue 适配器以创建独立轮次。直接 child 不存在 Activation 时会从持久化会话冷恢复。当驻留 Activation 结算时，管理器会在 parent 自身的轮次流中告知该 child 的直接 parent。
+管理器预留 child 身份、解析持久化描述符、创建（或冷恢复）child、把它安装进 Activation 并提交提示词。宿主工作流可以预留精确 child id，并为初始提示附加自己的类型化 `MessageSource`，使持久 provisioning 与提示 provenance 共用一个身份，而不冒充用户。模型编写的消息通过固定 Steer 调度跨一条 parent/child 边；host 协议保留内部 Queue 适配器以创建独立轮次。直接 child 不存在 Activation 时会从持久化会话冷恢复。当驻留 Activation 结算时，管理器会在 parent 自身的轮次流中告知该 child 的直接 parent；如果 `subagent/settlement-notice` bail listener 确认某个持久产品工作流拥有并替代通用通知，则不发送该通知。
 
 ### 所有权与不变式
 
@@ -125,7 +125,7 @@ kind: "package-reference"
 
 #### 模型看到什么
 
-一条用户角色的父级消息，开头是结果本身——`Background subagent <child-id> finished and will do no further work unless you send it more.`，或子级被停止、耗尽额度、拒绝任务或失败时的对应句子——随后是 `Its closing message:` 与子级的最终 assistant 内容；若子级没有产出内容，则是 `It left no closing message.`。这条由 runtime 生成的通知与模型编写的父子消息相互独立；后者使用 `sendMessage()` 与 `AgentMessageSource`。委派 schema 与模型控制工具归 Consumer 包所有。
+一条用户角色的父级消息，开头是结果本身——`Background subagent <child-id> finished and will do no further work unless you send it more.`，或子级被停止、耗尽额度、拒绝任务或失败时的对应句子——随后是 `Its closing message:` 与子级的最终 assistant 内容；若子级没有产出内容，则是 `It left no closing message.`。这条由 runtime 生成的通知与模型编写的父子消息相互独立；后者使用 `sendMessage()` 与 `AgentMessageSource`。委派 schema 与模型控制工具归 Consumer 包所有。持久记录并替代此通知的产品工作流可以从 `subagent/settlement-notice` 返回 `true`；其他所有 child 继续获得默认消息。
 
 #### Token 影响
 

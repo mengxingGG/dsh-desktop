@@ -7,7 +7,7 @@ import type {
   TeamTaskMutationResult,
   TeamTaskView as TeamTask,
   TeamView,
-} from '@deepseek-ai/dsh-experimental-agent-team/client'
+} from '@deepseek-ai/dsh-agent-team/client'
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import {
   IconCheckOutline14, IconCloseOutline16, IconEditOutline16, IconPlusOutline16,

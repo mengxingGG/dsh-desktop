@@ -29,7 +29,13 @@ Installer builds are host-native. A platform-specific command fails when invoked
 
 The Electron main process starts `dsh web --no-open --host 127.0.0.1 --port 0` as a hidden child, waits for the emitted loopback URL, and then navigates the window to that origin. The direct shell runs `apps/cli/lib/bin.js` from the built checkout. The installer runs the bundled CLI with the bundled Node.js executable and exposes the bundled pnpm entry to `dsh plugin`.
 
-Closing the application terminates the complete backend process tree and waits for the root child to exit. Startup errors replace the loading view with bounded stdout and stderr diagnostics instead of leaving a foreground terminal or orphan backend.
+On Windows, closing the window asks whether to keep running in the system tray, exit completely, or cancel. Keeping it in the tray hides the window without interrupting the backend; clicking the tray icon or its Open action restores the same window. The tray also offers Exit completely. Windows controls whether the notification icon appears directly on the taskbar or inside its overflow area.
+
+Exit checks live Agent turns, queued turns, between-turn maintenance, background jobs, and Crew host work. Idle Sessions and stored unfinished task records alone do not trigger the extra confirmation. If work is active, No keeps the app and tasks running; Yes stops work, saves Session and Crew records, and exits. The backend rechecks activity when an unconfirmed shutdown arrives, so newly started work still requires confirmation.
+
+The shell adds the opt-in Web bundle's `desktop.patch.yml` to this invocation only. A private inherited IPC channel requests task-owner shutdown and durable persistence before Windows terminates the backend tree; no HTTP or renderer shutdown endpoint exists. Failed or timed-out preparation keeps the shell open with an error and an explicit Force exit option that warns about unsaved state. Saved history can be reopened, but exiting stops execution rather than promising automatic continuation of a process or queued prompt.
+
+Startup errors replace the loading view with bounded stdout and stderr diagnostics. An already cancelled launch starts no child; an exit requested during startup waits for the launch outcome before inspecting work.
 
 ## Security
 
@@ -43,7 +49,7 @@ The shell starts the standard Web profile under the standard `DSH_HOME`. Bundles
 
 1. From a clean checkout, run `pnpm install` and `pnpm run build`.
 2. Double-click the direct artifact at the repository root and confirm the Web application opens without a terminal window.
-3. Close the window and confirm no backend process remains.
+3. On Windows, close to the tray and reopen the same window. Start a task, choose Exit completely, decline its second confirmation and confirm it continues; then confirm stopping and verify its saved Session and absence of backend processes.
 4. Run the installer command for the host operating system, then install or open the produced package.
 5. Confirm the installed application opens the same profile, persists settings under the same `DSH_HOME`, exposes the Usage/Balance panel, and can search for, install, and load an external bundle through the built-in marketplace.
 

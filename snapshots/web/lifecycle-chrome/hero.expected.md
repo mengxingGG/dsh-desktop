@@ -17,6 +17,9 @@
     - img
     - text: workspace
   - treeitem "New Session" [selected]
+- button "Usage/Balance":
+  - img
+  - text: Usage/Balance
 - button "Settings":
   - img
   - text: Settings

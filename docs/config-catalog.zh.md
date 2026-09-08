@@ -113,7 +113,7 @@ export interface Config {
 
 依赖：[`AgentOptions`](subsystems/core.zh.md) · [`SessionId`](subsystems/core.zh.md)
 
-来源：[`packages/core/agent-loop/src/index.ts:318`](../packages/core/agent-loop/src/index.ts)
+来源：[`packages/core/agent-loop/src/index.ts:330`](../packages/core/agent-loop/src/index.ts)
 
 <a id="deepseek-aidsh-agent-presets"></a>
 
@@ -160,6 +160,30 @@ export type PresetTrust = 'system' | 'user'
 ```
 
 来源：[`packages/preset/agent-presets/src/preset.ts:52`](../packages/preset/agent-presets/src/preset.ts)
+
+<a id="deepseek-aidsh-agent-team"></a>
+
+## `@deepseek-ai/dsh-agent-team`
+
+需要：`agents` · `sessions` · `sessionPersistence` · `sessionProjections` · `subagents`
+
+```ts config-catalog
+/** Team-service deployment limits. */
+export interface Config {
+  /** Maximum immutable teammate names retained by one Team. */
+  readonly maxMembers?: number
+  /** Maximum non-deleted tasks retained by one Team. */
+  readonly maxTasks?: number
+  /** Maximum queued-minus-delivered messages for one target member. */
+  readonly maxPendingMessagesPerMember?: number
+  /** Maximum UTF-8 bytes in one complete sender-framed delivery. */
+  readonly maxMessageBytes?: number
+  /** Maximum milliseconds allowed for Team-owned runtime disposal. */
+  readonly disposalTimeoutMs?: number
+}
+```
+
+来源：[`packages/subagent/agent-team/src/types.ts:132`](../packages/subagent/agent-team/src/types.ts)
 
 <a id="deepseek-aidsh-agent-tool-presentation"></a>
 
@@ -495,6 +519,114 @@ export interface Config {
 
 来源：[`packages/credentials/credentials-local/src/index.ts:64`](../packages/credentials/credentials-local/src/index.ts)
 
+<a id="deepseek-aidsh-crew"></a>
+
+## `@deepseek-ai/dsh-crew`
+
+需要：`agentTeams` · `sessions` · `sessionProjections` · `subagents`
+
+```ts config-catalog
+/** Deployment-time native Crew configuration. */
+export interface Config {
+  /** Project-relative directories shared by developer file tools; defaults to docs, test, and tests. */
+  readonly sharedDirectories?: readonly string[]
+  /** Local process and output limit overrides, resolved at plugin load. */
+  readonly execution?: Partial<import('./execution.ts').CrewExecutionLimits>
+  /** Repository root authorized for Crew file, test, checkout, and commit operations. */
+  readonly repositoryRoot?: string
+  /** Continuable-subagent provider selected for native Crew workers. */
+  readonly nativeProvider?: string
+  /** Maximum simultaneously active developer workers. */
+  readonly maxConcurrentWorkers?: number
+  /** Time window used to combine terminal worker edges into one manager notification. */
+  readonly notificationBatchWindowMs?: number
+  /** Maximum duration of one worker model turn. */
+  readonly workerTurnTimeoutMs?: number
+  /** Maximum automatic developer repair attempts for one work item. */
+  readonly maxAutomaticRepairs?: number
+  /** Maximum independent review rounds for one work item. */
+  readonly maxReviewRounds?: number
+  /** Executable names accepted in declared shell-free test commands. */
+  readonly allowedTestPrograms?: string[]
+  /** Overrides for host-owned local commit limits. */
+  readonly commitPolicy?: Partial<CrewConfigurationSnapshot['commitPolicy']>
+  /** Role-specific overrides for worker persona, tools, model route, and depth. */
+  readonly roles?: Partial<Record<CrewWorkerRole, Partial<Omit<CrewRolePresetSnapshot, 'role'>>>>
+}
+
+/** Immutable first-phase Crew configuration persisted in the manager Session. */
+export interface CrewConfigurationSnapshot {
+  /** Absolute repository root authorized for the workflow. */
+  readonly repositoryRoot: string
+  /** Native continuable-subagent provider used for every Crew worker. */
+  readonly nativeProvider: string
+  /** Maximum simultaneously active developer workers. */
+  readonly maxConcurrentWorkers: number
+  /** Time window used to combine terminal worker edges into one manager notification. */
+  readonly notificationBatchWindowMs: number
+  /** Maximum duration of one worker model turn. */
+  readonly workerTurnTimeoutMs: number
+  /** Maximum automatic developer repair attempts for one work item. */
+  readonly maxAutomaticRepairs: number
+  /** Maximum independent review rounds for one work item. */
+  readonly maxReviewRounds: number
+  /** Executable names accepted in declared test commands. */
+  readonly allowedTestPrograms: string[]
+  /** Project-relative directories shared by developer file tools. */
+  readonly sharedDirectories: readonly string[]
+  /** Operator-owned local process and output limits. */
+  readonly execution: import('./execution.ts').CrewExecutionLimits
+  /** Host-owned limits for an approved local commit. */
+  readonly commitPolicy: {
+    /** Maximum commit-message length. */
+    readonly maxMessageLength: number
+    /** Whether committing from detached HEAD is rejected. */
+    readonly requireNamedBranch: boolean
+  }
+  /** Complete cold-resumable composition for every worker role. */
+  readonly roles: {
+    /** Developer worker composition. */
+    readonly developer: CrewRolePresetSnapshot
+    /** Reviewer worker composition. */
+    readonly reviewer: CrewRolePresetSnapshot
+    /** Integrator worker composition. */
+    readonly integrator: CrewRolePresetSnapshot
+  }
+}
+
+/** Worker roles owned by the native Crew workflow. */
+export type CrewWorkerRole = 'developer' | 'reviewer' | 'integrator'
+
+/** Snapshot of one role's cold-resumable DSH Agent composition. */
+export interface CrewRolePresetSnapshot {
+  /** Worker role this composition creates. */
+  readonly role: CrewWorkerRole
+  /** Durable role-specific system instruction. */
+  readonly persona: string
+  /** Exact allowlist applied to the worker's registered tools. */
+  readonly toolFilter: ToolRestriction
+  /** LLM route options reapplied when the worker resumes cold. */
+  readonly agentOptions: CrewAgentOptionsSnapshot
+  /** Maximum descendant depth available to this worker. */
+  readonly maxDepth: number
+}
+
+/** Model route fields that Crew can snapshot and reapply without copying merge-extensible Agent options. */
+export interface CrewAgentOptionsSnapshot {
+  /** Optional registered LLM provider name. */
+  readonly provider?: string
+  /** Optional provider model name. */
+  readonly model?: string
+  /** Optional provider-supported reasoning effort. */
+  readonly reasoningEffort?: ReasoningEffortId
+}
+```
+
+依赖：`ReasoningEffortId` (`@deepseek-ai/dsh-llm/brand`) · [`ToolRestriction`](subsystems/tools.zh.md)
+
+来源：[`packages/subagent/crew/src/types.ts:375`](../packages/subagent/crew/src/types.ts)
+
+
 <a id="deepseek-aidsh-e2b"></a>
 
 ## `@deepseek-ai/dsh-e2b`
@@ -512,30 +644,6 @@ export interface Config {
 ```
 
 来源：[`packages/e2b/e2b/src/index.ts:45`](../packages/e2b/e2b/src/index.ts)
-
-<a id="deepseek-aidsh-experimental-agent-team"></a>
-
-## `@deepseek-ai/dsh-experimental-agent-team`
-
-需要：`agents` · `sessions` · `sessionPersistence` · `sessionProjections` · `subagents`
-
-```ts config-catalog
-/** Team-service deployment limits. */
-export interface Config {
-  /** Maximum immutable teammate names retained by one Team. */
-  readonly maxMembers?: number
-  /** Maximum non-deleted tasks retained by one Team. */
-  readonly maxTasks?: number
-  /** Maximum queued-minus-delivered messages for one target member. */
-  readonly maxPendingMessagesPerMember?: number
-  /** Maximum UTF-8 bytes in one complete sender-framed delivery. */
-  readonly maxMessageBytes?: number
-  /** Maximum milliseconds allowed for Team-owned runtime disposal. */
-  readonly disposalTimeoutMs?: number
-}
-```
-
-来源：[`packages/experimental/agent-team/src/types.ts:124`](../packages/experimental/agent-team/src/types.ts)
 
 <a id="deepseek-aidsh-experimental-code-runtime-python"></a>
 
@@ -779,7 +887,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/bundle/headless/src/index.ts:33`](../packages/bundle/headless/src/index.ts)
+来源：[`packages/bundle/headless/src/index.ts:34`](../packages/bundle/headless/src/index.ts)
 
 <a id="deepseek-aidsh-hooks-claude-code"></a>
 
@@ -900,30 +1008,6 @@ export interface Config {
 
 来源：[`packages/host/plugin-marketplace-github/src/index.ts:25`](../packages/host/plugin-marketplace-github/src/index.ts)
 
-<a id="deepseek-aidsh-host-plugin-marketplace-github"></a>
-
-## `@deepseek-ai/dsh-host-plugin-marketplace-github`
-
-```ts config-catalog
-/** Deployment controls resolved before the Remote becomes active. */
-export interface Config {
-  /** GitHub topic required by keyword and blank searches. */
-  readonly topic?: string
-  /** Maximum number of repositories validated for one search. */
-  readonly searchMaxResults?: number
-  /** Per-request GitHub timeout in milliseconds. */
-  readonly requestTimeoutMs?: number
-  /** Plugin installation process timeout in milliseconds. */
-  readonly installTimeoutMs?: number
-  /** dsh profile changed by a successful installation. */
-  readonly profile?: string
-  /** Host environment variable containing the optional GitHub token. */
-  readonly tokenEnv?: string
-}
-```
-
-来源：[`packages/host/plugin-marketplace-github/src/index.ts:25`](../packages/host/plugin-marketplace-github/src/index.ts)
-
 <a id="deepseek-aidsh-host-webserver"></a>
 
 ## `@deepseek-ai/dsh-host-webserver`
@@ -979,7 +1063,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/jobs/jobs-local/src/index.ts:31`](../packages/jobs/jobs-local/src/index.ts)
+来源：[`packages/jobs/jobs-local/src/index.ts:32`](../packages/jobs/jobs-local/src/index.ts)
 
 <a id="deepseek-aidsh-llm-deepseek"></a>
 
@@ -1326,7 +1410,7 @@ export type PiAiThinkingFormat = NonNullable<OpenAICompletionsCompat['thinkingFo
 
 依赖：`Api`（`@earendil-works/pi-ai`）· `CacheRetention`（`@earendil-works/pi-ai`）· `Model`（`@earendil-works/pi-ai`）· `ModelThinkingLevel`（`@earendil-works/pi-ai`）· `OpenAICompletionsCompat`（`@earendil-works/pi-ai`）· [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts) · `ThinkingBudgets`（`@earendil-works/pi-ai`）· `Transport`（`@earendil-works/pi-ai`)
 
-来源：[`packages/llm/llm-pi-ai/src/config.ts:213`](../packages/llm/llm-pi-ai/src/config.ts)
+来源：[`packages/llm/llm-pi-ai/src/config.ts:216`](../packages/llm/llm-pi-ai/src/config.ts)
 
 <a id="deepseek-aidsh-llm-replay"></a>
 
@@ -1892,7 +1976,7 @@ export interface Config {
 export type JsonlCompression = 'zstd' | 'none'
 ```
 
-来源：[`packages/session/session-persistence-jsonl/src/index.ts:85`](../packages/session/session-persistence-jsonl/src/index.ts)
+来源：[`packages/session/session-persistence-jsonl/src/index.ts:86`](../packages/session/session-persistence-jsonl/src/index.ts)
 
 <a id="deepseek-aidsh-session-projection-cache"></a>
 
@@ -2619,7 +2703,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/context/time-context/src/index.ts:48`](../packages/context/time-context/src/index.ts)
+来源：[`packages/context/time-context/src/index.ts:49`](../packages/context/time-context/src/index.ts)
 
 <a id="deepseek-aidsh-tmux-context"></a>
 
@@ -2687,6 +2771,28 @@ export interface Config {
 ```
 
 来源：[`packages/shell/tool-bash-persistent/src/index.ts:432`](../packages/shell/tool-bash-persistent/src/index.ts)
+
+<a id="deepseek-aidsh-tool-crew"></a>
+
+## `@deepseek-ai/dsh-tool-crew`
+
+需要：`agents` · `agentTeams` · `crew` · `tools` · `systemPrompt`
+
+```ts config-catalog
+/** Profile-owned role tool declarations checked before Crew tools register. */
+export interface Config {
+  /** Require all four role declarations instead of using the package defaults. */
+  readonly requireRolePresets?: boolean
+  /** Exact ordered tool names for every supplied role. */
+  readonly roleTools?: Partial<Record<CrewToolRole, readonly string[]>>
+}
+
+/** Crew role names whose exact model-facing tools are fixed by the delivery profile. */
+export type CrewToolRole = 'manager' | 'developer' | 'reviewer' | 'integrator'
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts:39`](../packages/subagent/tool-crew/src/index.ts)
+
 
 <a id="deepseek-aidsh-tool-fs"></a>
 
@@ -2995,7 +3101,7 @@ export interface Config {
 
 依赖：[`AgentOptions`](subsystems/core.zh.md)
 
-来源：[`packages/subagent/tool-subagent/src/index.ts:48`](../packages/subagent/tool-subagent/src/index.ts)
+来源：[`packages/subagent/tool-subagent/src/index.ts:47`](../packages/subagent/tool-subagent/src/index.ts)
 
 <a id="deepseek-aidsh-tool-terminal"></a>
 
@@ -3117,7 +3223,7 @@ export interface Config {
 export type ToolPresentationMode = 'native' | 'ptc' | 'both'
 ```
 
-来源：[`packages/core/tools/src/index.ts:647`](../packages/core/tools/src/index.ts)
+来源：[`packages/core/tools/src/index.ts:648`](../packages/core/tools/src/index.ts)
 
 <a id="deepseek-aidsh-typert-loader"></a>
 
@@ -3164,7 +3270,7 @@ export interface Config {
 export type ApprovalPolicy = 'ask' | 'never'
 ```
 
-来源：[`packages/interaction/user-approval/src/index.ts:126`](../packages/interaction/user-approval/src/index.ts)
+来源：[`packages/interaction/user-approval/src/index.ts:127`](../packages/interaction/user-approval/src/index.ts)
 
 <a id="deepseek-aidsh-web"></a>
 
@@ -3386,6 +3492,7 @@ export interface Config {
 - `@deepseek-ai/dsh-client-ui-commands`（[`packages/client/ui-commands/src/index.ts`](../packages/client/ui-commands/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-conversation`（[`packages/client/ui-conversation/src/index.ts`](../packages/client/ui-conversation/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-cordis`（[`packages/extensions/ui-cordis/src/index.ts`](../packages/extensions/ui-cordis/src/index.ts)）
+- `@deepseek-ai/dsh-client-ui-crew`（[`packages/client/ui-crew/src/index.ts`](../packages/client/ui-crew/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-deliverables` — 需要 `systemPrompt`（[`packages/client/ui-deliverables/src/index.ts`](../packages/client/ui-deliverables/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-directory-picker-browse`（[`packages/client/ui-directory-picker-browse/src/index.ts`](../packages/client/ui-directory-picker-browse/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-directory-picker-native`（[`packages/client/ui-directory-picker-native/src/index.ts`](../packages/client/ui-directory-picker-native/src/index.ts)）
@@ -3421,6 +3528,7 @@ export interface Config {
 - `@deepseek-ai/dsh-command-goal` — 需要 `commands` · `goals`（[`packages/goal/command-goal/src/index.ts`](../packages/goal/command-goal/src/index.ts)）
 - `@deepseek-ai/dsh-commands`（[`packages/interaction/commands/src/index.ts`](../packages/interaction/commands/src/index.ts)）
 - `@deepseek-ai/dsh-cordis-client-runner`（[`packages/extensions/cordis-client-runner/src/index.ts`](../packages/extensions/cordis-client-runner/src/index.ts)）
+- `@deepseek-ai/dsh-crew-profile`（[`packages/bundle/crew-profile/src/index.ts`](../packages/bundle/crew-profile/src/index.ts)）
 - `@deepseek-ai/dsh-deepseek-llm-api-extensions`（[`packages/llm/deepseek-llm-api-extensions/src/index.ts`](../packages/llm/deepseek-llm-api-extensions/src/index.ts)）
 - `@deepseek-ai/dsh-experimental-client-ui-agent-team`（[`packages/experimental/client-ui-agent-team/src/index.ts`](../packages/experimental/client-ui-agent-team/src/index.ts)）
 - `@deepseek-ai/dsh-fs-e2b` — 需要 `e2b`（[`packages/e2b/fs-e2b/src/index.ts`](../packages/e2b/fs-e2b/src/index.ts)）
@@ -3486,6 +3594,7 @@ export interface Config {
 - `@deepseek-ai/dsh-client-ui-slots`（[`packages/client/ui-slots/src/index.ts`](../packages/client/ui-slots/src/index.ts)）
 - `@deepseek-ai/dsh-client-web`（[`packages/client/web/src/index.ts`](../packages/client/web/src/index.ts)）
 - `@deepseek-ai/dsh-cmdline`（[`packages/boot/cmdline/src/index.ts`](../packages/boot/cmdline/src/index.ts)）
+- `@deepseek-ai/dsh-crew-web-profile`（[`packages/bundle/crew-web-profile/src/index.ts`](../packages/bundle/crew-web-profile/src/index.ts)）
 - `@deepseek-ai/dsh-deque`（[`packages/util/deque/src/index.ts`](../packages/util/deque/src/index.ts)）
 - `@deepseek-ai/dsh-experimental-agent-team-profile`（[`packages/experimental/agent-team-profile/src/index.ts`](../packages/experimental/agent-team-profile/src/index.ts)）
 - `@deepseek-ai/dsh-experimental-agent-team-web-profile`（[`packages/experimental/agent-team-web-profile/src/index.ts`](../packages/experimental/agent-team-web-profile/src/index.ts)）

@@ -52,6 +52,8 @@ function renderToolDetailsProbe(owners?: DetailsToolOwnerProps[]): DetailsSlotPr
   }
 }
 
+const renderDetailsFallback: DetailsSlotProps['renderSlotChain'] = (_key, _owner, options) => options?.fallback ?? null
+
 function sessionSnapshot(): SessionSnapshot {
   return {
     sessionId: SID,
@@ -131,7 +133,7 @@ describe('render branch tails', () => {
     const session = sessionSnapshot()
     const chatSnapshot = chatSnapshotFixture()
     const chat = createChatStore().create()
-    chat.actions.select({ turnSeq: 1, callId: 'ghost' } satisfies SelectionTarget)
+    chat.actions.select({ kind: 'tool', turnSeq: 1, callId: 'ghost' } satisfies SelectionTarget)
     const emptyList = createSnapshotStore<SessionListState>(
       { ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined })
     const workspaces = emptyWorkspaces()
@@ -139,6 +141,7 @@ describe('render branch tails', () => {
       <DetailsPanel
         SessionProvider={SessionProviderStub}
         renderSlot={renderToolDetailsProbe()}
+        renderSlotChain={renderDetailsFallback}
         sessionId={SID}
         useSession={bindSnapshotSelector(createSnapshotStore(session))}
         useChat={bindSnapshotSelector(createSnapshotStore(chatSnapshot))}
@@ -161,6 +164,7 @@ describe('render branch tails', () => {
         useStore={bindSnapshotSelector(chat)}
         actions={chat.actions}
         closeDetails={vi.fn()}
+        openDetails={vi.fn()}
         t={t}
       />,
     )
@@ -192,7 +196,7 @@ describe('render branch tails', () => {
     }]
     const chatSnapshot = chatSnapshotFixture({ runningCalls })
     const chat = createChatStore().create()
-    chat.actions.select({ turnSeq: 9, callId: 'p1:code:1:code:1', toolName: 'read' } satisfies SelectionTarget)
+    chat.actions.select({ kind: 'tool', turnSeq: 9, callId: 'p1:code:1:code:1', toolName: 'read' } satisfies SelectionTarget)
     const emptyList = createSnapshotStore<SessionListState>(
       { ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined })
     const workspaces = emptyWorkspaces()
@@ -201,6 +205,7 @@ describe('render branch tails', () => {
       <DetailsPanel
         SessionProvider={SessionProviderStub}
         renderSlot={renderToolDetailsProbe(owners)}
+        renderSlotChain={renderDetailsFallback}
         sessionId={SID}
         useSession={bindSnapshotSelector(createSnapshotStore(session))}
         useChat={bindSnapshotSelector(createSnapshotStore(chatSnapshot))}
@@ -223,6 +228,7 @@ describe('render branch tails', () => {
         useStore={bindSnapshotSelector(chat)}
         actions={chat.actions}
         closeDetails={vi.fn()}
+        openDetails={vi.fn()}
         t={t}
       />,
     )

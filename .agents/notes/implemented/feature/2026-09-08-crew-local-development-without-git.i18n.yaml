@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-08-crew-local-development-without-git.md
+2026-09-08-crew-local-development-without-git.md: def9fc583f6b6b7abac9749e742bd62d102efe80
+2026-09-08-crew-local-development-without-git.zh.md: 6806520ec19f37f6b37e03ecdb7fbf934ad4d38d

@@ -25,7 +25,7 @@ English | [中文](README.zh.md)
 <a id="use-this-package"></a>
 ## Use this package
 
-Add this package on top of `@deepseek-ai/dsh-experimental-agent-team` when the model should run a team through tools. Once mounted, every team member — the Lead and each teammate — gets the same nine tools plus a policy paragraph that states its own role and name.
+Add this package on top of `@deepseek-ai/dsh-agent-team` when the model should run a team through tools. Once mounted, every team member — the Lead and each teammate — gets the same nine tools plus a policy paragraph that states its own role and name.
 
 ### When to choose it
 
@@ -33,7 +33,7 @@ Choose it when the model should create and coordinate teammates by itself rather
 
 ### Smallest working example
 
-The smallest addition to an existing composition is the two-package fragment from the [agent-team README](../agent-team/README.md#smallest-working-setup): durable session storage, the team domain package, and this package. The plugin itself takes two optional settings:
+The smallest addition to an existing composition is the two-package fragment from the [agent-team README](../../subagent/agent-team/README.md#smallest-working-setup): durable session storage, the team domain package, and this package. The plugin itself takes two optional settings:
 
 ```yaml
 - id: tool-agent-team
@@ -111,7 +111,7 @@ One `team:policy` section on the member scope teaches each member its role and t
 
 Read these pages when the package-level contract is not enough. They move from the domain service to the exact schemas and the decisions behind the design.
 
-- [agent-team package](../agent-team/README.md) — the `ctx.agentTeams` domain service behind these tools.
+- [agent-team package](../../subagent/agent-team/README.md) — the `ctx.agentTeams` domain service behind these tools.
 - [Agent Teams subsystem](../../../docs/subsystems/agent-team.md) — durable Team types and service API.
 - [Generated tool catalog](../../../docs/tool-catalog.md#deepseek-aidsh-experimental-tool-agent-team) — every tool schema the model receives.
 - [Agent Teams Agent Note](../../../.agents/notes/implemented/feature/2026-08-05-agent-teams.md) — model-facing, scoping, and isolation decisions.

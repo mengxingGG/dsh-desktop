@@ -141,7 +141,7 @@ export class LocalFileSystem extends FileSystem {
     const info = await probeNoFollow(resolve(opts?.cwd ?? this.config.cwd, path))
     if (signal?.aborted) throw new FsError('lstat aborted', 'FS_ABORTED')
     if (!info) return undefined
-    return { version: info.version, type: info.type, size: info.size }
+    return { version: info.version, type: info.type, size: info.size, linkCount: info.linkCount }
   }
 
   override async readText(target: FsTarget, signal?: AbortSignal): Promise<string> {

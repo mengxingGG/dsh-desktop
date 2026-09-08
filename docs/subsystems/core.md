@@ -369,9 +369,19 @@ Owns the default model selection independently of any Host or transport. The com
 ```ts cordis-catalog
 /**
  * Read the current default model selection.
+ * @param agent - Optional Agent with a registered role default; omit for the deployment default.
  * @returns a detached provider, model, and optional reasoning selection.
  */
-currentSelection(): ModelSelection
+currentSelection(agent?: Agent): ModelSelection
+
+/**
+ * Register one Agent's default resolver without changing user or Session selections.
+ * @param agent - Exact live Agent whose entry point requests the default.
+ * @param resolve - Synchronous resolver over the current deployment default.
+ * @returns Disposer; the caller must own it through an effect.
+ * @throws When the same Agent already has a default resolver.
+ */
+register(agent: Agent, resolve: (base: ModelSelection) => ModelSelection): () => void
 
 /**
  * Save the complete default model selection. A deployment without a settings
@@ -1206,4 +1216,44 @@ One session committed a different agent preset to its durable log. Consumers inv
 ```
 
 Source: [`packages/preset/agent-presets/src/types.ts`](../../packages/preset/agent-presets/src/types.ts)
+
+<a id="app-events"></a>
+
+### `app/*` events
+
+<a id="appactive-work--bail"></a>
+
+#### `app/active-work` — bail
+
+Ask plugins whether application-owned work outside live Agent turns and jobs remains active.
+
+```ts cordis-catalog
+/**
+ * Ask plugins whether application-owned work outside live Agent turns and jobs remains active.
+ * @mode bail
+ * @returns true when this plugin owns active work; otherwise delegate with undefined.
+ */
+'app/active-work'(): true | undefined
+```
+
+Source: [`packages/boot/cmdline/src/index.ts`](../../packages/boot/cmdline/src/index.ts)
+
+<a id="appprepare-exit--parallel"></a>
+
+#### `app/prepare-exit` — parallel
+
+Stop work before application teardown, preserving failures for the exit requester. Producers stop admitting and drain work before the agents phase closes live Sessions. Listeners must join repeated calls and reject when shutdown cannot be verified.
+
+```ts cordis-catalog
+/**
+ * Stop work before application teardown, preserving failures for the exit requester.
+ * Producers stop admitting and drain work before the agents phase closes live Sessions.
+ * Listeners must join repeated calls and reject when shutdown cannot be verified.
+ * @mode parallel
+ * @param stage - ordered phase selected by the application shutdown owner.
+ */
+'app/prepare-exit'(stage: 'producers' | 'agents'): Promise<void> | void
+```
+
+Source: [`packages/boot/cmdline/src/index.ts`](../../packages/boot/cmdline/src/index.ts)
 <!-- END GENERATED cordis-surface -->

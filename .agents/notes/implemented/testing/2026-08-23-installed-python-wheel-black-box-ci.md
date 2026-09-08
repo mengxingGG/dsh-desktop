@@ -10,6 +10,8 @@ The Python SDK unit suite drives fake peers, while the packaged-runtime workflow
 
 ## Decision
 
+The [platform maintenance scope](../process/2026-09-05-windows-linux-maintenance-scope.md) selects Windows and Linux. Retained macOS implementations and historical measurements do not imply active maintenance or a release commitment.
+
 ### Installed artifact boundary
 
 The required Python runtime workflow builds the pure SDK wheel and each platform runtime wheel before behavior tests. Every native target installs those two local files into a new Python 3.10 virtual environment, changes to a temporary directory outside the repository, unsets `PYTHONPATH` and `DSH_RUNTIME_MODE`, and invokes only the public Python modules plus the packaged executable.
@@ -20,7 +22,7 @@ The black-box harness rejects a non-venv process, repository-relative working di
 
 Every target runs the complete packaged-runtime scenario set after installation. A local SSE model keeps outputs deterministic while the public SDK exercises the default SDK profile, ordered patch overlays, external bundle installation through `dsh plugin`, persistent PTY and editor behavior, worker-thread code and workflow execution, ripgrep-backed search, external stdio MCP discovery and execution, model-visible and durable snapshots, Zstandard persistence, direct JSON-RPC, and shutdown. A restart snapshot launches two complete SDK runtime processes against one persistence root and pins their isolated model histories, high-level results, and separate durable logs. The installed run replaces the source-SDK pre-wheel run; the executable and wheel are tested together once rather than maintaining two behavior inventories.
 
-Linux additionally retains its manylinux 2.28 clean-install smoke and GLIBC checks. macOS retains deployment-target and native helper checks. These platform constraints supplement the common black-box behavior rather than substituting for it.
+Linux additionally retains its manylinux 2.28 clean-install smoke and GLIBC checks. macOS does not participate in native CI. These platform constraints supplement the common black-box behavior rather than substituting for it.
 
 ### Real DeepSeek API
 
@@ -30,7 +32,7 @@ Fork and Dependabot pull requests never receive the repository secret. Their nat
 
 ### Required targets
 
-The pull-request `python-runtime` job calls the reusable builder for Linux x64, Linux arm64, macOS arm64, macOS x64, and Windows x64. Its aggregate result remains a dependency of `all checks passed`, so a failed, cancelled, or missing native carrier blocks the required verdict. The [Windows x64 runtime decision](../architecture/2026-08-23-python-sdk-windows-x64-runtime.md) owns the Windows target and its PowerShell-specific minimal snapshot.
+The pull-request `python-runtime` job calls the reusable builder for Linux x64, Linux arm64, and Windows x64. Its aggregate result remains a dependency of `all checks passed`, so a failed, cancelled, or missing native carrier blocks the required verdict. The [Windows x64 runtime decision](../architecture/2026-08-23-python-sdk-windows-x64-runtime.md) owns the Windows target and its PowerShell-specific minimal snapshot.
 
 ## Existing decisions and supersession
 
@@ -38,7 +40,7 @@ This decision supersedes the single-target topology in the archived [required Py
 
 ## Alternatives considered
 
-**Keep Linux x64 as the only required carrier.** Rejected because native addons, executable construction, wheel tags, and helper files differ across the five published targets. Release-time discovery is too late for an artifact that every Python SDK installation selects by platform.
+**Keep Linux x64 as the only required carrier.** Rejected because native addons, executable construction, wheel tags, and helper files differ across the three maintained targets. Release-time discovery is too late for an artifact that every Python SDK installation selects by platform.
 
 **Run full behavior before wheel construction and keep two small installed smokes.** Rejected because that proves the executable against source imports, then proves too little through the distribution users install. The clean installed environment is the stronger common location for the same scenarios.
 
@@ -48,4 +50,4 @@ This decision supersedes the single-target topology in the archived [required Py
 
 ## Consequences
 
-Every pull request pays for five native executable and wheel builds plus deterministic installed-artifact scenarios. Trusted same-repository pull requests also pay for one two-turn DeepSeek task per target. In exchange, the required result describes the files Python users install, proves every published carrier before merge, and cannot pass by importing the checkout or silently skipping the real provider.
+Every pull request pays for three native executable and wheel builds plus deterministic installed-artifact scenarios. Trusted same-repository pull requests also pay for one two-turn DeepSeek task per target. In exchange, the required result describes the files Python users install, proves every published carrier before merge, and cannot pass by importing the checkout or silently skipping the real provider.

@@ -155,6 +155,13 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh-experimental-code-runtime-python': ['py/**/*.py'],
   // The shipped preset compositions travel inside the roster package.
   '@deepseek-ai/dsh-agent-presets': ['presets'],
+  // Crew role and manager presets are profile inputs read at runtime.
+  '@deepseek-ai/dsh-crew-profile': ['presets'],
+  // The preferences plugin is its own bundle; tsdown shares the settings code
+  // it has in common with the package entry through a hashed chunk, which the
+  // tarball must carry or both entries fail to import at runtime.
+  '@deepseek-ai/dsh-crew': ['lib/preferences.js', 'lib/preferences-*.js'],
+  '@deepseek-ai/dsh-web-app': ['desktop.patch.yml'],
   // The Web Host mounts the default-off settings owner independently of each
   // Agent-scoped delegation-tool instance.
   '@deepseek-ai/dsh-tool-subagent': ['lib/model-selection-settings.js'],

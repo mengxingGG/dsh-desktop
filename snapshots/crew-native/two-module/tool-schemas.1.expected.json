@@ -1,0 +1,163 @@
+{
+  "initial": [
+    {
+      "name": "crew_edit_file",
+      "description": "Apply one exact literal replacement inside the current durable Crew write scopes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "old_string": {
+            "type": "string"
+          },
+          "new_string": {
+            "type": "string"
+          },
+          "replace_all": {
+            "type": "boolean",
+            "description": "Replace every occurrence; defaults to false."
+          }
+        },
+        "required": [
+          "path",
+          "old_string",
+          "new_string"
+        ]
+      }
+    },
+    {
+      "name": "crew_list_files",
+      "description": "List direct children of one directory inside the current durable Crew read scopes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "crew_read_file",
+      "description": "Read one bounded UTF-8 text file inside the current durable Crew read scopes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "crew_report",
+      "description": "Persist the current Crew worker's single structured handoff for this binding revision.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "blocked",
+              "passed",
+              "rejected"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "changed_paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "Repository-relative affected path."
+                },
+                "line": {
+                  "type": "integer",
+                  "description": "Optional one-based line number."
+                },
+                "message": {
+                  "type": "string",
+                  "description": "Concrete observed issue."
+                },
+                "expected": {
+                  "type": "string",
+                  "description": "Required correction or acceptance condition."
+                }
+              },
+              "required": [
+                "path",
+                "message",
+                "expected"
+              ]
+            }
+          },
+          "verification_id": {
+            "type": "string",
+            "description": "Required only for a reviewer; use the current verification id."
+          }
+        },
+        "required": [
+          "verdict",
+          "summary",
+          "changed_paths",
+          "issues"
+        ]
+      }
+    },
+    {
+      "name": "crew_run_test",
+      "description": "Run a manager-declared test in the actual project with installed dependencies, bounded output and cancellation. Generated files persist. Additional commands require manager coordination.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id"
+        ]
+      }
+    },
+    {
+      "name": "crew_write_file",
+      "description": "Create or replace one UTF-8 text file inside the current durable Crew write scopes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ]
+      }
+    }
+  ],
+  "changes": []
+}

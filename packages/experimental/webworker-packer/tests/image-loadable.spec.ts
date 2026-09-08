@@ -28,6 +28,7 @@ import {
 import { inflateImage } from '@deepseek-ai/dsh-experimental-webworker-runtime/src/storage/image-gzip.ts'
 import { loadVfsImage } from '@deepseek-ai/dsh-experimental-webworker-runtime/src/storage/memory.ts'
 import { setActiveVfs } from '@deepseek-ai/dsh-experimental-webworker-runtime/src/storage/active.ts'
+import { installProcessGlobal } from '@deepseek-ai/dsh-experimental-webworker-runtime/src/node/globals/process.ts'
 import { indexWorkspacePackages, previewFixtures } from '../src/repository.ts'
 import { DEFAULT_ROOT, MANIFEST_PATH, packVfsImage, packVfsOverlay } from '../src/pack.ts'
 
@@ -232,6 +233,45 @@ const archive = async (): Promise<Uint8Array> =>
     setActiveModuleLoader(loader)
     const webserver = loader.requireFrom(`${DEFAULT_ROOT}/workspace`)(WEB_SERVER) as { WebServer?: unknown }
     expect(typeof webserver.WebServer).toBe('function')
+  })
+
+  it('constructs the packed OpenTelemetry logger used by the default profile', async () => {
+    const result = packVfsImage({
+      config: "- name: '@deepseek-ai/dsh-session-telemetry-otel'\n",
+      profile: 'telemetry-package-check', workspaces, resolveFrom: repoRoot, entries: [],
+    })
+    expect(result.missing).toEqual([])
+    const vfs = loadVfsImage(await inflateImage(result.image, 'the packed telemetry provider'), DEFAULT_ROOT)
+    const nodeProcess = globalThis.process
+    const processShim = installProcessGlobal({ cwd: DEFAULT_ROOT, env: {} })
+    globalThis.process = nodeProcess
+    const loader = new WorkerModuleLoader({
+      vfs, root: DEFAULT_ROOT,
+      staticModules: { ...createNodeBuiltins(), process: () => processShim, 'node:process': () => processShim },
+      staticModulePrefixes: REPLACED_PREFIXES,
+    })
+    setActiveVfs(vfs)
+    setActiveModuleLoader(loader)
+    const require = loader.requireFrom(DEFAULT_ROOT)
+    const { LoggerProvider, BatchLogRecordProcessor } = require('@opentelemetry/sdk-logs') as {
+      LoggerProvider: new (options: object) => {
+        getLogger(name: string, version: string): { emit(record: object): void }
+        shutdown(): Promise<void>
+      }
+      BatchLogRecordProcessor: new (options: object) => object
+    }
+    const { OTLPLogExporter } = require('@opentelemetry/exporter-logs-otlp-http') as {
+      OTLPLogExporter: new (options: object) => object
+    }
+    const provider = new LoggerProvider({
+      processors: [new BatchLogRecordProcessor({ exporter: new OTLPLogExporter({ url: 'https://telemetry.invalid/v1/logs' }) })],
+    })
+    try {
+      const logger = provider.getLogger('preview-test', '1.0.0')
+      expect(typeof logger.emit).toBe('function')
+    } finally {
+      await provider.shutdown()
+    }
   })
 
   it('runs the unchanged Landlock entry package over the Worker platform executable', async () => {

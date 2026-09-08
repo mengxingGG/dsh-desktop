@@ -8,6 +8,9 @@
     "src"
   ],
   "references": [
+    { "path": "../../core/agent" },
+    { "path": "../../jobs/jobs" },
+    { "path": "../../session/session-persistence" },
     {
       "path": "../../../vendor/cordis"
     },

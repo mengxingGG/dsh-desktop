@@ -28,6 +28,7 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { createScaffoldHttpClient } from './scaffold-http.ts'
 import type { Page } from 'playwright'
 import { expect } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -634,6 +635,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
   let baseUrl = ''
   let authenticatedUrl = ''
   let cookieHeader = ''
+  const hostHttp = createScaffoldHttpClient()
   let replayHandle: ReplayHandle | undefined
   try {
     process.chdir(workspaceCwd)
@@ -765,8 +767,9 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     }
     baseUrl = `http://${browserHost}:${String(port)}`
     authenticatedUrl = ctx.connection.authenticatedUrl(baseUrl)
-    const login = await fetch(authenticatedUrl, { redirect: 'manual' })
+    const login = await hostHttp.fetch(authenticatedUrl, { redirect: 'manual' })
     const setCookie = login.headers.get('set-cookie')
+    await login.body?.cancel()
     if (login.status !== 303 || login.headers.get('location') !== '/' || setCookie === null) {
       throw new Error('web e2e scaffold: browser token exchange did not return its session cookie')
     }
@@ -777,6 +780,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
   } catch (error) {
     if (process.cwd() !== originalCwd) process.chdir(originalCwd)
     const cleanupFailures = await cleanupScaffoldWorld(ctx, workspaceCwd, persistenceRoot)
+    try { await hostHttp.close() } catch (closeError) { cleanupFailures.push(closeError) }
     restoreCredentialEnvironment()
     restoreSkillRootEnvironment()
     if (cleanupFailures.length > 0) {
@@ -798,7 +802,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     hostFetch(path: string, init: RequestInit = {}): Promise<Response> {
       const headers = new Headers(init.headers)
       headers.set('cookie', cookieHeader)
-      return fetch(new URL(path, baseUrl), { ...init, headers })
+      return hostHttp.fetch(new URL(path, baseUrl), { ...init, headers })
     },
     // Barrier stack: the in-process turn/end identifies the session, its
     // explicit flush makes the transcript durable, and the caller's browser
@@ -850,6 +854,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
       try {
         stopObservingSessions()
         failures.push(...await cleanupScaffoldWorld(ctx, workspaceCwd, persistenceRoot))
+        try { await hostHttp.close() } catch (closeError) { failures.push(closeError) }
       } finally {
         restoreCredentialEnvironment()
         restoreSkillRootEnvironment()
@@ -1357,12 +1362,21 @@ export async function readPersistedEvents(scaffold: WebScaffold, id: SessionId):
 const ARIA_AGE =
   /(?:now|\d+min|\d+h|\d+d|\d+mo|\d+y|刚刚|\d+分钟|\d+小时|\d+天|\d+个月|\d+年)(?=")/g
 
-function normalizeAria(snapshot: string, workspaceCwd: string, age: boolean): string {
+/**
+ * Stabilize owned workspace paths and observed timing in one browser snapshot.
+ * @param snapshot - Rendered accessibility tree.
+ * @param workspaceCwd - Exact scaffold-owned workspace directory.
+ * @param age - Whether this scenario excludes relative age from its assertions.
+ * @returns Snapshot text retaining nonvolatile product behavior.
+ */
+export function normalizeWebAria(snapshot: string, workspaceCwd: string, age: boolean): string {
   // The session heading renders the workspace's basename, not the full
   // path, so both spellings must collapse to the token.
-  const base = workspaceCwd.split('/').pop()!
+  const portableCwd = workspaceCwd.replaceAll('\\', '/')
+  const base = basename(portableCwd)
   return (age ? snapshot.replace(ARIA_AGE, '{{age}}') : snapshot)
     .split(workspaceCwd).join('{{cwd}}')
+    .split(portableCwd).join('{{cwd}}')
     .split(base).join('{{workspace}}')
     .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '{{uuid}}')
     // The optional space in `\d+m ?\d+s` covers both minute spellings: the
@@ -1416,7 +1430,7 @@ export async function captureStableAria(
     for (const [value, token] of options.replacements ?? []) {
       snapshot = snapshot.split(value).join(token)
     }
-    return normalizeAria(snapshot, workspaceCwd, age)
+    return normalizeWebAria(snapshot, workspaceCwd, age)
   }
   let previous = normalize(await region.ariaSnapshot())
   await expect.poll(async () => {

@@ -89,6 +89,7 @@ LEGACY_CUSTOM_DISABLED_ROWS = (
     "tool-web",
 )
 SNAPSHOT_PROMPT = "Run the advanced packaged-runtime snapshot scenario."
+CREW_SNAPSHOT_PROMPT = "Run the packaged-runtime Crew projection snapshot scenario."
 SNAPSHOT_SESSION_ID = "advanced-executable"
 SNAPSHOT_DIRECT_CHILD_PROMPT = "Reply with exactly DIRECT_CHILD_OK and nothing else."
 SNAPSHOT_WORKFLOW_CHILD_PROMPT = "Reply with exactly WORKFLOW_CHILD_OK and nothing else."
@@ -99,6 +100,14 @@ RESTART_SECOND_PROMPT = "Complete the second isolated Python SDK process turn."
 RESTART_SECOND_TEXT = "PROCESS_TWO_OK"
 RESTART_FIRST_SESSION_ID = "process-one"
 RESTART_SECOND_SESSION_ID = "process-two"
+SNAPSHOT_CREW_EXECUTION = {
+    "maxInputBytes": 268435456,
+    "maxInputEntries": 50000,
+    "maxOutputBytes": 65536,
+    "processGraceMs": 5000,
+    "pollIntervalMs": 10,
+    "gitTimeoutMs": 30000,
+}
 SNAPSHOT_PLUGIN_CODE = """\
 return (ctx) => {
   harness.registerTool(ctx, harness.defineTool({
@@ -117,6 +126,59 @@ return (ctx) => {
   }))
 }
 """
+SNAPSHOT_CREW_TOOL_CODE = """\
+  harness.registerTool(ctx, harness.defineTool({
+    name: 'snapshot_crew_event',
+    description: 'Record one representative DSH-native Crew configuration event.',
+    parameters: {},
+    output: {
+      schema: {
+        type: 'object',
+        properties: { recorded: { type: 'boolean', required: true } },
+        additionalProperties: false
+      },
+      render(_args, value) {
+        return [{ type: 'text', text: JSON.stringify(value) }]
+      }
+    },
+    async execute(_args, exec) {
+      const agent = exec.agent
+      if (agent === undefined) throw new Error('snapshot_crew_event requires an Agent')
+      agent.session.append('crew/configuration', {
+        version: 1,
+        teamId: agent.id,
+        configuration: {
+          repositoryRoot: agent.session.header.cwd,
+          nativeProvider: 'spawn',
+          maxConcurrentWorkers: 4,
+          notificationBatchWindowMs: 250,
+          workerTurnTimeoutMs: 900000,
+          maxAutomaticRepairs: 1,
+          maxReviewRounds: 2,
+          allowedTestPrograms: ['pnpm', 'npm', 'node'],
+          execution: __CREW_EXECUTION__,
+          commitPolicy: { maxMessageLength: 200, requireNamedBranch: true },
+          roles: {
+            developer: {
+              role: 'developer', persona: 'Python SDK projection developer.',
+              toolFilter: { allow: [], deny: [] }, agentOptions: {}, maxDepth: 1
+            },
+            reviewer: {
+              role: 'reviewer', persona: 'Python SDK projection reviewer.',
+              toolFilter: { allow: [], deny: [] }, agentOptions: {}, maxDepth: 1
+            },
+            integrator: {
+              role: 'integrator', persona: 'Python SDK projection integrator.',
+              toolFilter: { allow: [], deny: [] }, agentOptions: {}, maxDepth: 1
+            }
+          }
+        }
+      })
+      return { recorded: true }
+    }
+  }))
+""".replace("__CREW_EXECUTION__", json.dumps(SNAPSHOT_CREW_EXECUTION, separators=(",", ":")))
+CREW_SNAPSHOT_PLUGIN_CODE = SNAPSHOT_PLUGIN_CODE.removesuffix("}\n") + SNAPSHOT_CREW_TOOL_CODE + "}\n"
 SNAPSHOT_WORKFLOW_SCRIPT = (
     "phase('Delegate')\n"
     f"const reply = await agent('{SNAPSHOT_WORKFLOW_CHILD_PROMPT}', {{ label: 'workflow-child' }})\n"
@@ -125,6 +187,7 @@ SNAPSHOT_WORKFLOW_SCRIPT = (
 ADVANCED_SNAPSHOT_DIRECTORY = (
     Path(__file__).resolve().parent / "snapshots" / "python-sdk-single-exe" / "advanced"
 )
+CREW_SNAPSHOT_DIRECTORY = ADVANCED_SNAPSHOT_DIRECTORY.parent / "crew-projection"
 ADVANCED_SNAPSHOT_FILENAMES = (
     "result.json", "session.v2.jsonl", "session.1.v2.jsonl", "session.2.v2.jsonl",
 )
@@ -332,7 +395,12 @@ def completion_chunks(body: dict[str, object]) -> list[dict[str, object]]:
         minimal = minimal_tool_followup(body, call_id, tool_name, tool_text)
         if minimal is not None:
             return minimal
-        advanced = advanced_tool_followup(body, call_id, tool_name, tool_text)
+        crew_projection = any(
+            isinstance(message, dict) and message.get("role") == "user"
+            and message_text(message.get("content")) == CREW_SNAPSHOT_PROMPT
+            for message in messages
+        )
+        advanced = advanced_tool_followup(body, call_id, tool_name, tool_text, crew_projection=crew_projection)
         if advanced is not None:
             return advanced
         if "42" not in tool_text:
@@ -368,6 +436,7 @@ def completion_chunks(body: dict[str, object]) -> list[dict[str, object]]:
         SNAPSHOT_DIRECT_CHILD_PROMPT,
         SNAPSHOT_WORKFLOW_CHILD_PROMPT,
         SNAPSHOT_PROMPT,
+        CREW_SNAPSHOT_PROMPT,
         CODE_PROMPT,
         WORKFLOW_PROMPT,
         FS_SEARCH_PROMPT,
@@ -385,7 +454,7 @@ def completion_chunks(body: dict[str, object]) -> list[dict[str, object]]:
         return text_chunks("DIRECT_CHILD_OK")
     if prompt == SNAPSHOT_WORKFLOW_CHILD_PROMPT:
         return text_chunks("WORKFLOW_CHILD_OK")
-    if prompt == SNAPSHOT_PROMPT:
+    if prompt in {SNAPSHOT_PROMPT, CREW_SNAPSHOT_PROMPT}:
         assert_advertised_tool(body, "cordis_define")
         return tool_call_chunks(
             "advanced-define",
@@ -394,7 +463,7 @@ def completion_chunks(body: dict[str, object]) -> list[dict[str, object]]:
                 "plugin": {"kind": "new", "idPrefix": "snap"},
                 "name": "Snapshot Double",
                 "purpose": "Expose a deterministic doubling tool for executable snapshot verification.",
-                "code": {"host": SNAPSHOT_PLUGIN_CODE},
+                "code": {"host": CREW_SNAPSHOT_PLUGIN_CODE if prompt == CREW_SNAPSHOT_PROMPT else SNAPSHOT_PLUGIN_CODE},
             },
         )
     if prompt == RESTART_FIRST_PROMPT:
@@ -584,6 +653,8 @@ def advanced_tool_followup(
     call_id: str,
     tool_name: str,
     tool_text: str,
+    *,
+    crew_projection: bool = False,
 ) -> list[dict[str, object]] | None:
     """Advance the executable snapshot's deterministic parent tool chain."""
     if not call_id.startswith("advanced-"):
@@ -604,6 +675,16 @@ def advanced_tool_followup(
             raise AssertionError(f"cordis_run returned no running Package ids: {tool_text}")
         assert_advertised_tool(body, "run_code")
         assert_advertised_tool(body, "snapshot_double")
+        if crew_projection:
+            assert_advertised_tool(body, "snapshot_crew_event")
+            return tool_call_chunks("advanced-crew-event", "snapshot_crew_event", {})
+        return tool_call_chunks(
+            "advanced-code", "run_code",
+            {"code": "return await tools.snapshot_double({ value: 21 })", "description": "Run the temporary Plugin tool"},
+        )
+    if crew_projection and call_id == "advanced-crew-event" and tool_name == "snapshot_crew_event":
+        if '"recorded":true' not in tool_text.replace(" ", ""):
+            raise AssertionError(f"snapshot Crew event tool returned no receipt: {tool_text}")
         return tool_call_chunks(
             "advanced-code",
             "run_code",
@@ -653,6 +734,8 @@ def advanced_tool_followup(
             raise AssertionError(f"cordis_undefine returned no removal result: {tool_text}")
         if "snapshot_double" in advertised_tool_names(body):
             raise AssertionError("snapshot_double remained advertised after cordis_undefine")
+        if "snapshot_crew_event" in advertised_tool_names(body):
+            raise AssertionError("snapshot_crew_event remained advertised after cordis_undefine")
         return text_chunks(SNAPSHOT_FINAL_TEXT)
     raise AssertionError(f"unexpected advanced tool follow-up: {call_id} {tool_name}: {tool_text}")
 
@@ -769,7 +852,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--scenario",
-        choices=("all", "sdk-default", "sdk-custom", "sdk-minimal", "sdk-fs-search", "sdk-spawn-node", "sdk-mcp", "sdk-snapshot", "sdk-restart", "sdk-profile-plugin", "sdk-live", "direct"),
+        choices=("all", "sdk-default", "sdk-custom", "sdk-minimal", "sdk-fs-search", "sdk-spawn-node", "sdk-mcp", "sdk-snapshot", "sdk-crew-snapshot", "sdk-restart", "sdk-profile-plugin", "sdk-live", "direct"),
         default="all",
     )
     parser.add_argument("--exe", type=Path)
@@ -788,10 +871,10 @@ def main() -> None:
         parser.error("--scenario sdk-profile-plugin requires --installed-wheel")
     if args.installed_wheel:
         args.exe = assert_installed_wheel_environment()
-    if args.scenario in {"all", "sdk-custom", "sdk-minimal", "sdk-fs-search", "sdk-spawn-node", "sdk-snapshot", "sdk-restart", "direct"} and args.exe is None:
+    if args.scenario in {"all", "sdk-custom", "sdk-minimal", "sdk-fs-search", "sdk-spawn-node", "sdk-snapshot", "sdk-crew-snapshot", "sdk-restart", "direct"} and args.exe is None:
         parser.error("--exe is required for custom, minimal, snapshot, and direct scenarios")
-    if args.update_snapshots and args.scenario not in {"all", "sdk-minimal", "sdk-snapshot", "sdk-restart"}:
-        parser.error("--update-snapshots requires --scenario sdk-minimal, sdk-snapshot, sdk-restart, or all")
+    if args.update_snapshots and args.scenario not in {"all", "sdk-minimal", "sdk-snapshot", "sdk-crew-snapshot", "sdk-restart"}:
+        parser.error("--update-snapshots requires --scenario sdk-minimal, sdk-snapshot, sdk-crew-snapshot, sdk-restart, or all")
     if args.exe is not None and not args.exe.is_file():
         parser.error(f"runtime executable does not exist: {args.exe}")
 
@@ -820,6 +903,9 @@ def main() -> None:
         if args.scenario in {"all", "sdk-snapshot"}:
             assert args.exe is not None
             smoke_sdk_snapshot(model.url, args.exe.resolve(), args.update_snapshots)
+        if args.scenario in {"all", "sdk-crew-snapshot"}:
+            assert args.exe is not None
+            smoke_sdk_snapshot(model.url, args.exe.resolve(), args.update_snapshots, crew_projection=True)
         if args.scenario in {"all", "sdk-restart"}:
             assert args.exe is not None
             smoke_sdk_restart_snapshot(model.url, args.exe.resolve(), args.update_snapshots)
@@ -1260,8 +1346,10 @@ def smoke_sdk_profile_plugin(base_url: str) -> None:
         assert_zstd_session_log(dsh_home / "sessions")
 
 
-def smoke_sdk_snapshot(base_url: str, executable: Path, update_snapshots: bool) -> None:
-    """Drive and compare the advanced SDK/executable behavioral snapshot."""
+def smoke_sdk_snapshot(
+    base_url: str, executable: Path, update_snapshots: bool, *, crew_projection: bool = False,
+) -> None:
+    """Compare the advanced SDK scenario or its separately owned Crew projection."""
     from deepseek_harness import DeepSeekHarness
 
     with tempfile.TemporaryDirectory(prefix="dsh-sdk-snapshot-") as temporary:
@@ -1284,7 +1372,8 @@ def smoke_sdk_snapshot(base_url: str, executable: Path, update_snapshots: bool) 
             base_url=base_url,
             request_timeout_seconds=60,
         ) as harness:
-            result = harness.run(SNAPSHOT_PROMPT, session_id=SNAPSHOT_SESSION_ID)
+            prompt = CREW_SNAPSHOT_PROMPT if crew_projection else SNAPSHOT_PROMPT
+            result = harness.run(prompt, session_id=SNAPSHOT_SESSION_ID)
 
         assert result.final_response == SNAPSHOT_FINAL_TEXT, result.final_response
         methods = [notification.method for notification in result.notifications]
@@ -1292,6 +1381,20 @@ def smoke_sdk_snapshot(base_url: str, executable: Path, update_snapshots: bool) 
             raise AssertionError(f"advanced snapshot emitted unexpected subagent lifecycle: {methods}")
         if not any(event.get("type") == "tool/code-dispatch" for event in result.events):
             raise AssertionError("advanced snapshot emitted no tool/code-dispatch event")
+        crew_events = [
+            event for event in result.events if event.get("type") == "crew/configuration"
+        ]
+        if crew_projection:
+            if len(crew_events) != 1:
+                raise AssertionError(f"Crew snapshot expected one configuration event: {crew_events}")
+            crew_data = crew_events[0].get("data")
+            if not isinstance(crew_data, dict) or crew_data.get("teamId") != SNAPSHOT_SESSION_ID:
+                raise AssertionError(f"Python SDK changed the Crew event payload: {crew_data}")
+            crew_configuration = crew_data.get("configuration")
+            if not isinstance(crew_configuration, dict) or crew_configuration.get("execution") != SNAPSHOT_CREW_EXECUTION:
+                raise AssertionError("Python SDK Crew projection must retain the complete execution limits")
+        elif crew_events:
+            raise AssertionError("The original advanced SDK scenario must not record Crew events")
 
         logs = read_session_logs(sessions)
         child_ids = snapshot_child_ids(result)
@@ -1305,7 +1408,9 @@ def smoke_sdk_snapshot(base_url: str, executable: Path, update_snapshots: bool) 
 
         files = build_snapshot_files(result, logs, child_ids, root)
         compare_snapshot_files(
-            files, update_snapshots, ADVANCED_SNAPSHOT_DIRECTORY, ADVANCED_SNAPSHOT_FILENAMES,
+            files, update_snapshots,
+            CREW_SNAPSHOT_DIRECTORY if crew_projection else ADVANCED_SNAPSHOT_DIRECTORY,
+            ADVANCED_SNAPSHOT_FILENAMES,
         )
 
 
@@ -2108,14 +2213,41 @@ def compare_snapshot_files(
     directory: Path,
     filenames: tuple[str, ...],
 ) -> None:
-    """Write or exactly compare one scenario's expected snapshot files."""
+    """Compare one scenario or record it without replacing a Session generation."""
     scenario = directory.name
     if tuple(files) != filenames:
         raise AssertionError(f"{scenario} snapshot builder produced {tuple(files)}, expected {filenames}")
+    actual_sessions: dict[int, tuple[str, str]] = {}
+    for name, content in files.items():
+        parsed = parse_snapshot_session_filename(name)
+        if parsed is None:
+            continue
+        index, filename_version = parsed
+        header_version = session_header_version(content, name)
+        if filename_version != header_version:
+            raise AssertionError(
+                f"{name}: filename declares Session format v{filename_version}, "
+                f"header declares v{header_version}",
+            )
+        if index in actual_sessions:
+            raise AssertionError(f"{scenario} snapshot builder produced duplicate Session role {index}")
+        actual_sessions[index] = (name, content)
+        path = directory / name
+        if update and path.exists() and path.read_bytes() != content.encode("utf-8"):
+            raise AssertionError(
+                f"{scenario}: refusing to overwrite immutable Session generation {name}; "
+                "use a separate scenario for new behavior or a new writer generation for a format change",
+            )
     if update:
         directory.mkdir(parents=True, exist_ok=True)
         for name, content in files.items():
-            (directory / name).write_text(content, encoding="utf-8", newline="\n")
+            path = directory / name
+            if parse_snapshot_session_filename(name) is not None:
+                if not path.exists():
+                    with path.open("x", encoding="utf-8", newline="\n") as stream:
+                        stream.write(content)
+            else:
+                path.write_text(content, encoding="utf-8", newline="\n")
         print(f"smoke-python-runtime: updated snapshots in {directory}")
 
     existing = [path for path in directory.iterdir() if path.is_file()] if directory.is_dir() else []
@@ -2132,21 +2264,6 @@ def compare_snapshot_files(
             f"unexpected={sorted(existing_non_session - expected_non_session)}"
         )
     selected_expected = selected_snapshot_session_files(directory)
-    actual_sessions: dict[int, tuple[str, str]] = {}
-    for name, content in files.items():
-        parsed = parse_snapshot_session_filename(name)
-        if parsed is None:
-            continue
-        index, filename_version = parsed
-        header_version = session_header_version(content, name)
-        if filename_version != header_version:
-            raise AssertionError(
-                f"{name}: filename declares Session format v{filename_version}, "
-                f"header declares v{header_version}",
-            )
-        if index in actual_sessions:
-            raise AssertionError(f"{scenario} snapshot builder produced duplicate Session role {index}")
-        actual_sessions[index] = (name, content)
     if set(selected_expected) != set(actual_sessions):
         raise AssertionError(
             f"{scenario} snapshot Session roles differ: "
@@ -2168,7 +2285,8 @@ def compare_snapshot_files(
         ))
         raise AssertionError(
             f"{scenario} executable snapshot mismatch in {name}; "
-            "rerun with --update-snapshots after reviewing the behavior\n"
+            "review the behavior before using --update-snapshots; changed Session data needs "
+            "a separate scenario or a new writer generation\n"
             f"{diff}"
         )
 

@@ -24,6 +24,7 @@ import type {
 } from '@deepseek-ai/dsh-agent'
 import { errorChain, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-cmdline'
 import { interruptedTurnClosers, SessionLogOffset, SessionPreparation, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-system-prompt'
@@ -98,8 +99,9 @@ class FactoryOwnership {
   private accepting = true
   private readonly teardown = new AbortController()
   private readonly inactive = Promise.withResolvers<void>()
-  private readonly liveAgents = new Set<() => Promise<void>>()
+  private readonly liveAgents = new Map<() => Promise<void>, () => boolean>()
   private startupTasks = new Set<Promise<void>>()
+  private shutdown: Promise<void> | undefined
 
   constructor(private readonly fiber: Context['fiber']) {}
 
@@ -113,9 +115,13 @@ class FactoryOwnership {
   }
 
   /** Track one live agent's shared teardown until it has run. */
-  track(dispose: () => Promise<void>): () => void {
-    this.liveAgents.add(dispose)
+  track(dispose: () => Promise<void>, busy: () => boolean): () => void {
+    this.liveAgents.set(dispose, busy)
     return () => { this.liveAgents.delete(dispose) }
+  }
+
+  hasActiveWork(): boolean {
+    return this.startupTasks.size > 0 || [...this.liveAgents.values()].some(busy => busy())
   }
 
   /** Join config startup work that begins before an agent exists. */
@@ -135,14 +141,20 @@ class FactoryOwnership {
     await Promise.race([job, this.inactive.promise])
   }
 
-  async dispose(): Promise<void> {
+  dispose(): Promise<void> {
+    return this.shutdown ??= this.stop()
+  }
+
+  private async stop(): Promise<void> {
     this.accepting = false
     this.teardown.abort(new Error('agent loop is not active'))
     this.inactive.resolve()
-    await Promise.all([
-      ...[...this.liveAgents].map(dispose => dispose()),
+    const results = await Promise.allSettled([
+      ...[...this.liveAgents.keys()].map(dispose => dispose()),
       ...this.startupTasks,
     ])
+    const errors = results.flatMap(result => result.status === 'rejected' ? [result.reason as unknown] : [])
+    if (errors.length > 0) throw new AggregateError(errors, 'agent loop shutdown failed')
   }
 }
 
@@ -417,6 +429,8 @@ export class AgentLoop extends Service implements AgentFactory {
     this.ownership = new FactoryOwnership(ctx.fiber)
     this.runtime = { ctx }
     ctx.effect(() => () => this.ownership.dispose(), 'agentLoop.transactions()')
+    ctx.on('app/active-work', () => this.ownership.hasActiveWork() || undefined)
+    ctx.on('app/prepare-exit', stage => stage === 'agents' ? this.ownership.dispose() : undefined)
     ctx.effect(() => ctx.agents.setFactory(this), 'agentLoop.setFactory()')
     ctx.systemPrompt.variable('provider', context => context.agent?.options.provider)
     ctx.systemPrompt.variable('model', context => context.agent?.options.model)
@@ -614,7 +628,7 @@ export class AgentLoop extends Service implements AgentFactory {
         throw new AggregateError(failures, `agent "${id}" disposal failed`)
       }
     })())
-    const untrack = this.ownership.track(dispose)
+    const untrack = this.ownership.track(dispose, () => machine === undefined || machine.hasActiveWork || machine.inbox.nextTurn.length > 0)
     let unfollowOwner: () => Promise<void> | void
     try {
       unfollowOwner = ownerCtx.effect(() => () => {

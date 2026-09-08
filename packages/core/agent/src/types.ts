@@ -8,6 +8,8 @@ import type { UserMessage } from '@deepseek-ai/dsh-llm/types'
 import type { OptionalSessionSeq, SessionId, SessionSeq } from '@deepseek-ai/dsh-session/types'
 import type { TypertContext, TypertLookup } from '@deepseek-ai/dsh-typert-protocol'
 
+export type { AgentOptions } from './options.ts'
+
 /** Public live-agent handle; the runtime face augments its live capabilities. */
 export interface Agent {
   /** Session-backed Agent identity. */

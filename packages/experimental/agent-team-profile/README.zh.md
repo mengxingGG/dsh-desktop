@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-`dsh-experimental-agent-team-profile` 是在 `@deepseek-ai/dsh-base` 之上启用 [Agent Teams](../agent-team/README.zh.md) 的私有 profile 层。它的 patch 会插入 Team domain 与 Team-scoped 工具、禁用名称重叠的全局 continuable-child control，并保留普通的一次性 fresh 与 fork delegation 工具。必须将本包显式添加到已初始化的源码 checkout profile；正式发布会排除本包。
+`dsh-experimental-agent-team-profile` 是在 `@deepseek-ai/dsh-base` 之上启用 [Agent Teams](../../subagent/agent-team/README.zh.md) 的私有 profile 层。它的 patch 会插入 Team domain 与 Team-scoped 工具、禁用名称重叠的全局 continuable-child control，并保留普通的一次性 fresh 与 fork delegation 工具。必须将本包显式添加到已初始化的源码 checkout profile；正式发布会排除本包。
 
 ## 目录
 
@@ -64,7 +64,7 @@ profile 必须已经包含 `@deepseek-ai/dsh-base`，本层会使用其中的 Su
 ## 进一步探索
 
 - [实验性包](../README.zh.md)——孵化状态与发布排除规则。
-- [Agent Teams service](../agent-team/README.zh.md)——持久 roster、消息与任务板行为。
+- [Agent Teams service](../../subagent/agent-team/README.zh.md)——持久 roster、消息与任务板行为。
 - [Agent Teams 工具](../tool-agent-team/README.zh.md)——Team-scoped 模型工具表层。
 - [Base bundle](../../bundle/base/README.zh.md)——本 patch 扩展的 profile 层。
 

@@ -101,6 +101,7 @@ The default artifact is a standard concatenation of independent [Zstandard frame
 |---|---|
 | [`src/index.ts`](src/index.ts) | Plugin entry: `Config` schema, the backend service class, and file storage primitives |
 | [`src/storage.ts`](src/storage.ts) | The JSONL handle, routed live-event buffer, in-process writer bookkeeping, listeners, teardown |
+| [`src/lease.ts`](src/lease.ts) | Cross-process writer exclusion; POSIX loads the optional `fs-ext` flock implementation on demand, while Windows uses its native named-semaphore path without resolving `fs-ext` |
 | [`src/format.ts`](src/format.ts) | Log path derivation, header encoding, and current record scanning |
 | [`src/generation.ts`](src/generation.ts) | Stable generation reads, format-adapter invocation, exclusive successor publication, committed reopen |
 | [`src/zstd.ts`](src/zstd.ts) | Zstandard frame compression, decoding, and frame scanning |

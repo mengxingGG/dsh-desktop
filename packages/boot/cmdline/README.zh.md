@@ -39,6 +39,8 @@ kind: "package-library"
 
 `exitOnStdinEnd(ctx, label)` 把已成功启动的 stdio 应用 EOF 绑定到 `ctx.appExit(0)`。它绝不读取或恢复 stdin，因此协议传输会收到挂载前已缓冲的字节；启动拒绝优先于竞态 EOF，拥有它的 fiber 会移除两项待处理监听。
 
+应用关停协调使用本包声明的类型化 `app/active-work` 和 `app/prepare-exit` 事件。[桌面退出决策](../../../.agents/notes/implemented/feature/2026-09-05-windows-tray-durable-exit.zh.md)负责其生产者与 Agent 的有序准备、错误传播及持久化要求；这些事件不增加面向模型的内容。
+
 ### 解析你的 flag
 
 你自带自己的 commander program：声明你的 flag 与 action，本包会针对内层参数运行它。校验只发生在你的 action 中，并由它发布你的行所需的任何值。插件的 Loader 行不携带特殊标记：

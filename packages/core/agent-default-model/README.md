@@ -47,7 +47,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 ### Read and change the default
 
-`currentSelection()` returns a detached `{ provider, model, reasoningEffort? }` for a newly created agent; `saveSelection()` stores the complete selection for later agents.
+`currentSelection()` returns a detached `{ provider, model, reasoningEffort? }` for a newly created agent; `saveSelection()` stores the complete selection for later agents. An entry point can pass the exact Agent to `currentSelection(agent)` to apply a registered role default. Explicit Session selections and recorded request headers take precedence at the entry point.
 
 ```text
 const selection = ctx.agentDefaultModel.currentSelection()
@@ -75,11 +75,11 @@ The service is a composition entry with a settings-backed source. The plugin con
 | File | Role |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Plugin entry: `AgentDefaultModelConfig` service, settings section install, `currentSelection`/`saveSelection` |
-| — | No runtime invariant companion is published; settings validation owns the only mutable-value relationship. |
+| — | No runtime invariant companion is published; settings validation and exact-Agent resolver registration own their mutable values. |
 
 ### Behavior notes
 
-Both public methods are thin reads and writes over that source: `currentSelection()` returns a fresh detached object so a caller can hold it without aliasing service state, and `saveSelection()` writes the whole selection through `ctx.settings` when present.
+`currentSelection()` returns a fresh detached object, and `saveSelection()` writes the whole selection through `ctx.settings` when present. `register(agent, resolve)` installs one live resolver for that exact Agent; duplicate registration rejects, and the caller owns its disposer through an effect. Resolvers do not write global settings or Session model choices.
 
 </details>
 
@@ -113,7 +113,7 @@ Changing the default affects only agents that subsequently resolve from it. An e
 
 These limits define the service's scope. They are current package constraints, not a task backlog.
 
-- **One process-wide default** — the service owns a single default; per-session model selection remains the entry point's responsibility.
+- **One process-wide settings default** — role resolvers apply only when a caller supplies their exact Agent; per-session model selection remains the entry point's responsibility.
 - **No retention without a settings provider** — `saveSelection()` cannot keep a selection for a later agent when no settings provider is mounted.
 
 <a id="dev-note"></a>

@@ -1,0 +1,144 @@
+- text: Crew 工作台
+- button "关闭 Crew 工作台":
+  - img
+- region "项目状态":
+  - text: 厂长
+  - strong: 等待派工
+  - text: 仓库
+  - strong: {{cwd}}
+- heading "活动工人 0" [level=2]
+- text: 当前没有活动工人
+- heading "已结束工人 2" [level=2]
+- button "alpha 已验收 · …-child-2" [pressed]:
+  - strong: alpha
+  - text: 已验收 · …-child-2
+- button "beta 已验收 · …-child-3":
+  - strong: beta
+  - text: 已验收 · …-child-3
+- region "选择子智能体记录":
+  - button "开发 · …-child-2" [pressed]
+  - button "审查 · …-child-4"
+- region "子智能体实时记录":
+  - heading "子智能体实时记录" [level=3]
+  - paragraph: crew-command-evidence-child-2
+  - status: 子会话记录载入失败
+  - alert: Child Session is unavailable in its parent catalog
+- 'region "模块: alpha"':
+  - heading "alpha" [level=3]
+  - paragraph: 只读证据；此处不能继续工人会话。
+  - term: 阶段
+  - definition: 已验收
+  - term: 角色
+  - definition: 开发
+  - term: 子 Session
+  - definition: …-child-2
+  - term: 原因
+  - definition: Accepted by current passing integration.
+  - term: 变更路径
+  - definition:
+    - list:
+      - listitem: modules/alpha/index.mjs
+  - term: 越界路径
+  - definition: 无
+  - term: 缺失产物
+  - definition: 无
+  - heading "工人报告" [level=4]
+  - paragraph: alpha matches its frozen specification.
+  - heading "宿主验证 · 通过" [level=4]
+  - paragraph: Host verification passed.
+  - heading "测试命令" [level=5]
+  - list:
+    - listitem:
+      - group:
+        - code: node --check index.mjs
+        - term: 工作目录
+        - definition: modules/alpha
+        - term: 退出码
+        - definition: "0"
+        - term: 信号
+        - definition: 无
+        - term: 已超时
+        - definition: 否
+        - heading "标准输出" [level=6]
+        - paragraph: 无输出
+        - heading "标准错误" [level=6]
+        - paragraph: 无输出
+  - heading "审查证据 · 通过" [level=4]
+  - paragraph: alpha matches its frozen specification.
+  - term: 审查轮次
+  - definition: "1"
+  - term: 规格修订
+  - definition: "1"
+  - term: 审查子 Session
+  - definition: …-child-4
+  - term: 验证记录
+  - definition: {{uuid}}
+  - heading "问题" [level=5]
+  - paragraph: 无
+- region "整合证据":
+  - heading "整合证据" [level=3]
+  - paragraph: 通过 · Alpha and repaired beta satisfy the shared interface.
+  - button "整合 · 子智能体实时记录"
+  - term: 整合记录
+  - definition: {{uuid}}
+  - term: 整合子 Session
+  - definition: …-child-7
+  - term: 整合获批路径
+  - definition:
+    - list:
+      - listitem: modules/alpha/index.mjs
+      - listitem: modules/beta/index.mjs
+  - group:
+    - text: 包含的工单
+    - list:
+      - listitem:
+        - term: 工单
+        - definition: task-1
+        - term: 工单修订
+        - definition: "6"
+        - term: 验证记录
+        - definition: {{uuid}}
+        - term: 审查记录
+        - definition: {{uuid}}
+      - listitem:
+        - term: 工单
+        - definition: task-2
+        - term: 工单修订
+        - definition: "10"
+        - term: 验证记录
+        - definition: {{uuid}}
+        - term: 审查记录
+        - definition: {{uuid}}
+  - heading "测试命令" [level=4]
+  - list:
+    - listitem:
+      - group:
+        - code: node --test integration.test.mjs
+        - term: 工作目录
+        - definition: tests
+        - term: 退出码
+        - definition: "0"
+        - term: 信号
+        - definition: 无
+        - term: 已超时
+        - definition: 否
+        - heading "标准输出" [level=6]
+        - region "标准输出": ✔ {{uuid}} value ({{duration}}) ℹ tests 1 ℹ suites 0 ℹ pass 1 ℹ fail 0 ℹ cancelled 0 ℹ skipped 0 ℹ todo 0 ℹ duration_ms 44.162663
+        - heading "标准错误" [level=6]
+        - paragraph: 无输出
+  - heading "问题" [level=4]
+  - paragraph: 无
+- region "提交门禁":
+  - heading "提交门禁" [level=3]
+  - paragraph: "已提交 · feat: verify native Crew workflow"
+  - term: 审批调用
+  - definition: crew-fixture-28
+  - term: 整合记录
+  - definition: {{uuid}}
+  - term: 请求提交路径
+  - definition:
+    - list:
+      - listitem: modules/alpha/index.mjs
+      - listitem: modules/beta/index.mjs
+  - term: 提交哈希
+  - definition: 9d4e276ca31b4de8024eb9b64da95138f06ffc59

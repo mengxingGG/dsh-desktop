@@ -12,6 +12,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-cmdline'
 import { AnonymousEntries, ScopedLayers, scopeOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeLayer } from '@deepseek-ai/dsh-scope'
 import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
@@ -115,6 +116,8 @@ export class LocalJobRegistry extends JobRegistry {
    */
   private readonly layers = new ScopedLayers<JobLayer>(() => new JobLayer(), () => {})
   private listenersClosed = false
+  private shutdown: Promise<void> | undefined
+  private readonly shutdownErrors: unknown[] = []
   /** Owner agents with attached scope cleanup, mapped to the exact disposer. */
   private ownerCleanups = new Map<Agent, () => Promise<void> | void>()
   /** Service context used by detached settlement continuations and teardown. */
@@ -125,10 +128,16 @@ export class LocalJobRegistry extends JobRegistry {
     // Schemastery validates and fills the default before constructing the service.
     this.maxConcurrentJobsPerOwner = (config as Required<Config>).maxConcurrentJobsPerOwner
     this.selfCtx = ctx
-    ctx.effect(() => () => this.disposeAll(), 'jobs teardown')
+    ctx.effect(() => () => this.stop(), 'jobs teardown')
+    ctx.on('app/prepare-exit', async (stage) => {
+      if (stage !== 'producers') return
+      await this.stop()
+      if (this.shutdownErrors.length > 0) throw new AggregateError(this.shutdownErrors, 'jobs shutdown could not verify producer exit')
+    })
   }
 
   start(spec: JobStart): JobId {
+    if (this.listenersClosed) throw new Error('background jobs unavailable: application is stopping')
     if (!this.servesOwner(spec.owner)) {
       throw new Error('background jobs unavailable: no job controller serves this agent (load @deepseek-ai/dsh-tool-jobs in its composition)')
     }
@@ -478,6 +487,10 @@ export class LocalJobRegistry extends JobRegistry {
    * Close listeners, cancel live jobs, await settlement, and detach owner
    * effects. Throwing cancels are force-failed to avoid teardown deadlock.
    */
+  private stop(): Promise<void> {
+    return this.shutdown ??= this.disposeAll()
+  }
+
   private async disposeAll(): Promise<void> {
     // The flag is the whole guard: each layer entry's undo belongs to the fiber
     // that registered it, so this service may not drop them on its own way out.
@@ -523,6 +536,7 @@ export class LocalJobRegistry extends JobRegistry {
         // observer from showing `running` for that whole window.
         this.notifyChanged(job.owner)
       } catch (error: unknown) {
+        this.shutdownErrors.push(error)
         const detail = `cancel threw during teardown; work may be orphaned: ${String(error)}`
         this.selfCtx.logger.warn(`jobs: cancel of ${job.id} threw during teardown; job record forced failed and work may be orphaned: ${String(error)}`)
         this.settle(job, { status: 'failed', detail })

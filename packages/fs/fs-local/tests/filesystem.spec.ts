@@ -8,7 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { constants as bufferConstants } from 'node:buffer'
-import { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, unlink, utimes, writeFile } from 'node:fs/promises'
+import { link, mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, unlink, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -167,6 +167,18 @@ describe('stat', () => {
 })
 
 describe('lstat', () => {
+  it('reports the observed hard-link count instead of treating each path as an independent file', async () => {
+    const original = join(dir, 'original.txt')
+    const alias = join(dir, 'alias.txt')
+    await writeFile(original, 'fixture-only')
+    expect(await fs.lstat('original.txt')).toMatchObject({ type: 'file', linkCount: 1 })
+    await link(original, alias)
+    expect(await fs.lstat('original.txt')).toMatchObject({ type: 'file', linkCount: 2 })
+    expect(await fs.lstat('alias.txt')).toMatchObject({ type: 'file', linkCount: 2 })
+    await unlink(alias)
+    expect(await fs.lstat('original.txt')).toMatchObject({ type: 'file', linkCount: 1 })
+  })
+
   it('reports path metadata without following the final symlink component', async () => {
     await writeFile(join(dir, 'real.txt'), 'hello')
     await symlink(join(dir, 'real.txt'), join(dir, 'link.txt'))

@@ -12,6 +12,9 @@
   ],
   "references": [
     {
+      "path": "../../boot/app-boot"
+    },
+    {
       "path": "../../../vendor/include"
     },
     {

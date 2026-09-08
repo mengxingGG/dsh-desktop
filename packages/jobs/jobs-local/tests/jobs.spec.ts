@@ -110,6 +110,39 @@ function waitResolverCount(ctx: Context, id: JobId): number {
   return job.waitResolvers.size
 }
 
+describe('application exit preparation', () => {
+  it('refuses new jobs and waits for the owned producer completion before acknowledging shutdown', async () => {
+    const ctx = await harness()
+    const work = producer()
+    ctx.jobs.start(work.spec)
+    const stop = ctx.parallel('app/prepare-exit', 'producers')
+    try {
+      expect(work.cancels).toEqual(['jobs service disposed'])
+      expect(() => ctx.jobs.start(producer().spec)).toThrow('application is stopping')
+      expect(ctx.jobs.list()[0]?.status).toBe('stopping')
+    } finally { work.settle({ status: 'killed' }) }
+    await stop
+    expect(ctx.jobs.list()).toEqual([])
+    await ctx.parallel('app/prepare-exit', 'producers')
+    await ctx.parallel('app/prepare-exit', 'agents')
+    await ctx.fiber.dispose()
+  })
+
+  it('does not acknowledge a throwing producer cancellation as a verified stop', async () => {
+    const ctx = await harness()
+    const failure = new Error('producer cancellation failed')
+    const work = producer({ cancel: () => { throw failure } })
+    ctx.jobs.start(work.spec)
+    try {
+      await expect(ctx.parallel('app/prepare-exit', 'producers')).rejects.toMatchObject({ errors: [{ errors: [failure] }] })
+      await expect(ctx.parallel('app/prepare-exit', 'producers')).rejects.toMatchObject({ errors: [{ errors: [failure] }] })
+    } finally {
+      work.settle({ status: 'failed' })
+      await ctx.fiber.dispose()
+    }
+  })
+})
+
 describe('LocalJobRegistry.start', () => {
   it('preserves the SessionId brand on public owner snapshots', () => {
     expectTypeOf<JobSnapshot['ownerSession']>().toEqualTypeOf<SessionId | undefined>()

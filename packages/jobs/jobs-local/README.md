@@ -92,6 +92,8 @@ This section explains the design decisions behind the registry and points at the
 
 ### Teardown
 
+During [application exit preparation](../../../.agents/notes/implemented/feature/2026-09-05-windows-tray-durable-exit.md), the producer phase refuses new jobs and joins the same service teardown. A throwing cancellation still force-fails its record for cleanup, but the preparation request rejects instead of treating that record as proof that its producer stopped.
+
 Owner disposal (`disposeOwned`) cancels the owner's jobs, awaits their settlement, removes their records, and announces the removal — the one visible-set change no per-job record carries. Service disposal (`disposeAll`) closes listeners, cancels all live jobs, awaits settlement, clears the store, announces the emptying to the distinct owners, then detaches the cross-fiber owner-cleanup effects.
 
 </details>

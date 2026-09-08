@@ -3,6 +3,8 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
+import type { Readable } from 'node:stream'
+import { desktopControl } from './control.ts'
 
 const require = createRequire(import.meta.url)
 const READY_PREFIX = 'dsh web:'
@@ -21,7 +23,11 @@ export interface BackendHandle {
   readonly exited: Promise<BackendExit>
   /** Return the bounded combined stdout and stderr captured so far. */
   logs(): string
-  /** Stop the complete backend process tree and wait for exit. */
+  /** Read live task activity through the parent-only backend plugin. */
+  activity(): Promise<boolean>
+  /** Stop and persist before exit; false means active work needs explicit confirmation. */
+  shutdown(confirmed: boolean): Promise<boolean>
+  /** Force-stop the backend tree without a persistence guarantee; startup/error cleanup only. */
   stop(): Promise<void>
 }
 
@@ -35,6 +41,8 @@ export interface BackendStartOptions {
   readonly platform?: NodeJS.Platform
   readonly signal?: AbortSignal
   readonly startupTimeoutMs?: number
+  readonly controlPatch?: string
+  readonly shutdownTimeoutMs?: number
 }
 
 /** Startup failure with the bounded child diagnostics captured before teardown. */
@@ -80,38 +88,59 @@ async function stopProcessTree(
   platform: NodeJS.Platform,
   graceMs = 5_000,
 ): Promise<void> {
-  if (child.exitCode !== null || child.signalCode !== null) return
+  if (child.exitCode !== null || child.signalCode !== null) {
+    await exited
+    return
+  }
   const pid = child.pid
+  if (platform === 'win32' && pid !== undefined) {
+    // Windows maps child.kill() to TerminateProcess; keep the root alive until
+    // taskkill has enumerated its descendants.
+    const stopped = spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], {
+      stdio: 'ignore', windowsHide: true, timeout: graceMs,
+    })
+    if (stopped.error !== undefined) throw stopped.error
+    if (stopped.status !== 0) {
+      throw new Error(`taskkill could not stop the desktop backend tree (${String(stopped.status)})`)
+    }
+    await exited
+    return
+  }
   try {
-    if (platform === 'win32' || pid === undefined) child.kill('SIGTERM')
+    if (pid === undefined) child.kill('SIGTERM')
     else process.kill(-pid, 'SIGTERM')
   } catch {
     // The process may have exited between the state check and the signal.
   }
 
-  const graceful = await Promise.race([
-    exited.then(() => true),
-    new Promise<false>((resolveTimeout) => {
-      setTimeout(() => { resolveTimeout(false) }, graceMs)
-    }),
-  ])
+  let graceTimer: ReturnType<typeof setTimeout> | undefined
+  let graceful: boolean
+  try {
+    graceful = await Promise.race([
+      exited.then(() => true),
+      new Promise<false>((resolveTimeout) => {
+        graceTimer = setTimeout(() => { resolveTimeout(false) }, graceMs)
+      }),
+    ])
+  } finally {
+    clearTimeout(graceTimer)
+  }
   if (graceful) return
 
-  if (platform === 'win32' && pid !== undefined) {
-    spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true })
-  } else {
-    try {
-      if (pid === undefined) child.kill('SIGKILL')
-      else process.kill(-pid, 'SIGKILL')
-    } catch {
-      // A concurrent natural exit already reached the requested quiescence.
-    }
+  try {
+    if (pid === undefined) child.kill('SIGKILL')
+    else process.kill(-pid, 'SIGKILL')
+  } catch {
+    // A concurrent natural exit already reached the requested quiescence.
   }
   await exited
 }
 
 /** Start `dsh web` on an OS-selected loopback port and wait for its settled URL line. */
 export async function startBackend(options: BackendStartOptions = {}): Promise<BackendHandle> {
+  if (options.signal?.aborted === true) {
+    throw new BackendStartupError('dsh web startup was cancelled', '', options.signal.reason)
+  }
   const platform = options.platform ?? process.platform
   const executable = options.executable ?? process.execPath
   const argsPrefix = options.argsPrefix ?? ['--expose-internals', options.cliPath ?? resolveDshCliPath()]
@@ -119,13 +148,15 @@ export async function startBackend(options: BackendStartOptions = {}): Promise<B
     ...options.environment ?? process.env,
     ELECTRON_RUN_AS_NODE: '1',
   }
-  const child = spawn(executable, [...argsPrefix, 'web', '--no-open', '--host', '127.0.0.1', '--port', '0'], {
+  const controlPatch = options.controlPatch === undefined ? [] : ['--patch', options.controlPatch]
+  const child = spawn(executable, [...argsPrefix, 'web', ...controlPatch, '--no-open', '--host', '127.0.0.1', '--port', '0'], {
     ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
     detached: platform !== 'win32',
     env: environment,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     windowsHide: true,
   })
+  const control = desktopControl(child, options.shutdownTimeoutMs ?? 30_000)
 
   let log = ''
   let stdoutRemainder = ''
@@ -153,9 +184,12 @@ export async function startBackend(options: BackendStartOptions = {}): Promise<B
     }
   }
 
-  child.stdout.setEncoding('utf8')
-  child.stderr.setEncoding('utf8')
-  child.stdout.on('data', (chunk: string) => {
+  // Both streams are explicitly piped; Node's four-entry IPC overload loses that narrowing.
+  const stdout = child.stdout as Readable
+  const stderr = child.stderr as Readable
+  stdout.setEncoding('utf8')
+  stderr.setEncoding('utf8')
+  stdout.on('data', (chunk: string) => {
     log = appendBoundedLog(log, chunk)
     stdoutRemainder += chunk
     const lines = stdoutRemainder.split(/\r?\n/)
@@ -168,11 +202,11 @@ export async function startBackend(options: BackendStartOptions = {}): Promise<B
       }
     }
   })
-  child.stderr.on('data', (chunk: string) => {
+  stderr.on('data', (chunk: string) => {
     log = appendBoundedLog(log, chunk)
   })
   child.once('error', (error) => { finishExit({ exitCode: null, signal: null, error }) })
-  child.once('exit', (exitCode, signal) => { finishExit({ exitCode, signal }) })
+  child.once('close', (exitCode, signal) => { finishExit({ exitCode, signal }) })
 
   const abortStartup = (): void => {
     if (readySettled) return
@@ -187,6 +221,8 @@ export async function startBackend(options: BackendStartOptions = {}): Promise<B
     readySettled = true
     rejectReady?.(new Error(`dsh web did not report a URL within ${String(timeoutMs)} ms`))
   }, timeoutMs)
+  let stopping: Promise<void> | undefined
+  const stop = (): Promise<void> => stopping ??= stopProcessTree(child, exited, platform)
 
   try {
     const url = await ready
@@ -194,10 +230,18 @@ export async function startBackend(options: BackendStartOptions = {}): Promise<B
       url,
       exited,
       logs: () => log,
-      stop: async () => stopProcessTree(child, exited, platform),
+      activity: () => control.activity(),
+      shutdown: async (confirmed) => {
+        if (!await control.shutdown(confirmed)) return false
+        // The backend holds its root PID after saving so Windows can enumerate
+        // and terminate the complete tree, including unregistered descendants.
+        await stop()
+        return true
+      },
+      stop,
     }
   } catch (error) {
-    await stopProcessTree(child, exited, platform)
+    await stop()
     throw new BackendStartupError(error instanceof Error ? error.message : String(error), log, error)
   } finally {
     clearTimeout(timeout)

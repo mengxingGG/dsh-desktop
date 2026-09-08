@@ -60,6 +60,40 @@ function disposeCurrentLifecycle(ownerCtx: Context): void {
   void lifecycle()
 }
 
+describe('application exit preparation', () => {
+  it('detects between-turn maintenance and waits for its cancellation before releasing Agents', async () => {
+    const ctx = await harness()
+    const handle = await ctx.agents.create({ sessionId: SessionId('desktop-maintenance') })
+    const aborted = Promise.withResolvers<undefined>()
+    const released = Promise.withResolvers<undefined>()
+    const maintenance = handle.agent.runMaintenance(async (signal) => {
+      signal.addEventListener('abort', () => { aborted.resolve(undefined) }, { once: true })
+      await released.promise
+    })
+    let stop: Promise<void> | undefined
+    try {
+      expect(handle.agent.status).toBe('idle')
+      expect(ctx.bail('app/active-work')).toBe(true)
+      await ctx.parallel('app/prepare-exit', 'producers')
+      expect(ctx.agents.get(handle.agent.id)).toBe(handle.agent)
+      stop = ctx.parallel('app/prepare-exit', 'agents')
+      await aborted.promise
+      expect(ctx.agents.get(handle.agent.id)).toBe(handle.agent)
+      await expect(ctx.agents.create({ sessionId: SessionId('desktop-too-late') })).rejects.toThrow('not active')
+      released.resolve(undefined)
+      await stop
+      expect(ctx.agents.list()).toEqual([])
+      expect(ctx.bail('app/active-work')).toBeUndefined()
+      await ctx.parallel('app/prepare-exit', 'agents')
+    } finally {
+      released.resolve(undefined)
+      await maintenance
+      await stop
+      await ctx.fiber.dispose()
+    }
+  })
+})
+
 describe('agent scope lifecycle', () => {
   it('rejects an already-aborted creation signal before publishing either object', async () => {
     const ctx = await harness()

@@ -40,4 +40,4 @@ pwsh GUI 渲染已随 [pwsh UI 呈现与 bash 对齐决策](2026-08-05-pwsh-ui-b
 
 - 单元：`apps/cli/tests/windows-shell.spec.ts` 通过启动所用的 patch 算法组合真实交付的 bundle 层（从应用安装解析的 dsh-base + dsh-web-app），固定每个平台的有效清单——win32 pwsh 清单、POSIX bash 清单与 base-only profile——外加预设级 shell 工具门控（`tool-bash`/`tool-pwsh`）与冷启动解析闭包；`packages/bundle/base/tests/base.spec.ts` 固定四个 shell 行的对称 `!!js` 平台门控，并断言不再交付独立的平台 patch。
 - Keyless：`dsh --profile <name> --dump-config` 在同一份共享 patch 层中显示两个栈，每个行以自己的 `disabled` 表达式在挂载时决定清单。
-- 真实组合冒烟在 win32 上启动 web profile，pwsh 栈挂载成功（即本笔记描述的确切清单）。
+- [交付版 Web 组合测试](../../../../apps/web/tests/shipped-composition.e2e.ts)在原生 Windows 上启动 Web profile，检查工具清单包含 `pwsh` 且不包含 `bash`，并通过宿主注册表的 `job_list` 与 `job_output` 工具验证预设生产者。预期 shell 由宿主平台决定，不从实际观察到的工具清单推导，因此默认工具缺失或错误都会让测试失败。

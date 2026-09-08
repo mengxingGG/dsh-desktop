@@ -31,6 +31,7 @@ import type { RequestListener } from './transport/synthetic-http.ts'
 import { TunnelServer, type TunnelPort } from './transport/tunnel.ts'
 import { inflateImage, inflateImageStream } from './storage/image-gzip.ts'
 import { loadVfsImage, loadVfsOverlay, MemoryVfs } from './storage/memory.ts'
+import { requireLoweredImage } from './storage/image-compatibility.ts'
 import { setActiveVfs } from './storage/active.ts'
 import {
   DEFAULT_ROOT, IMAGE_CONFIG_PATH, IMAGE_EMPTY_DIRECTORIES, IMAGE_HOME_DIRECTORY, IMAGE_MANIFEST_PATH,
@@ -320,30 +321,6 @@ export function installLogSink(ctx: HostContext, require: (specifier: string) =>
     },
   }
   ctx.logger.exporter(exporter)
-}
-
-/**
- * Require the mounted image to carry bodies this build can wrap.
- *
- * The manifest the packer writes is the single source of truth: the worker holds
- * no transform, so an image that was never lowered — or was lowered against
- * different wrapper semantics — cannot be recovered at load and must be rebuilt.
- * @param vfs - Mounted filesystem.
- * @param path - Manifest path inside the image.
- * @throws When the manifest is missing, unreadable, or names another contract.
- */
-function requireLoweredImage(vfs: MemoryVfs, path: string): void {
-  if (!vfs.existsSync(path)) {
-    throw new Error(`webworker host: ${path} is missing, so the image records no lowering; rebuild the image`)
-  }
-  const parsed: unknown = JSON.parse(vfs.readFileSync(path, 'utf8') as string)
-  if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error(`webworker host: ${path} does not hold an object`)
-  }
-  const lowered = (parsed as { lowered?: unknown }).lowered
-  if (lowered !== LOWERING_VERSION) {
-    throw new Error(`webworker host: image was lowered by ${String(lowered)}, this build runs ${LOWERING_VERSION}; rebuild the image`)
-  }
 }
 
 /**

@@ -8,31 +8,21 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Scoped } from '@deepseek-ai/dsh-scope'
 import type {
-  LlmAttemptId, LlmCallConfig, LlmFailure, ReasoningEffortId, ResolvedRetryPolicy, StreamChunk,
+  LlmAttemptId, LlmCallConfig, LlmFailure, ResolvedRetryPolicy, StreamChunk,
 } from '@deepseek-ai/dsh-llm'
 import type { AgentCancelCause, Session, SessionSeq, UserMessage } from '@deepseek-ai/dsh-session'
 export type { AgentCancelCause } from '@deepseek-ai/dsh-session'
 import type { Inbox } from './inbox.ts'
 import type { Agent } from './types.ts'
 export type { Agent } from './types.ts'
+import type { AgentOptions } from './options.ts'
+export type { AgentOptions } from './options.ts'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 declare module '@deepseek-ai/dsh-system-prompt' {
   interface AssembleContext {
     /** Agent for this assembly; absent on diagnostics. When present, `scope` must identify the same agent. */
     agent?: Agent
   }
-}
-
-/** Merge-extensible agent creation options. Persona belongs to system-prompt sections. */
-export interface AgentOptions {
-  /** Provider route (must have a registered adapter at call time). */
-  provider?: string
-  /** Model id interpreted by the selected provider adapter. */
-  model?: string
-  /** Adapter-owned reasoning effort for the selected provider/model route. */
-  reasoningEffort?: ReasoningEffortId
-  /** Maximum output tokens for each conversation-model request. */
-  maxTokens?: number
 }
 
 /** Options for {@link Agent.cancel}. */

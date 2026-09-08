@@ -11,7 +11,7 @@ import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type { AgentContext } from '../scope.ts'
 import type { SessionSearchResultItem } from '../sessions/manager.ts'
-import type { SessionBinding, SessionListState } from '../sessions/service.ts'
+import type { SessionBinding, SessionListState, SessionObservation } from '../sessions/service.ts'
 import type { SessionFace } from './session.ts'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 
@@ -47,6 +47,12 @@ export interface ISessions {
    * @param address - catalog-derived parent and child ids.
    */
   openSubagent(address: SubagentAddress): void
+  /**
+   * Follow a catalog child without changing or persisting the current selection.
+   * @param address - exact healthy direct-parent address from the catalog.
+   * @returns a reference-counted observation; dispose it when its view closes.
+   */
+  observeSubagent(address: SubagentAddress): SessionObservation
   /**
    * Resolve an already discovered direct-parent address without opening it.
    * @param id - possible addressed child id.

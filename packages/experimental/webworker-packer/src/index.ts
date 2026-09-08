@@ -11,6 +11,6 @@ export {
   type ConfigTree, type ImageTree, type PackOptions, type PackOverlayResult, type PackResult,
 } from './pack.ts'
 export {
-  composeProfile, configTrees, describePack, indexWorkspacePackages, previewFixtures,
-  type PreviewFixture,
+  withComposedProfile, configTrees, describePack, indexWorkspacePackages, previewFixtures,
+  type ComposedProfile, type PreviewFixture,
 } from './repository.ts'

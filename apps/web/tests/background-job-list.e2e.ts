@@ -17,14 +17,15 @@ import {
 import { newEnglishPage, saveFailureShot } from './support.ts'
 
 const FIXTURE = fileURLToPath(new URL('../../../snapshots/web/fresh-round-trip/session.v2.jsonl', import.meta.url))
-const SNAPSHOT_DIR = fileURLToPath(new URL('../../../snapshots/web/background-job-list', import.meta.url))
-const RUNNING_EXPECTED = join(SNAPSHOT_DIR, 'running.expected.md')
-const SETTLED_EXPECTED = join(SNAPSHOT_DIR, 'settled.expected.md')
+const EXPECTED_DIR = fileURLToPath(new URL('./expected/background-job-list', import.meta.url))
+const SHELL_TOOL = process.platform === 'win32' ? 'pwsh' : 'bash'
+const EXPECTED_SUFFIX = process.platform === 'win32' ? '.win32.expected.md' : '.expected.md'
+const RUNNING_EXPECTED = join(EXPECTED_DIR, `running${EXPECTED_SUFFIX}`)
+const SETTLED_EXPECTED = join(EXPECTED_DIR, `settled${EXPECTED_SUFFIX}`)
 const MODE = webSnapshotMode()
 const SEED_ID = 'background-job-list-web-e2e'
-// Long enough that the running assertions never race the process exiting on
-// their own; the test kills it explicitly to reach the settled state.
-const COMMAND = 'sleep 45'
+// The Windows probe waits for explicit cancellation; POSIX keeps its recorded command.
+const COMMAND = process.platform === 'win32' ? 'Wait-Event' : 'sleep 45'
 
 /**
  * Wait for opening a session to publish its live Agent.
@@ -86,13 +87,14 @@ describe.skipIf(MODE === 'record')('web e2e: background job list', () => {
     const started = await scaffold.ctx.tools.execute({
       signal: new AbortController().signal,
       callId: ToolCallId('background-job-list-e2e'),
-      name: 'bash',
+      name: SHELL_TOOL,
       arguments: { command: COMMAND, description: 'Hold a background slot open', run_in_background: true },
       agent,
     })
+    expect(started.isError).toBe(false)
     const reported = started.content.map(block => block.type === 'text' ? block.text : '').join('')
-    const matched = /\bbash-\d+\b/.exec(reported)
-    if (matched === null) throw new Error(`background bash reported no job id: ${reported}`)
+    const matched = new RegExp(`\\b${SHELL_TOOL}-\\d+\\b`).exec(reported)
+    if (matched === null) throw new Error(`background ${SHELL_TOOL} reported no job id: ${reported}`)
     jobId = JobId(matched[0])
 
     await trigger.waitFor({ timeout: 15_000 })
@@ -110,6 +112,9 @@ describe.skipIf(MODE === 'record')('web e2e: background job list', () => {
   it('flips the open list to the cancelled outcome when the registry settles it', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-background-job-settled'))
     expect(scaffold.ctx.jobs.kill(jobId, agent, 'web e2e cancellation')).toBe('requested')
+    expect(await scaffold.ctx.jobs.wait(jobId, 20_000, agent)).toMatchObject({
+      id: jobId, kind: SHELL_TOOL, label: COMMAND, status: 'killed',
+    })
 
     const idle = page.getByRole('button', { name: '1 background job', exact: true })
     await idle.waitFor({ timeout: 20_000 })
@@ -121,6 +126,9 @@ describe.skipIf(MODE === 'record')('web e2e: background job list', () => {
   }, 60_000)
 
   it('keeps its snapshot inventory closed', async () => {
-    await assertFixtureInventory(SNAPSHOT_DIR, ['running.expected.md', 'settled.expected.md'])
+    await assertFixtureInventory(EXPECTED_DIR, [
+      'running.expected.md', 'running.win32.expected.md',
+      'settled.expected.md', 'settled.win32.expected.md',
+    ])
   })
 })

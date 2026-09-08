@@ -37,9 +37,9 @@ export const IMAGE_OVERLAY_DIRECTORIES: readonly string[] = ['home', 'workspace'
  * Identity of the lowered code shape, recorded in the image manifest by the
  * packer and required by the worker host: an image lowered by an older transform
  * would otherwise run against newer wrapper semantics. Bump on any change to
- * emitted code or to {@link WRAPPER_PARAMS}.
+ * emitted code, {@link WRAPPER_PARAMS}, or required image module-resolution semantics.
  */
-export const LOWERING_VERSION = 'dsh-worker-transform/1'
+export const LOWERING_VERSION = 'dsh-worker-transform/2'
 
 /**
  * Free variables a lowered body expects from its wrapper, in order.

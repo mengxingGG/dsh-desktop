@@ -216,6 +216,22 @@ interface SubagentSettledMessageSource {
 }
 ```
 
+A product workflow may replace this generic notice with a workflow-owned durable notification. Before delivery, the runtime offers the following identity record through the `subagent/settlement-notice` bail event. Returning `true` suppresses only the generic parent notice; returning nothing preserves it.
+
+```ts type-equiv
+/** Identity and terminal reason offered before a continuable settlement notice reaches its parent. */
+interface SubagentSettlementNoticeInfo {
+  /** Durable direct parent that would receive the notice. */
+  readonly parentSessionId: SessionId
+  /** Durable continuable child that settled. */
+  readonly childSessionId: SessionId
+  /** Provider recorded for the child Activation. */
+  readonly provider: string
+  /** Terminal outcome of the settling Activation. */
+  readonly stopReason: SubagentResult['stopReason']
+}
+```
+
 The provider participates only in preparing the initial creation spec, where `spawn` and `fork` differ. Its returned spec carries only detached provider-specific creation inputs — the optional parent-history seed — and no Agent, `AgentHandle`, prompt delivery, result, disposal, or resume operation. Cold resume does not dispatch through a provider at all: the manager folds the generic descriptor, calls `ctx.agents.resume()` through the same activation-owner scope, and submits the waiting turn.
 
 ```ts type-equiv
@@ -736,6 +752,25 @@ A provider left the registry. Accepted runs remain holder-owned.
  * @mode emit
  */
 'subagent/provider-removed'(name: string): void
+```
+
+Source: [`packages/subagent/subagent/src/index.ts`](../../packages/subagent/subagent/src/index.ts)
+
+<a id="subagentsettlement-notice--bail"></a>
+
+#### `subagent/settlement-notice` — bail
+
+Let a product workflow suppress the generic parent notice for a child it durably owns and replaces with its own recorded notification. Returning `true` suppresses only that notice; absence preserves default delivery.
+
+```ts cordis-catalog
+/**
+ * Let a product workflow suppress the generic parent notice for a child it
+ * durably owns and replaces with its own recorded notification. Returning
+ * `true` suppresses only that notice; absence preserves default delivery.
+ * @param info - Parent, child, provider, and terminal outcome identity.
+ * @mode bail
+ */
+'subagent/settlement-notice'(info: SubagentSettlementNoticeInfo): true | void
 ```
 
 Source: [`packages/subagent/subagent/src/index.ts`](../../packages/subagent/subagent/src/index.ts)

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   assertFixtureInventory,
+  normalizeWebAria,
   recordedSessionFixturePath,
   selectedSessionFixture,
 } from './scaffold.ts'
@@ -15,6 +16,15 @@ afterEach(async () => {
 })
 
 describe('Web snapshot generation filenames', () => {
+  it.each([
+    '/tmp/dsh-web-e2e-ws-owned',
+    String.raw`C:\Temp\dsh-web-e2e-ws-owned`,
+  ])('stabilizes the owned workspace basename and both separator spellings: %s', (cwd) => {
+    const snapshot = `heading "dsh-web-e2e-ws-owned"\n${cwd}\n${cwd.replaceAll('\\', '/')}`
+    expect(normalizeWebAria(snapshot, cwd, false))
+      .toBe('heading "{{workspace}}"\n{{cwd}}\n{{cwd}}')
+  })
+
   it('selects the highest parent and child generations without counting retained inputs twice', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-web-fixture-generations-'))
     roots.push(root)

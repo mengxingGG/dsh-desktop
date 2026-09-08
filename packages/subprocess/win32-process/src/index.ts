@@ -11,9 +11,12 @@ export {
   isNullPtr,
   throwLastError,
   throwWin32,
+  STARTUPINFOW,
+  PROCESS_INFORMATION,
 } from './ffi.ts'
 export type {
   NativePtr,
+  ProcessInfoOutput,
   Win32ProcessBindings,
 } from './ffi.ts'
 export {
@@ -21,6 +24,7 @@ export {
   spawnInheritedJobProcess,
   spawnPipedProcess,
   waitForProcessExit,
+  buildCommandLine,
 } from './process.ts'
 export type {
   SpawnedJobProcess,

@@ -115,7 +115,7 @@ abstract onJobsChanged(listener: JobsChangedListener): () => void
 
 ## 测试
 
-[web e2e 场景](../../../../apps/web/tests/background-job-list.e2e.ts)是端到端的证据，且无需密钥：一次真实的 `run_in_background` bash 调用注册进 `ctx.jobs`，header 的计数与行在没有任何用户操作的情况下出现，通过注册表杀掉该任务后打开着的列表翻到生产者给出的 detail。它断言的是整条投递链路，而不是其中某一层。
+无需密钥的 [Web e2e 场景](../../../../apps/web/tests/background-job-list.e2e.ts)调用交付版原生 shell（Windows 上的 `pwsh`、POSIX 上的 `bash`），观察 header 计数无需刷新即可更新，再打开任务列表。测试通过 `ctx.jobs` 杀掉所属任务，等待注册表快照达到 `killed`，并检查打开着的列表所显示的生产者 detail。[各平台的预期输出](../../../../apps/web/tests/expected/background-job-list/)放在测试旁，因为借用的 Session 只提供浏览器初始状态，不提供后台任务；Windows 保留其原生取消详情，不把它改写成 POSIX 信号。
 
 在它之下，[`jobs-local`](../../../../packages/jobs/jobs-local/tests/jobs.spec.ts) 钉住变更订阅的全部四个提交点、对抛错观察者的包容，以及显式销毁与 fiber 拆除两条路径上的注销；[`control-jobs`](../../../../packages/api/session-controller/tests/control-jobs.host.spec.ts) 钉住完整 baseline、三次变更推送、被丢弃的内部字段、无主扇出、不 resume 的保证、没有注册表的组合，以及不得消费模型输出；客户端各套件钉住 baseline 替换、last-wins 折叠、缺失键表示、移除清理，以及组件的排序、时长与关闭行为。
 

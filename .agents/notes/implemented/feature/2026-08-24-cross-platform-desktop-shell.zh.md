@@ -12,7 +12,7 @@ Web profile 已经是完整产品界面，但在本机使用它仍需运行终�
 
 ## Decision
 
-`apps/desktop` 是现有 Web profile 的 Electron 宿主。其主进程拥有一个启用沙箱的浏览器窗口和一个隐藏子进程，后者运行 `dsh web --no-open --host 127.0.0.1 --port 0`。桌面壳等待 Web 组合包在启动后输出回环 URL，只在收到该就绪信号后导航，捕获有界诊断，并在应用关闭完成前终止完整子进程树。
+`apps/desktop` 是现有 Web profile 的 Electron 宿主。其主进程拥有一个启用沙箱的浏览器窗口和一个隐藏子进程，后者运行 `dsh web --no-open --host 127.0.0.1 --port 0`。桌面壳等待 Web 组合包在启动后输出回环 URL，只在收到该就绪信号后导航，捕获有界诊断，并遵循[确认后的持久退出协议](2026-09-05-windows-tray-durable-exit.zh.md)后终止完整子进程树。隐藏窗口会保持后端运行。
 
 在 Windows 和 Linux 上，常规 `pnpm run build` 会在仓库根目录生成当前宿主平台的直接运行产物。该产物包含 Electron，但不包含 dsh 运行时。它定位已构建检出目录、选择兼容的系统 Node.js 可执行文件，并启动 `apps/cli/lib/bin.js`；双击即可同时替代 CLI 启动命令和外部浏览器，同时仍以检出目录作为可执行产品代码的来源。其他宿主平台会完成核心与 Web 构建，不尝试创建桌面产物。
 

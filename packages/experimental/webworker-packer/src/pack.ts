@@ -26,6 +26,7 @@ import yaml from 'js-yaml'
 import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import { REPLACED_EXTERNAL_PACKAGES } from '@deepseek-ai/dsh-experimental-webworker-runtime/src/node/external_packages/replaced-externals.ts'
 import { MODULE_PROXIES, MODULE_PROXY_PREFIXES } from '@deepseek-ai/dsh-experimental-webworker-runtime/src/module-proxies.ts'
+import { packageSearchPaths } from '@deepseek-ai/dsh-experimental-webworker-runtime/src/module-system/package-paths.ts'
 import { WRAPPER_CONTRACT, type ImageFiles, type TransformOutcome } from './transform-image.ts'
 import { EXCLUDE, EXCLUDE_WORKSPACE, IMAGE_ENTRY_SEEDS, PAGE_ASSETS } from './rules.ts'
 
@@ -81,8 +82,10 @@ export interface PackOptions {
   readonly root?: string
   /** Package name to absolute directory, for workspace and vendored packages. */
   readonly workspaces: ReadonlyMap<string, string>
-  /** Directory Node-style dependency resolution walks up from for the roster. */
+  /** Repository directory for dependency resolution and debugger-relative paths. */
   readonly resolveFrom: string
+  /** Profile directory for roster resolution; defaults to `resolveFrom`. Transitive imports use their package directory. */
+  readonly rosterResolveFrom?: string
   /** Config trees to copy in beside the composition. */
   readonly configTrees?: readonly ConfigTree[]
   /** Empty directories to create; defaults to `home/`, `workspace/`, `tmp/`. */
@@ -100,7 +103,7 @@ export interface PackResult {
   readonly image: Uint8Array
   /** Every entry, before zipping; the manifest is already among them. */
   readonly files: ImageFiles
-  /** Package name to how many files it contributed, in materialization order. */
+  /** Installation path under `node_modules` to file count; top-level keys are package names. */
   readonly packages: ReadonlyMap<string, number>
   /** How many of them came from the workspace rather than from `node_modules`. */
   readonly workspacePackages: number
@@ -216,9 +219,9 @@ function resolveDependency(fromDirectory: string, name: string): string | undefi
 }
 
 /**
- * Collect files under one directory. Traversal mechanics live here — nested
- * package/config collection flattens nested `node_modules` and prunes dot
- * directories, while seed collection preserves every directory. Every file
+ * Collect files under one directory. Package/config collection skips package-manager
+ * directories; materialization installs each resolved dependency separately.
+ * Seed collection preserves every directory. Every file
  * judgement comes in through `keep` (the {@link EXCLUDE} tables and the npm
  * publish view, or an unconditional seed predicate).
  * @param root - Source directory.
@@ -284,11 +287,9 @@ interface SweepOutcome {
 /**
  * Keep only the JavaScript the worker can reach, transforming it on the way.
  *
- * Roots are the export faces of every materialized workspace and vendored
- * package — the harness addresses them by constructed name at runtime (Loader
- * rows, typert faces, delegating providers such as `-auto` pickers), so the
- * sweep prunes files only inside third-party packages — plus the worker
- * assembly's own image entries. Resolution runs the runtime loader's own
+ * Roots include every roster package, all materialized workspace export faces,
+ * and the worker assembly's own entries. Loader rows may name third-party
+ * plugins without any static import from another package. Resolution runs the runtime loader's own
  * algorithm over the candidate set, so pack-time reachability and boot-time
  * resolution cannot drift, and a request that resolves nowhere — an undeclared
  * or missing dependency — fails the pack rather than the boot.
@@ -299,7 +300,7 @@ interface SweepOutcome {
  * this pass cannot see.
  * @param files - Candidate entries after the publish-view filter.
  * @param options - Pack options carrying the sweep roots.
- * @param rootPackages - Roster package names from the workspace.
+ * @param rootPackages - Roster packages and materialized workspace packages.
  * @param root - Virtual root the candidates mount under.
  * @returns The final entries plus the sweep's counts.
  */
@@ -386,11 +387,12 @@ function sweepImage(
     }
     // Every non-wildcard face is a root; a face resolving onto a page asset is
     // kept untransformed below rather than excluded here.
-    const subpaths = manifest.exports === undefined
-      ? ['.']
-      : Object.keys(manifest.exports).filter(key => key.startsWith('.') && !key.includes('*'))
+    const exportKeys = Object.keys(manifest.exports ?? {})
+    const subpaths = exportKeys.some(key => key.startsWith('.'))
+      ? exportKeys.filter(key => key.startsWith('.') && !key.includes('*'))
+      : ['.']
     for (const subpath of subpaths) {
-      queue.push({ specifier: subpath === '.' ? name : `${name}/${subpath.slice(2)}`, from: root, importer: `workspace face ${name}` })
+      queue.push({ specifier: subpath === '.' ? name : `${name}/${subpath.slice(2)}`, from: root, importer: `package face ${name}` })
     }
   }
 
@@ -412,7 +414,8 @@ function sweepImage(
       // philosophy instead — platform-dispatch branches the worker never
       // evaluates may request node-only modules, and such a request fails loud
       // at require time if it ever runs.
-      const external = importer.startsWith('node_modules/') && !importer.startsWith('node_modules/@deepseek-ai/')
+      const importerPackage = packageNameOf(importer.slice(importer.lastIndexOf('node_modules/') + 'node_modules/'.length))
+      const external = importer.startsWith('node_modules/') && !options.workspaces.has(importerPackage)
       // A meta-resolve request is a URL mapping, not a load: a missing target
       // is tolerable from any importer — the call throws if it ever runs.
       if (external || entry.meta === true) tolerated.add(`${importer}: "${specifier}"`)
@@ -511,18 +514,33 @@ function materialize(
   const packages = new Map<string, number>()
   const missing: string[] = []
   const replaced = new Set(REPLACED_EXTERNAL_PACKAGES)
-  const queue: { name: string; from: string }[] = roster.map(name => ({ name, from: options.resolveFrom }))
+  const rosterResolveFrom = options.rosterResolveFrom ?? options.resolveFrom
+  const root = options.root ?? DEFAULT_ROOT
+  const imagePrefixLength = root.replace(/\/+$/, '').length + 1
+  const installations = new Map<string, string>()
+  const queue: { name: string; from: string; parent?: string }[] = roster.map(name => ({ name, from: rosterResolveFrom }))
 
   for (let entry = queue.shift(); entry !== undefined; entry = queue.shift()) {
-    const { name, from } = entry
-    if (packages.has(name) || replaced.has(name)) continue
-    const directory = options.workspaces.get(name) ?? resolveDependency(from, name)
-    if (directory === undefined) {
+    const { name, from, parent } = entry
+    if (replaced.has(name)) continue
+    const resolved = options.workspaces.get(name) ?? resolveDependency(from, name)
+    if (resolved === undefined) {
       missing.push(`${name} (from ${relative(options.resolveFrom, from) || '.'})`)
       continue
     }
+    const directory = realpathSync(resolved)
+    const candidates = parent === undefined
+      ? [`node_modules/${name}`]
+      : packageSearchPaths(`${root}/${parent}`, root).map(path => `${path.slice(imagePrefixLength)}/${name}`)
+    const visible = candidates.find(path => installations.has(path))
+    // Keep shared installations when they resolve to the same package directory.
+    // Conflicting installed versions belong below their own importer, as in Node.
+    const prefix = visible === undefined || installations.get(visible) === directory
+      ? visible ?? `node_modules/${name}`
+      : `${parent}/node_modules/${name}`
+    if (installations.has(prefix)) continue
+    installations.set(prefix, directory)
     const manifest = readJson(join(directory, 'package.json'))
-    const prefix = `node_modules/${name}`
     const before = Object.keys(files).length
     if (options.workspaces.has(name)) {
       // A workspace package ships the slice npm would publish — `files`
@@ -535,7 +553,7 @@ function materialize(
     } else {
       collectTree(directory, files, prefix, relativePath => !excluded(relativePath))
     }
-    packages.set(name, Object.keys(files).length - before)
+    packages.set(prefix.slice('node_modules/'.length), Object.keys(files).length - before)
     for (const field of ['dependencies', 'peerDependencies'] as const) {
       // npm semantics: a peer is provided by the consumer. For an external
       // package the consumer is the page (react behind the prebuilt client
@@ -546,7 +564,7 @@ function materialize(
       if (field === 'peerDependencies' && !options.workspaces.has(name)) continue
       const dependencies = manifest[field]
       if (typeof dependencies !== 'object' || dependencies === null) continue
-      for (const dependency of Object.keys(dependencies)) queue.push({ name: dependency, from: directory })
+      for (const dependency of Object.keys(dependencies)) queue.push({ name: dependency, from: directory, parent: prefix })
     }
   }
   return { files, packages, missing }
@@ -609,7 +627,7 @@ export function packVfsImage(options: PackOptions): PackResult {
   for (const tree of configTrees) collectTree(tree.directory, files, tree.mount, relativePath => !excluded(relativePath))
 
   const executables = dropExecutables(files)
-  const rootPackages = [...packages.keys()].filter(name => options.workspaces.has(name))
+  const rootPackages = [...new Set([...roster, ...[...packages.keys()].filter(name => options.workspaces.has(name))])]
   const { swept, transform, javascriptEntries, droppedJavascriptEntries, unresolvedExternalRequests } =
     sweepImage(files, options, rootPackages, root)
 

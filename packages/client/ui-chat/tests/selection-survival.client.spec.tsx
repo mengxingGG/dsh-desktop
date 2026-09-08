@@ -37,10 +37,10 @@ describe('Chat selection survives on its store seat', () => {
     await b.runtime.sessions.add({ id: 's1' })
     const chat = storeFor(b, 'conversation.view', sid('s1'))
     const details = storeFor(b, 'details', sid('s1'))
-    chat.actions.select({ turnSeq: 3, callId: 'c1' })
+    chat.actions.select({ kind: 'tool', turnSeq: 3, callId: 'c1' })
 
     expect(details).toBe(chat)
-    expect(details.store.getSnapshot().selection).toEqual({ turnSeq: 3, callId: 'c1' })
+    expect(details.store.getSnapshot().selection).toEqual({ kind: 'tool', turnSeq: 3, callId: 'c1' })
     await b.runtime.dispose()
   })
 
@@ -51,14 +51,14 @@ describe('Chat selection survives on its store seat', () => {
     await b.runtime.sessions.add({ id: 's2' })
     const one = storeFor(b, 'conversation.view', oneId)
     const two = storeFor(b, 'conversation.view', sid('s2'))
-    one.actions.select({ turnSeq: 1, callId: 'a' })
-    two.actions.select({ turnSeq: 9, callId: 'z' })
+    one.actions.select({ kind: 'tool', turnSeq: 1, callId: 'a' })
+    two.actions.select({ kind: 'tool', turnSeq: 9, callId: 'z' })
 
     await b.runtime.sessions.updateSummary(oneId, { displayTitle: 'projected' })
 
     expect(storeFor(b, 'conversation.view', oneId)).toBe(one)
-    expect(one.store.getSnapshot().selection).toEqual({ turnSeq: 1, callId: 'a' })
-    expect(two.store.getSnapshot().selection).toEqual({ turnSeq: 9, callId: 'z' })
+    expect(one.store.getSnapshot().selection).toEqual({ kind: 'tool', turnSeq: 1, callId: 'a' })
+    expect(two.store.getSnapshot().selection).toEqual({ kind: 'tool', turnSeq: 9, callId: 'z' })
     await b.runtime.dispose()
   })
 
@@ -66,7 +66,7 @@ describe('Chat selection survives on its store seat', () => {
     const b = await createBench()
     await b.runtime.sessions.add({ id: 's1' })
     const doomed = storeFor(b, 'conversation.view', sid('s1'))
-    doomed.actions.select({ turnSeq: 1 })
+    doomed.actions.select({ kind: 'tool', turnSeq: 1 })
 
     await b.runtime.sessions.remove('s1')
 

@@ -153,7 +153,12 @@ function replaceCwdSpelling(value: string, spelling: string, replacement: string
 /** Replace every known cwd spelling with one stable token. */
 function replaceCwd(value: string, ctx: NormalizeContext, replacement: string): string {
   let out = value
-  for (const spelling of cwdSpellings(ctx)) out = replaceCwdSpelling(out, spelling, replacement)
+  for (const spelling of cwdSpellings(ctx)) {
+    out = replaceCwdSpelling(out, spelling, replacement)
+    if (spelling.includes('\\')) {
+      out = replaceCwdSpelling(out, spelling.replaceAll('\\', '\\\\'), replacement)
+    }
+  }
   return out
 }
 

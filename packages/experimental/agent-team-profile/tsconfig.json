@@ -12,7 +12,7 @@
       "path": "../../../vendor/cordis"
     },
     {
-      "path": "../agent-team"
+      "path": "../../subagent/agent-team"
     },
     {
       "path": "../tool-agent-team"

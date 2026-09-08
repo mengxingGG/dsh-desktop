@@ -6,6 +6,7 @@ import AgentDefaultModelConfig, { AGENT_DEFAULT_MODEL_SETTINGS_NAMESPACE } from 
 import { SettingsProvider } from '@deepseek-ai/dsh-settings'
 import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 
 /** The smallest real provider: one in-memory document, always writable. */
 class MemorySettings extends SettingsProvider {
@@ -41,6 +42,28 @@ async function boot(): Promise<{
 }
 
 describe('AgentDefaultModelConfig', () => {
+  it('resolves exact-Agent defaults without changing global settings and releases registrations', async () => {
+    const bench = await boot()
+    try {
+      const manager = { id: 'manager' } as Agent
+      const other = { id: 'manager' } as Agent
+      const selected = { provider: 'role-provider', model: 'role-model' }
+      const dispose = bench.defaultModel.register(manager, () => selected)
+      expect(bench.defaultModel.currentSelection(manager)).toEqual(selected)
+      expect(bench.defaultModel.currentSelection(manager)).not.toBe(selected)
+      expect(bench.defaultModel.currentSelection(other)).toEqual(bench.defaultModel.currentSelection())
+      expect(() => bench.defaultModel.register(manager, base => base)).toThrow('already has a model default resolver')
+      dispose()
+      const disposeReplacement = bench.defaultModel.register(manager, base => ({ ...base, model: 'replacement' }))
+      dispose()
+      expect(bench.defaultModel.currentSelection(manager).model).toBe('replacement')
+      disposeReplacement()
+      expect(bench.defaultModel.currentSelection(manager)).toEqual(bench.defaultModel.currentSelection())
+    } finally {
+      await bench.ctx.fiber.dispose()
+    }
+  })
+
   it('resolves the user layer over the composition entry', async () => {
     const bench = await boot()
     expect(bench.defaultModel.currentSelection()).toEqual({

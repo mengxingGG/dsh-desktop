@@ -17,6 +17,48 @@ import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { MockAdapter, textResponse } from './mock-adapter.ts'
 
+it('application exit drains a running turn into a resumable stored Session', async () => {
+  const adapter = new MockAdapter(['hang'])
+  const { ctx, root } = await persistentHarness(adapter)
+  const id = SessionId('desktop-durable-stop')
+  try {
+    const handle = await ctx.agents.create({ sessionId: id, agentOptions: { provider: 'mock', model: 'mock' } })
+    handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'preserve this task' }], source: { kind: 'user' } }))
+    await expect.poll(() => adapter.requests.length).toBe(1)
+    await ctx.parallel('app/prepare-exit', 'producers')
+    await ctx.parallel('app/prepare-exit', 'agents')
+    await ctx.sessionPersistence.flush()
+    const events = await readStoredEvents(ctx, id)
+    expect(JSON.stringify(events)).toContain('preserve this task')
+    expect(events.at(-1)).toMatchObject({ type: 'turn/end', data: { reason: { kind: 'aborted', reason: { kind: 'disposed' } } } })
+    expect(ctx.agents.list()).toEqual([])
+  } finally { await ctx.fiber.dispose() }
+  const reopened = await mountPersistentHarness(root, new MockAdapter([]))
+  try {
+    const restored = await reopened.agents.resume({ resumeSessionId: id })
+    expect(restored.agent.id).toBe(id)
+    expect(JSON.stringify(restored.agent.session.snapshotEvents())).toContain('preserve this task')
+    await restored.dispose()
+  } finally { await reopened.fiber.dispose() }
+})
+
+it('application exit propagates a final writer close failure and retains it across repeated requests', async () => {
+  const { ctx } = await persistentHarness(new MockAdapter([]))
+  const failure = new Error('durable close failed')
+  try {
+    const handle = await ctx.agents.create({ sessionId: SessionId('desktop-close-failure') })
+    const stored = [...(ctx.sessionPersistence as unknown as { tracker: { openHandles: Set<SessionHandle> } }).tracker.openHandles]
+      .find(open => open.id === handle.agent.id && open.access === 'write')
+    if (stored === undefined) throw new Error('missing owned write handle')
+    const realClose = stored.close.bind(stored)
+    vi.spyOn(stored, 'close').mockImplementation(async () => { await realClose(); throw failure })
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await expect(ctx.parallel('app/prepare-exit', 'agents')).rejects.toMatchObject({ errors: [{ errors: [failure] }] })
+    }
+    expect(ctx.agents.list()).toEqual([])
+  } finally { await ctx.fiber.dispose() }
+})
+
 const dirs: string[] = []
 afterEach(async () => { for (const d of dirs.splice(0)) await rm(d, { recursive: true, force: true }) })
 

@@ -113,7 +113,7 @@ Sources: [`packages/core/session/src/types.ts:379`](../packages/core/session/src
 }
 ```
 
-Source: [`packages/core/agent/src/types.ts:58`](../packages/core/agent/src/types.ts)
+Source: [`packages/core/agent/src/types.ts:60`](../packages/core/agent/src/types.ts)
 
 ### `agent-preset/*`
 
@@ -400,6 +400,112 @@ Source: [`packages/compaction/compaction/src/types.ts:24`](../packages/compactio
 Types: [ContentBlock](subsystems/core.md) · [TokenUsage](subsystems/llm-streaming.md)
 
 Source: [`packages/compaction/compaction/src/types.ts:34`](../packages/compaction/compaction/src/types.ts)
+
+### `crew/*`
+
+<a id="crewcommit--log-only"></a>
+
+#### `crew/commit` — log-only
+
+```ts persistence-catalog
+/** Immutable local commit attempt. */
+'crew/commit': { version: 1; teamId: TeamId; commit: CrewCommitSnapshot }
+```
+
+Types: [TeamId](subsystems/agent-team.md)
+
+Source: [`packages/subagent/crew/src/types.ts:595`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewconfiguration--log-only"></a>
+
+#### `crew/configuration` — log-only
+
+```ts persistence-catalog
+/** Immutable native Crew configuration stored in the Team Lead Session. */
+'crew/configuration': { version: 1; teamId: TeamId; configuration: CrewConfigurationSnapshot }
+```
+
+Types: [TeamId](subsystems/agent-team.md)
+
+Source: [`packages/subagent/crew/src/types.ts:581`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewintegration--log-only"></a>
+
+#### `crew/integration` — log-only
+
+```ts persistence-catalog
+/** Whole integration value stored on every revision. */
+'crew/integration': { version: 1; teamId: TeamId; integration: CrewIntegrationSnapshot }
+```
+
+Types: [TeamId](subsystems/agent-team.md)
+
+Source: [`packages/subagent/crew/src/types.ts:591`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewnotification--log-only"></a>
+
+#### `crew/notification` — log-only
+
+```ts persistence-catalog
+/** Whole manager-notification value stored on queue and delivery. */
+'crew/notification': { version: 1; teamId: TeamId; notification: CrewNotificationSnapshot }
+```
+
+Types: [TeamId](subsystems/agent-team.md)
+
+Source: [`packages/subagent/crew/src/types.ts:593`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewreport--log-only"></a>
+
+#### `crew/report` — log-only
+
+```ts persistence-catalog
+/** Immutable structured worker report. */
+'crew/report': { version: 1; teamId: TeamId; report: CrewReportSnapshot }
+```
+
+Types: [TeamId](subsystems/agent-team.md)
+
+Source: [`packages/subagent/crew/src/types.ts:585`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewreview--log-only"></a>
+
+#### `crew/review` — log-only
+
+```ts persistence-catalog
+/** Immutable review result. */
+'crew/review': { version: 1; teamId: TeamId; review: CrewReviewSnapshot }
+```
+
+Types: [TeamId](subsystems/agent-team.md)
+
+Source: [`packages/subagent/crew/src/types.ts:589`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewverification--log-only"></a>
+
+#### `crew/verification` — log-only
+
+```ts persistence-catalog
+/** Immutable host verification. */
+'crew/verification': { version: 1; teamId: TeamId; verification: CrewVerificationSnapshot }
+```
+
+Types: [TeamId](subsystems/agent-team.md)
+
+Source: [`packages/subagent/crew/src/types.ts:587`](../packages/subagent/crew/src/types.ts)
+
+<a id="crewwork-item--log-only"></a>
+
+#### `crew/work-item` — log-only
+
+```ts persistence-catalog
+/** Whole Crew work-item value stored on every revision. */
+'crew/work-item': { version: 1; teamId: TeamId; workItem: CrewWorkItemSnapshot }
+```
+
+Types: [TeamId](subsystems/agent-team.md)
+
+Source: [`packages/subagent/crew/src/types.ts:583`](../packages/subagent/crew/src/types.ts)
 
 ### `feedback/*`
 
@@ -791,7 +897,7 @@ Source: [`packages/subagent/tool-subagent/src/model-selection-state.ts:17`](../p
 
 Types: [TeamId](subsystems/agent-team.md) · [TeamMemberSnapshot](subsystems/agent-team.md)
 
-Source: [`packages/experimental/agent-team/src/types.ts:221`](../packages/experimental/agent-team/src/types.ts)
+Source: [`packages/subagent/agent-team/src/types.ts:235`](../packages/subagent/agent-team/src/types.ts)
 
 <a id="teammessagedelivered--log-only"></a>
 
@@ -809,7 +915,7 @@ Source: [`packages/experimental/agent-team/src/types.ts:221`](../packages/experi
 
 Types: [TeamId](subsystems/agent-team.md) · [TeamMessageId](subsystems/agent-team.md)
 
-Source: [`packages/experimental/agent-team/src/types.ts:227`](../packages/experimental/agent-team/src/types.ts)
+Source: [`packages/subagent/agent-team/src/types.ts:241`](../packages/subagent/agent-team/src/types.ts)
 
 <a id="teammessagequeued--log-only"></a>
 
@@ -822,7 +928,7 @@ Source: [`packages/experimental/agent-team/src/types.ts:227`](../packages/experi
 
 Types: [TeamId](subsystems/agent-team.md) · [TeamMessageSnapshot](subsystems/agent-team.md)
 
-Source: [`packages/experimental/agent-team/src/types.ts:225`](../packages/experimental/agent-team/src/types.ts)
+Source: [`packages/subagent/agent-team/src/types.ts:239`](../packages/subagent/agent-team/src/types.ts)
 
 <a id="teamtask--log-only"></a>
 
@@ -835,7 +941,7 @@ Source: [`packages/experimental/agent-team/src/types.ts:225`](../packages/experi
 
 Types: [TeamId](subsystems/agent-team.md) · [TeamTaskSnapshot](subsystems/agent-team.md)
 
-Source: [`packages/experimental/agent-team/src/types.ts:223`](../packages/experimental/agent-team/src/types.ts)
+Source: [`packages/subagent/agent-team/src/types.ts:237`](../packages/subagent/agent-team/src/types.ts)
 
 ### `todo/*`
 
@@ -894,7 +1000,7 @@ Source: [`packages/core/session/src/types.ts:319`](../packages/core/session/src/
 'tool/code-dispatch': PtcDispatchEventData
 ```
 
-Source: [`packages/core/tools/src/types.ts:56`](../packages/core/tools/src/types.ts)
+Source: [`packages/core/tools/src/types.ts:67`](../packages/core/tools/src/types.ts)
 
 <a id="toolcode-dispatch-start--log-only"></a>
 
@@ -917,7 +1023,7 @@ Source: [`packages/core/tools/src/types.ts:56`](../packages/core/tools/src/types
 'tool/code-dispatch-start': PtcDispatchStartEventData
 ```
 
-Source: [`packages/core/tools/src/types.ts:40`](../packages/core/tools/src/types.ts)
+Source: [`packages/core/tools/src/types.ts:51`](../packages/core/tools/src/types.ts)
 
 <a id="toolresult--surface"></a>
 

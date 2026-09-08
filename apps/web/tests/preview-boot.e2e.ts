@@ -21,13 +21,13 @@ import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { tmpdir } from 'node:os'
-import { dirname, extname, join, normalize } from 'node:path'
+import { dirname, extname, join, posix } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import type { Browser } from 'playwright'
 import { expect, it } from 'vitest'
 import {
-  composeProfile, configTrees, indexWorkspacePackages, packVfsImage, packVfsOverlay,
+  withComposedProfile, configTrees, indexWorkspacePackages, packVfsImage, packVfsOverlay,
   previewFixtures, WRAPPER_CONTRACT,
 } from '@deepseek-ai/dsh-experimental-webworker-packer'
 import {
@@ -97,7 +97,6 @@ interface Site {
 interface PreviewAssets {
   /** Static-host-relative path to a generated file outside `dist/`. */
   readonly overrides: ReadonlyMap<string, string>
-  cleanup(): void
 }
 
 /**
@@ -121,13 +120,13 @@ function requirePreviewPages(): void {
  * directory, never in `dist/`: the
  * client-artifact digest record treats `dist/` as build-owned, so a test write
  * there fails the record check for every later consumer.
- * @returns Static-path overrides and their teardown.
+ * @param directory - Test-owned directory, removed even when packing fails.
+ * @returns Static-path overrides.
  * @throws When the closure leaves dependencies unresolved, which would pack an
  * incomplete image the tree fails on later and further from the cause.
  */
-function requireVfsAssets(): PreviewAssets {
+async function requireVfsAssets(directory: string): Promise<PreviewAssets> {
   const fixtureDefinitions = previewFixtures(REPO_ROOT)
-  const directory = mkdtempSync(join(tmpdir(), 'dsh-preview-boot-'))
   const overrides = new Map<string, string>()
   const writeAsset = (relativePath: string, bytes: Uint8Array | string): void => {
     const path = join(directory, relativePath)
@@ -136,13 +135,13 @@ function requireVfsAssets(): PreviewAssets {
     overrides.set(relativePath, path)
   }
   if (!existsSync(IMAGE_FILE)) {
-    const packed = packVfsImage({
-      config: composeProfile(REPO_ROOT, PROFILE),
+    const packed = await withComposedProfile(REPO_ROOT, PROFILE, composition => packVfsImage({
+      ...composition,
       profile: PROFILE,
       workspaces: indexWorkspacePackages(REPO_ROOT),
       resolveFrom: REPO_ROOT,
       configTrees: configTrees(REPO_ROOT),
-    })
+    }))
     if (packed.missing.length > 0) {
       throw new Error(`preview boot: ${String(packed.missing.length)} dependencies did not resolve: ${packed.missing.join(', ')}`)
     }
@@ -172,7 +171,7 @@ function requireVfsAssets(): PreviewAssets {
     fixtures,
   }
   writeAsset(`preview/${PREVIEW_FIXTURE_MANIFEST_FILE}`, `${JSON.stringify(manifest, null, 2)}\n`)
-  return { overrides, cleanup: () => { rmSync(directory, { recursive: true, force: true }) } }
+  return { overrides }
 }
 
 /**
@@ -187,7 +186,8 @@ async function respond(
   overrides: ReadonlyMap<string, string>,
 ): Promise<void> {
   const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname
-  const relative = normalize(decodeURIComponent(path)).replace(/^\/+/, '')
+  // Override keys are URL paths, including on a Windows static-test host.
+  const relative = posix.normalize(decodeURIComponent(path)).replace(/^\/+/, '')
   try {
     const body = await readFile(overrides.get(relative) ?? join(DIST_ROOT, relative))
     response.writeHead(200, { 'content-type': MIME[extname(relative)] ?? 'application/octet-stream' })
@@ -247,8 +247,9 @@ async function within<T>(work: Promise<T>, ms: number, stalled: string): Promise
 
 it('boots the packed worker deployment to an interactive page', async () => {
   requirePreviewPages()
-  const assets = requireVfsAssets()
+  const directory = mkdtempSync(join(tmpdir(), 'dsh-preview-boot-'))
   try {
+    const assets = await requireVfsAssets(directory)
     const site = await serveDist(assets.overrides)
     try {
       const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] })
@@ -262,7 +263,7 @@ it('boots the packed worker deployment to an interactive page', async () => {
       await site.close()
     }
   } finally {
-    assets.cleanup()
+    rmSync(directory, { recursive: true, force: true })
   }
 }, 600_000)
 

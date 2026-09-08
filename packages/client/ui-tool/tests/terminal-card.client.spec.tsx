@@ -515,6 +515,7 @@ describe('DetailsPanel Output section', () => {
     return render(
       <DetailsPanel
         renderSlot={renderToolDetails(t)}
+        renderSlotChain={(_key, _owner, options) => options?.fallback ?? null}
         SessionProvider={({ children }) => children}
         sessionId={SID}
         useSession={bindSnapshotSelector(session)}
@@ -533,6 +534,7 @@ describe('DetailsPanel Output section', () => {
         useStore={bindSnapshotSelector(chat)}
         actions={chat.actions}
         closeDetails={vi.fn()}
+        openDetails={vi.fn()}
         t={chatT}
       />,
     )
@@ -547,7 +549,7 @@ describe('DetailsPanel Output section', () => {
     return toolChatSnapshot(nodes, runningCalls)
   }
 
-  const target: SelectionTarget = { turnSeq: 10, callId: 'c1', toolName: 'bash' }
+  const target: SelectionTarget = { kind: 'tool', turnSeq: 10, callId: 'c1', toolName: 'bash' }
 
   // The panel never unmounts between selections, so per-call view state has to
   // be keyed off the selected call or it leaks into the next one.
@@ -564,7 +566,7 @@ describe('DetailsPanel Output section', () => {
       nodes: [settled({
         callId: 'c2', content: [{ type: 'text', text: `${long.join('\n')}\n` }],
       })],
-    }), { turnSeq: 10, callId: 'c2', toolName: 'bash' })
+    }), { kind: 'tool', turnSeq: 10, callId: 'c2', toolName: 'bash' })
     expect(second.getByRole('button', { name: '展开其余 4 行输出' })).toBeTruthy()
   })
 
@@ -686,7 +688,7 @@ describe('DetailsPanel Output section', () => {
   })
 
   it('a step selection without a callId renders the guidance line too', () => {
-    const view = mount(snapshot(), { turnSeq: 3, stepSeq: 1 })
+    const view = mount(snapshot(), { kind: 'tool', turnSeq: 3, stepSeq: 1 })
     expect(view.getByText('点击消息流中的工具行查看详情')).toBeTruthy()
   })
 
@@ -702,6 +704,7 @@ describe('DetailsPanel Output section', () => {
     const view = render(
       <DetailsPanel
         renderSlot={renderToolDetails(t)}
+        renderSlotChain={(_key, _owner, options) => options?.fallback ?? null}
         SessionProvider={({ children }) => children}
         sessionId={SID}
         useSession={bindSnapshotSelector(session)}
@@ -724,6 +727,7 @@ describe('DetailsPanel Output section', () => {
         useStore={bindSnapshotSelector(chat)}
         actions={chat.actions}
         closeDetails={closeDetails}
+        openDetails={vi.fn()}
         t={chatT}
       />,
     )

@@ -9,9 +9,9 @@ describe('createChatStore', () => {
 
   it('selects and clears one Chat details target', () => {
     const store = createChatStore().create()
-    store.actions.select({ turnSeq: 3, callId: 'c1', toolName: 'bash' })
+    store.actions.select({ kind: 'tool', turnSeq: 3, callId: 'c1', toolName: 'bash' })
     expect(store.store.getSnapshot().selection)
-      .toEqual({ turnSeq: 3, callId: 'c1', toolName: 'bash' })
+      .toEqual({ kind: 'tool', turnSeq: 3, callId: 'c1', toolName: 'bash' })
     store.actions.select(null)
     expect(store.store.getSnapshot().selection).toBeNull()
   })
@@ -20,7 +20,7 @@ describe('createChatStore', () => {
     const handle = createChatStore()
     const first = handle.create()
     const second = handle.create()
-    first.actions.select({ turnSeq: 1 })
+    first.actions.select({ kind: 'tool', turnSeq: 1 })
     expect(second.store.getSnapshot().selection).toBeNull()
   })
 

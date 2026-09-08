@@ -22,6 +22,8 @@ import { clientBundle } from '../packages/client/tsdown.client.ts'
 const root = resolve(import.meta.dirname, '..')
 const PROBE_NAME = 'DSH_CLIENT_BUILD_TEST'
 const COMMIT_HASH = '0123456789abcdef0123456789abcdef01234567'
+/** Budget for the git-fixture test, which spawns subprocesses Windows charges for. */
+const GIT_FIXTURE_TIMEOUT_MS = 60_000
 const PROBE_KEY = `process.env.${PROBE_NAME}`
 const originalProbe = process.env[PROBE_NAME]
 const roots: string[] = []
@@ -198,7 +200,9 @@ describe('client build environment', () => {
     expect(repositoryGitDirty(fixtureRoot)).toBe(false)
     write(join(fixtureRoot, 'submodule/tracked.txt'), 'modified submodule\n')
     expect(repositoryGitDirty(fixtureRoot)).toBe(true)
-  })
+    // Two fixture repositories, a submodule clone, and roughly twenty git
+    // subprocesses: Windows process creation puts this past the 5s default.
+  }, GIT_FIXTURE_TIMEOUT_MS)
 
   it('omits dirty metadata when repository metadata is unavailable', () => {
     const fixtureRoot = mkdtempSync(join(tmpdir(), 'dsh-client-build-no-git-'))

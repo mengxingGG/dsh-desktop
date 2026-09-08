@@ -11,6 +11,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
+import { healProfilesModuleFallback, loadProfile } from '@deepseek-ai/dsh-app-boot'
 import { DSH_HOME_ENV } from '@deepseek-ai/dsh-home-paths'
 import type { ConfigTree, ImageTree, PackResult } from './pack.ts'
 
@@ -72,8 +73,16 @@ export function indexWorkspacePackages(repoRoot: string): Map<string, string> {
   return index
 }
 
+/** Inputs valid only while {@link withComposedProfile}'s consumer runs. */
+export interface ComposedProfile {
+  /** Default composition with `!!js` intact. */
+  readonly config: string
+  /** Temporary profile directory with the normal launcher's dependency links. */
+  readonly rosterResolveFrom: string
+}
+
 /**
- * Compose one profile through the real CLI dump path, leaving `!!js`
+ * Consume one profile through the real CLI dump path, leaving `!!js`
  * unevaluated. The dump runs against a throwaway Harness home and default
  * layers only, so the image is the shipped profile: the machine's `$DSH_HOME`
  * — its profile manifest with locally installed bundles, and its patch files —
@@ -81,16 +90,23 @@ export function indexWorkspacePackages(repoRoot: string): Map<string, string> {
  * same-tree-same-bytes guarantee.
  * @param repoRoot - Absolute repository root.
  * @param profile - Profile name to compose.
- * @returns The composed YAML.
+ * @param consume - Consumer that finishes reading the temporary profile before settling.
+ * @returns The consumer result; profile links and its private home are removed on success or failure.
  */
-export function composeProfile(repoRoot: string, profile: string): string {
+export async function withComposedProfile<T>(
+  repoRoot: string, profile: string, consume: (composition: ComposedProfile) => T | Promise<T>,
+): Promise<T> {
   const home = mkdtempSync(join(tmpdir(), 'dsh-pack-home-'))
   try {
-    return execFileSync(
+    const config = execFileSync(
       process.execPath,
       ['--import', 'tsx/esm', join(repoRoot, CLI_ENTRY), '--profile', profile, '--dump-default-config'],
       { cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: { ...process.env, [DSH_HOME_ENV]: home } },
     )
+    const installAnchor = join(repoRoot, CLI_PACKAGE, 'package.json')
+    const loaded = loadProfile('dsh-pack-vfs-image', profile, installAnchor, home, { userLayer: false })
+    await healProfilesModuleFallback({ installAnchor, profile: loaded, home })
+    return await consume({ config, rosterResolveFrom: loaded.dir })
   } finally {
     rmSync(home, { recursive: true, force: true })
   }

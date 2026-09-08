@@ -87,10 +87,17 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Owns the default model selection independently of any Host or transport. The composition entry remains usable without a settings provider; when one is mounted, its user layer is read live.',
     methods: [
       {
-        signature: 'currentSelection(): ModelSelection',
+        signature: 'currentSelection(agent?: Agent): ModelSelection',
         description: 'Read the current default model selection.',
-        parameters: [],
+        parameters: [{ name: 'agent', description: 'Optional Agent with a registered role default; omit for the deployment default.' }],
         returns: 'a detached provider, model, and optional reasoning selection.',
+      },
+      {
+        signature: 'register(agent: Agent, resolve: (base: ModelSelection) => ModelSelection): () => void',
+        description: 'Register one Agent\'s default resolver without changing user or Session selections.',
+        parameters: [{ name: 'agent', description: 'Exact live Agent whose entry point requests the default.' }, { name: 'resolve', description: 'Synchronous resolver over the current deployment default.' }],
+        returns: 'Disposer; the caller must own it through an effect.',
+        throws: ['When the same Agent already has a default resolver.'],
       },
       {
         signature: 'async saveSelection(next: ModelSelection): Promise<void>',
@@ -364,7 +371,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       {
         signature: 'async spawnTeammate(caller: Agent, request: SpawnTeammateRequest): Promise<SpawnTeammateResult>',
         description: 'Create one named, continuable direct child of the Team Lead.',
-        parameters: [{ name: 'caller', description: 'exact live Lead Agent.' }, { name: 'request', description: 'immutable name, description, prompt, context mode, provider, and cancellation.' }],
+        parameters: [{ name: 'caller', description: 'exact live Lead Agent.' }, { name: 'request', description: 'immutable roster identity, initial prompt provenance, child composition, provider, and cancellation.' }],
         returns: 'the active roster row.',
       },
       {
@@ -804,6 +811,217 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Remove one reference from a configuration surface.',
         parameters: [{ name: 'ref', description: 'reference name to remove.' }],
         throws: ['RemoteError when the request is invalid, no provider is mounted, or the provider refuses the write.'],
+      },
+    ],
+  },
+  {
+    key: 'crew',
+    summary: 'Native Crew service and DSH provider for the first-phase software workflow.',
+    description: 'Native Crew service and DSH provider for the first-phase software workflow.',
+    methods: [
+      {
+        signature: 'async ensureConfigured(caller: Agent): Promise<CrewConfigurationSnapshot>',
+        description: 'Persist immutable Crew configuration on first use and return it.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead requesting Crew service.' }],
+        returns: 'Existing or newly persisted Crew configuration.',
+      },
+      {
+        signature: 'async dispatch(caller: Agent, request: DispatchCrewWorkRequest): Promise<CrewWorkItemSnapshot>',
+        description: 'Create a Team task, freeze its checkout baseline, and start one native developer.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead managing the workflow.' }, { name: 'request', description: 'Module scope, specification, evidence, and cancellation request.' }],
+        returns: 'Durable work item after native developer provisioning.',
+      },
+      {
+        signature: 'async append(caller: Agent, request: AppendCrewWorkRequest): Promise<CrewWorkItemSnapshot>',
+        description: 'Continue the current native developer without allocating a replacement child.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead managing the workflow.' }, { name: 'request', description: 'Current revision, follow-up prompt, and cancellation signal.' }],
+        returns: 'Updated durable work item.',
+      },
+      {
+        signature: 'async stop(caller: Agent, request: StopCrewWorkRequest): Promise<CrewWorkItemSnapshot>',
+        description: 'Interrupt and release the active worker, preserving its durable child descriptor.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead managing the workflow.' }, { name: 'request', description: 'Current revision and durable pause reason.' }],
+        returns: 'Paused durable work item.',
+      },
+      {
+        signature: 'async reassign(caller: Agent, request: ReassignCrewWorkRequest): Promise<CrewWorkItemSnapshot>',
+        description: 'Replace a parked developer with a newly composed native child.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead managing the workflow.' }, { name: 'request', description: 'Current revision, replacement reason, and cancellation signal.' }],
+        returns: 'Durable work item after replacement provisioning.',
+      },
+      {
+        signature: 'async integrate(caller: Agent, request: IntegrateCrewRequest): Promise<CrewIntegrationSnapshot>',
+        description: 'Freeze reviewed work and start one read-only native integration worker.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead managing the workflow.' }, { name: 'request', description: 'Reviewed work selection, combined tests, and cancellation signal.' }],
+        returns: 'Durable running integration record.',
+      },
+      {
+        signature: 'workerBinding(caller: Agent): CrewWorkerBinding',
+        description: 'Resolve the exact durable Crew role currently owned by one worker Agent.',
+        parameters: [{ name: 'caller', description: 'Exact live Team teammate requesting a worker operation.' }],
+        returns: 'Current work-item or integration binding.',
+      },
+      {
+        signature: 'async readWorkerFile(caller: Agent, path: string, signal: AbortSignal): Promise<CrewFileRead>',
+        description: 'Read one file through the caller\'s durable Crew scope.',
+        parameters: [{ name: 'caller', description: 'Exact live Crew worker Agent.' }, { name: 'path', description: 'Candidate repository-relative file path.' }, { name: 'signal', description: 'Caller cancellation signal.' }],
+        returns: 'Normalized path and bounded UTF-8 content.',
+      },
+      {
+        signature: 'async readManagerFile(caller: Agent, path: string, signal: AbortSignal): Promise<CrewFileRead>',
+        description: 'Read one repository file as the Team Lead without exposing Git metadata or credentials.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead.' }, { name: 'path', description: 'Candidate repository-relative file path.' }, { name: 'signal', description: 'Caller cancellation signal.' }],
+        returns: 'Normalized path and bounded UTF-8 content.',
+      },
+      {
+        signature: 'async listManagerFiles(caller: Agent, path: string, signal: AbortSignal): Promise<CrewFileEntry[]>',
+        description: 'List one repository directory as the Team Lead.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead.' }, { name: 'path', description: 'Candidate repository-relative directory path.' }, { name: 'signal', description: 'Caller cancellation signal.' }],
+        returns: 'Bounded direct directory entries.',
+      },
+      {
+        signature: 'async writeManagerFile(caller: Agent, path: string, content: string, signal: AbortSignal): Promise<{ path: string; operation: \'create\' | \'update\' }>',
+        description: 'Create or replace one repository file as the Team Lead through Crew path policy.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead.' }, { name: 'path', description: 'Candidate repository-relative file path.' }, { name: 'content', description: 'Complete replacement UTF-8 content.' }, { name: 'signal', description: 'Caller cancellation signal.' }],
+        returns: 'Normalized path and whether the file was created or updated.',
+      },
+      {
+        signature: 'async editManagerFile( caller: Agent, path: string, oldString: string, newString: string, replaceAll: boolean, signal: AbortSignal, ): Promise<{ path: string; replaced: true }>',
+        description: 'Apply one literal repository edit as the Team Lead through Crew path policy.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead.' }, { name: 'path', description: 'Candidate repository-relative file path.' }, { name: 'oldString', description: 'Literal text that must exist.' }, { name: 'newString', description: 'Literal replacement text.' }, { name: 'replaceAll', description: 'Whether every occurrence may be replaced.' }, { name: 'signal', description: 'Caller cancellation signal.' }],
+        returns: 'Normalized path and confirmed replacement status.',
+      },
+      {
+        signature: 'async listWorkerFiles(caller: Agent, path: string, signal: AbortSignal): Promise<CrewFileEntry[]>',
+        description: 'List one directory through the caller\'s durable Crew scope.',
+        parameters: [{ name: 'caller', description: 'Exact live Crew worker Agent.' }, { name: 'path', description: 'Candidate repository-relative directory path.' }, { name: 'signal', description: 'Caller cancellation signal.' }],
+        returns: 'Bounded direct directory entries.',
+      },
+      {
+        signature: 'async writeWorkerFile(caller: Agent, path: string, content: string, signal: AbortSignal): Promise<{ path: string; operation: \'create\' | \'update\' }>',
+        description: 'Write a developer-scoped file or an integrator\'s project file; reviewers cannot write.',
+        parameters: [{ name: 'caller', description: 'Exact live Crew worker Agent.' }, { name: 'path', description: 'Candidate repository-relative file path.' }, { name: 'content', description: 'Complete replacement UTF-8 content.' }, { name: 'signal', description: 'Caller cancellation signal.' }],
+        returns: 'Normalized path and whether the file was created or updated.',
+      },
+      {
+        signature: 'async editWorkerFile( caller: Agent, path: string, oldString: string, newString: string, replaceAll: boolean, signal: AbortSignal, ): Promise<{ path: string; replaced: true }>',
+        description: 'Apply one literal edit within the developer\'s assignment or the integrator\'s project.',
+        parameters: [{ name: 'caller', description: 'Exact live Crew worker Agent.' }, { name: 'path', description: 'Candidate repository-relative file path.' }, { name: 'oldString', description: 'Literal text that must exist.' }, { name: 'newString', description: 'Literal replacement text.' }, { name: 'replaceAll', description: 'Whether every occurrence may be replaced.' }, { name: 'signal', description: 'Caller cancellation signal.' }],
+        returns: 'Normalized path and confirmed replacement status.',
+      },
+      {
+        signature: 'async runWorkerTest(caller: Agent, commandId: string, signal: AbortSignal): Promise<CrewTestRun>',
+        description: 'Run a declared module or integration test for the exact current worker.',
+        parameters: [{ name: 'caller', description: 'Exact live worker Agent.' }, { name: 'commandId', description: 'Predeclared command identity from the work item or integration.' }, { name: 'signal', description: 'Caller cancellation signal.' }],
+        returns: 'Host-authoritative bounded command result.',
+      },
+      {
+        signature: 'async recordReport(caller: Agent, request: RecordCrewReportRequest): Promise<CrewReportSnapshot>',
+        description: 'Persist one structured report attributed to the exact current worker binding.',
+        parameters: [{ name: 'caller', description: 'Exact live Crew worker Agent.' }, { name: 'request', description: 'Structured verdict, evidence summary, paths, and issues.' }],
+        returns: 'Immutable durable worker report.',
+      },
+      {
+        signature: 'async createWorkItem(caller: Agent, request: CreateCrewWorkItemRequest): Promise<CrewWorkItemSnapshot>',
+        description: 'Bind one existing Team task to an immutable Crew module specification.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead.' }, { name: 'request', description: 'Existing task identity, module scope, evidence, and checkout baseline.' }],
+        returns: 'Newly persisted planned work item.',
+      },
+      {
+        signature: 'async updateWorkItem(caller: Agent, request: UpdateCrewWorkItemRequest): Promise<CrewWorkItemSnapshot>',
+        description: 'Apply one authorized compare-and-set workflow transition.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead.' }, { name: 'request', description: 'Expected revision and complete transition updates.' }],
+        returns: 'Updated durable work item.',
+      },
+      {
+        signature: 'view(caller: Agent): CrewView',
+        description: 'Return a detached browser-safe projection for the manager Session.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead.' }],
+        returns: 'Detached current Crew view.',
+      },
+      {
+        signature: '@Remote(\'view\') remoteView(agent: Agent): CrewView',
+        description: 'Generated Remote read for the manager-only Crew panel.',
+        parameters: [{ name: 'agent', description: 'Authenticated Agent supplied by the Remote gateway.' }],
+        returns: 'Detached current Crew view.',
+      },
+      {
+        signature: 'async mutationResult<T>(operation: Promise<T>): Promise<CrewMutationResult<T>>',
+        description: 'Preserve expected Crew rejections as Remote business results.',
+        parameters: [{ name: 'operation', description: 'In-flight Crew mutation.' }],
+        returns: 'Success value or stable conflict/rejection result.',
+      },
+      {
+        signature: 'stateFor(root: Agent): CrewProjectionState',
+        description: 'Expose current Crew state to package-owned runtime modules.',
+        parameters: [{ name: 'root', description: 'Exact live Team Lead owning the Crew Session.' }],
+        returns: 'Authoritative current Crew projection state.',
+      },
+    ],
+  },
+  {
+    key: 'crewPreferences',
+    summary: 'Role defaults and editable memory shared by all projects in one DSH installation.',
+    description: 'Role defaults and editable memory shared by all projects in one DSH installation.',
+    methods: [
+      {
+        signature: 'snapshot(): CrewPreferencesSnapshot',
+        description: 'Read current DSH-global roles and memory.',
+        parameters: [],
+        returns: 'Detached current preferences with their optimistic-write revision.',
+      },
+      {
+        signature: 'resolveRole(role: CrewRole, base: CrewAgentOptionsSnapshot): CrewAgentOptionsSnapshot',
+        description: 'Resolve explicit role defaults for a new Agent; existing Agent bindings are unchanged.',
+        parameters: [{ name: 'role', description: 'Responsibility of the new Agent.' }, { name: 'base', description: 'Profile-owned model defaults.' }],
+        returns: 'Detached options resolved at Agent creation.',
+      },
+      {
+        signature: 'async saveMemory(id: CrewMemoryId, entry: CrewMemoryEntry, expectedRevision: number): Promise<void>',
+        description: 'Persist one memory entry after the calling Consumer has obtained any required user approval.',
+        parameters: [{ name: 'id', description: 'Stable entry identifier.' }, { name: 'entry', description: 'Remembered preference or explicitly authorized scope.' }, { name: 'expectedRevision', description: 'Revision shown to the caller; stale edits reject without writing.' }],
+      },
+      {
+        signature: 'async deleteMemory(id: CrewMemoryId, expectedRevision: number): Promise<void>',
+        description: 'Remove one memory entry without changing role defaults or other entries.',
+        parameters: [{ name: 'id', description: 'Stable entry identifier.' }, { name: 'expectedRevision', description: 'Revision shown to the caller; stale edits reject without writing.' }],
+      },
+    ],
+  },
+  {
+    key: 'crewProfilePresets',
+    summary: 'Validated immutable presets supplied to the Crew domain and tool Consumer.',
+    description: 'Validated immutable presets supplied to the Crew domain and tool Consumer.',
+    methods: [
+      {
+        signature: 'readonly managerAgentPresetId: \'crew-manager\'',
+        description: 'Agent preset that mandates Crew orchestration for the sessions selecting it.',
+        parameters: [],
+      },
+      {
+        signature: 'readonly managerAgentPresetRoot: string',
+        description: 'Root containing the manager Agent preset directory.',
+        parameters: [],
+      },
+      {
+        signature: 'readonly agentPresetRoots: readonly CrewAgentPresetRoot[]',
+        description: '`roots` value publishing CrewProfilePresets.managerAgentPresetRoot to the roster.',
+        parameters: [],
+      },
+      {
+        signature: 'readonly managerPersona: string',
+        description: 'Manager persona used by the headless profile and manager Agent preset.',
+        parameters: [],
+      },
+      {
+        signature: 'readonly workerRoles: Readonly<Record<CrewWorkerRole, Omit<CrewRolePresetSnapshot, \'role\'>>>',
+        description: 'Worker creation values snapshotted into the manager Session.',
+        parameters: [],
+      },
+      {
+        signature: 'readonly roleTools: Readonly<Record<CrewToolRole, readonly string[]>>',
+        description: 'Exact role tool declarations checked by `dsh-tool-crew`.',
+        parameters: [],
       },
     ],
   },
@@ -3098,6 +3316,22 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'sessionId', description: 'Agent and Session identity.' }, { name: 'running', description: 'whether the Agent is running.' }],
   },
   {
+    name: 'app/active-work',
+    mode: 'bail',
+    signature: '\'app/active-work\'(): true | undefined',
+    summary: 'Ask plugins whether application-owned work outside live Agent turns and jobs remains active.',
+    description: 'Ask plugins whether application-owned work outside live Agent turns and jobs remains active.',
+    parameters: [],
+  },
+  {
+    name: 'app/prepare-exit',
+    mode: 'parallel',
+    signature: '\'app/prepare-exit\'(stage: \'producers\' | \'agents\'): Promise<void> | void',
+    summary: 'Stop work before application teardown, preserving failures for the exit requester.',
+    description: 'Stop work before application teardown, preserving failures for the exit requester. Producers stop admitting and drain work before the agents phase closes live Sessions. Listeners must join repeated calls and reject when shutdown cannot be verified.',
+    parameters: [{ name: 'stage', description: 'ordered phase selected by the application shutdown owner.' }],
+  },
+  {
     name: 'approval/request',
     mode: 'waterfall',
     signature: '\'approval/request\'( this: Scoped<Agent>, req: ApprovalRequestEvent, next: () => Promise<ApprovalOutcome>, ): Promise<ApprovalOutcome>',
@@ -3330,6 +3564,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'name', description: 'the provider name that no longer resolves.' }],
   },
   {
+    name: 'subagent/settlement-notice',
+    mode: 'bail',
+    signature: '\'subagent/settlement-notice\'(info: SubagentSettlementNoticeInfo): true | void',
+    summary: 'Let a product workflow suppress the generic parent notice for a child it durably owns and replaces with its own recorded notification.',
+    description: 'Let a product workflow suppress the generic parent notice for a child it durably owns and replaces with its own recorded notification. Returning `true` suppresses only that notice; absence preserves default delivery.',
+    parameters: [{ name: 'info', description: 'Parent, child, provider, and terminal outcome identity.' }],
+  },
+  {
     name: 'subagent/start',
     mode: 'emit',
     signature: '\'subagent/start\'(this: Scoped<SubagentRuntime>, info: SubagentRunInfo): void',
@@ -3552,6 +3794,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ApiSessionAgentResult',
     declaration: 'export type ApiSessionAgentResult = {\n    readonly agent: Agent;\n} | {\n    readonly error: ApiSessionAgentError;\n};',
+  },
+  {
+    name: 'AppendCrewWorkRequest',
+    declaration: 'export interface AppendCrewWorkRequest {\n    readonly taskId: TeamTaskId;\n    readonly expectedRevision: number;\n    readonly message: string;\n    readonly signal: AbortSignal;\n}',
   },
   {
     name: 'ApprovalOutcome',
@@ -3843,7 +4089,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ContinuableStartSpec',
-    declaration: 'export interface ContinuableStartSpec {\n    readonly provider: string;\n    readonly label: string;\n    readonly childId?: SessionId;\n    readonly request: Omit<SubagentStartRequest, \'label\' | \'signal\' | \'outputSchema\'>;\n    readonly signal: AbortSignal;\n}',
+    declaration: 'export interface ContinuableStartSpec {\n    readonly provider: string;\n    readonly label: string;\n    readonly childId?: SessionId;\n    readonly initialSource?: MessageSource;\n    readonly request: Omit<SubagentStartRequest, \'label\' | \'signal\' | \'outputSchema\'>;\n    readonly signal: AbortSignal;\n}',
   },
   {
     name: 'ContinuableSubagentDescriptorData',
@@ -3922,6 +4168,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface CreateAgentOptions {\n    readonly sessionId: SessionId;\n    readonly meta?: {\n        readonly cwd?: string;\n        readonly parentSession?: SessionId;\n        readonly isSeeded?: boolean;\n        readonly origin?: \'subagent\';\n        readonly delegationDepth?: number;\n        readonly agentPreset?: string;\n    };\n    readonly inheritedEventCount?: SessionLogOffset;\n    readonly seed?: readonly SessionEvent[];\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
   },
   {
+    name: 'CreateCrewWorkItemRequest',
+    declaration: 'export interface CreateCrewWorkItemRequest {\n    readonly taskId: TeamTaskId;\n    readonly moduleKey: string;\n    readonly specPath: string;\n    readonly specRevision: number;\n    readonly readScopes: readonly string[];\n    readonly writeScopes: readonly string[];\n    readonly requiredArtifacts: readonly string[];\n    readonly testCommands: readonly CrewCommandSpec[];\n    readonly baseline: CrewCheckoutSnapshot;\n}',
+  },
+  {
     name: 'CreateGoalRequest',
     declaration: 'export interface CreateGoalRequest {\n    readonly objective: string;\n    readonly maxGoalRounds?: number;\n}',
   },
@@ -3960,6 +4210,158 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CredentialRef',
     declaration: 'export type CredentialRef = Branded<\'CredentialRef\'>;',
+  },
+  {
+    name: 'CrewAgentOptionsSnapshot',
+    declaration: 'export interface CrewAgentOptionsSnapshot {\n    readonly provider?: string;\n    readonly model?: string;\n    readonly reasoningEffort?: ReasoningEffortId;\n}',
+  },
+  {
+    name: 'CrewAgentPresetRoot',
+    declaration: 'export interface CrewAgentPresetRoot {\n    readonly path: string;\n    readonly trust: \'system\';\n}',
+  },
+  {
+    name: 'CrewCheckoutSnapshot',
+    declaration: 'export interface CrewCheckoutSnapshot {\n    readonly head: string | null;\n    readonly branch?: string;\n    readonly statusDigest: string;\n    readonly changedPaths: string[];\n    readonly stagedPaths: string[];\n    readonly pathDigests: Record<string, string>;\n}',
+  },
+  {
+    name: 'CrewCommandResult',
+    declaration: 'export interface CrewCommandResult {\n    readonly commandId: string;\n    readonly argv: string[];\n    readonly cwd: string;\n    readonly exitCode: number | null;\n    readonly signal: string | null;\n    readonly timedOut: boolean;\n    readonly stdout: string;\n    readonly stderr: string;\n    readonly stdoutTruncated: boolean;\n    readonly stderrTruncated: boolean;\n}',
+  },
+  {
+    name: 'CrewCommandSpec',
+    declaration: 'export interface CrewCommandSpec {\n    readonly id: string;\n    readonly argv: string[];\n    readonly cwd: string;\n    readonly timeoutMs: number;\n}',
+  },
+  {
+    name: 'CrewCommitId',
+    declaration: 'export type CrewCommitId = Branded<\'CrewCommitId\'>;',
+  },
+  {
+    name: 'CrewCommitSnapshot',
+    declaration: 'export interface CrewCommitSnapshot {\n    readonly id: CrewCommitId;\n    readonly integrationId: CrewIntegrationId;\n    readonly approvalCallId: string;\n    readonly stagedPaths: string[];\n    readonly message: string;\n    readonly status: \'committed\' | \'rejected\';\n    readonly commitHash?: string;\n    readonly reason?: string;\n}',
+  },
+  {
+    name: 'CrewConfigurationSnapshot',
+    declaration: 'export interface CrewConfigurationSnapshot {\n    readonly repositoryRoot: string;\n    readonly nativeProvider: string;\n    readonly maxConcurrentWorkers: number;\n    readonly notificationBatchWindowMs: number;\n    readonly workerTurnTimeoutMs: number;\n    readonly maxAutomaticRepairs: number;\n    readonly maxReviewRounds: number;\n    readonly allowedTestPrograms: string[];\n    readonly sharedDirectories: readonly string[];\n    readonly execution: import(\'./execution.ts\').CrewExecutionLimits;\n    readonly commitPolicy: {\n        readonly maxMessageLength: number;\n        readonly requireNamedBranch: boolean;\n    };\n    readonly roles: {\n        readonly developer: CrewRolePresetSnapshot;\n        readonly reviewer: CrewRolePresetSnapshot;\n        readonly integrator: CrewRolePresetSnapshot;\n    };\n}',
+  },
+  {
+    name: 'CrewExecutionLimits',
+    declaration: 'export interface CrewExecutionLimits {\n    readonly maxOutputBytes: number;\n    readonly processGraceMs: number;\n    readonly gitTimeoutMs: number;\n}',
+  },
+  {
+    name: 'CrewFileEntry',
+    declaration: 'export interface CrewFileEntry {\n    readonly name: string;\n    readonly type: \'file\' | \'directory\' | \'other\';\n}',
+  },
+  {
+    name: 'CrewFileRead',
+    declaration: 'export interface CrewFileRead {\n    readonly path: string;\n    readonly content: string;\n}',
+  },
+  {
+    name: 'CrewIntegrationId',
+    declaration: 'export type CrewIntegrationId = Branded<\'CrewIntegrationId\'>;',
+  },
+  {
+    name: 'CrewIntegrationInput',
+    declaration: 'export interface CrewIntegrationInput {\n    readonly taskId: TeamTaskId;\n    readonly workItemRevision: number;\n    readonly verificationId: CrewVerificationId;\n    readonly reviewId: CrewReviewId;\n}',
+  },
+  {
+    name: 'CrewIntegrationSnapshot',
+    declaration: 'export interface CrewIntegrationSnapshot {\n    readonly id: CrewIntegrationId;\n    readonly revision: number;\n    readonly status: \'running\' | \'passed\' | \'failed\' | \'cancelled\';\n    readonly integratorSessionId: SessionId;\n    readonly inputCheckout: CrewCheckoutSnapshot;\n    readonly inputs: CrewIntegrationInput[];\n    readonly testCommands: CrewCommandSpec[];\n    readonly commands: CrewCommandResult[];\n    readonly issues: CrewIssue[];\n    readonly summary: string;\n    readonly stopReason?: SubagentStopReason;\n    readonly checkout?: CrewCheckoutSnapshot;\n    readonly approvedPaths?: string[];\n}',
+  },
+  {
+    name: 'CrewIssue',
+    declaration: 'export interface CrewIssue {\n    readonly path: string;\n    readonly line?: number;\n    readonly message: string;\n    readonly expected: string;\n}',
+  },
+  {
+    name: 'CrewMemoryEntry',
+    declaration: 'export interface CrewMemoryEntry {\n    readonly kind: \'preference\' | \'authorization\';\n    readonly text: string;\n    readonly scope: string;\n}',
+  },
+  {
+    name: 'CrewMemoryId',
+    declaration: 'export type CrewMemoryId = Branded<\'CrewMemoryId\'>;',
+  },
+  {
+    name: 'CrewMutationResult',
+    declaration: 'export type CrewMutationResult<T> = {\n    readonly ok: true;\n    readonly value: T;\n} | {\n    readonly ok: false;\n    readonly error: {\n        readonly code: \'crew-conflict\' | \'crew-rejected\';\n        readonly message: string;\n    };\n};',
+  },
+  {
+    name: 'CrewNotificationId',
+    declaration: 'export type CrewNotificationId = Branded<\'CrewNotificationId\'>;',
+  },
+  {
+    name: 'CrewNotificationSnapshot',
+    declaration: 'export interface CrewNotificationSnapshot {\n    readonly id: CrewNotificationId;\n    readonly revision: number;\n    readonly sourceEventSeqs: SessionSeq[];\n    readonly content: string;\n    readonly status: \'queued\' | \'delivered\';\n    readonly deliveryMessageId: MessageId;\n}',
+  },
+  {
+    name: 'CrewPreferencesSnapshot',
+    declaration: 'export interface CrewPreferencesSnapshot extends CrewPreferencesValue {\n    readonly revision: number;\n}',
+  },
+  {
+    name: 'CrewPreferencesValue',
+    declaration: 'export interface CrewPreferencesValue {\n    readonly roles: Readonly<Record<CrewRole, CrewAgentOptionsSnapshot>>;\n    readonly memory: Readonly<Record<CrewMemoryId, CrewMemoryEntry>>;\n}',
+  },
+  {
+    name: 'CrewProjectionState',
+    declaration: 'export interface CrewProjectionState {\n    readonly id: TeamId;\n    configuration?: CrewConfigurationSnapshot;\n    workItems: CrewWorkItemSnapshot[];\n    reports: CrewReportSnapshot[];\n    verifications: CrewVerificationSnapshot[];\n    reviews: CrewReviewSnapshot[];\n    integrations: CrewIntegrationSnapshot[];\n    notifications: CrewNotificationSnapshot[];\n    commits: CrewCommitSnapshot[];\n    failure?: string;\n}',
+  },
+  {
+    name: 'CrewReportId',
+    declaration: 'export type CrewReportId = Branded<\'CrewReportId\'>;',
+  },
+  {
+    name: 'CrewReportSnapshot',
+    declaration: 'export interface CrewReportSnapshot {\n    readonly id: CrewReportId;\n    readonly taskId?: TeamTaskId;\n    readonly integrationId?: CrewIntegrationId;\n    readonly workItemRevision?: number;\n    readonly integrationRevision?: number;\n    readonly role: CrewWorkerRole;\n    readonly workerSessionId: SessionId;\n    readonly specRevision?: number;\n    readonly verificationId?: CrewVerificationId;\n    readonly verdict: \'ready\' | \'blocked\' | \'passed\' | \'rejected\';\n    readonly summary: string;\n    readonly changedPaths: string[];\n    readonly issues: CrewIssue[];\n}',
+  },
+  {
+    name: 'CrewReviewId',
+    declaration: 'export type CrewReviewId = Branded<\'CrewReviewId\'>;',
+  },
+  {
+    name: 'CrewReviewSnapshot',
+    declaration: 'export interface CrewReviewSnapshot {\n    readonly id: CrewReviewId;\n    readonly taskId: TeamTaskId;\n    readonly reportId: CrewReportId;\n    readonly reviewerSessionId: SessionId;\n    readonly specRevision: number;\n    readonly verificationId: CrewVerificationId;\n    readonly round: number;\n    readonly verdict: \'passed\' | \'rejected\';\n    readonly issues: CrewIssue[];\n    readonly summary: string;\n    readonly stopReason: SubagentStopReason;\n}',
+  },
+  {
+    name: 'CrewRole',
+    declaration: 'export type CrewRole = \'manager\' | CrewWorkerRole;',
+  },
+  {
+    name: 'CrewRolePresetSnapshot',
+    declaration: 'export interface CrewRolePresetSnapshot {\n    readonly role: CrewWorkerRole;\n    readonly persona: string;\n    readonly toolFilter: ToolRestriction;\n    readonly agentOptions: CrewAgentOptionsSnapshot;\n    readonly maxDepth: number;\n}',
+  },
+  {
+    name: 'CrewStage',
+    declaration: 'export type CrewStage = \'planned\' | \'queued\' | \'running\' | \'verifying\' | \'reviewing\' | \'revision_required\' | \'integration_ready\' | \'accepted\' | \'paused\' | \'failed\' | \'cancelled\';',
+  },
+  {
+    name: 'CrewTestRun',
+    declaration: 'export interface CrewTestRun {\n    readonly taskId?: TeamTaskId;\n    readonly integrationId?: CrewIntegrationId;\n    readonly result: CrewCommandResult;\n}',
+  },
+  {
+    name: 'CrewToolRole',
+    declaration: 'export type CrewToolRole = \'manager\' | \'developer\' | \'reviewer\' | \'integrator\';',
+  },
+  {
+    name: 'CrewVerificationId',
+    declaration: 'export type CrewVerificationId = Branded<\'CrewVerificationId\'>;',
+  },
+  {
+    name: 'CrewVerificationSnapshot',
+    declaration: 'export interface CrewVerificationSnapshot {\n    readonly id: CrewVerificationId;\n    readonly taskId: TeamTaskId;\n    readonly reportId: CrewReportId;\n    readonly workerSessionId: SessionId;\n    readonly specRevision: number;\n    readonly startedAt: number;\n    readonly finishedAt: number;\n    readonly workerStopReason: SubagentStopReason;\n    readonly checkout: CrewCheckoutSnapshot;\n    readonly changedPaths: string[];\n    readonly outOfScopePaths: string[];\n    readonly missingArtifacts: string[];\n    readonly commands: CrewCommandResult[];\n    readonly verdict: \'passed\' | \'failed\';\n    readonly summary: string;\n}',
+  },
+  {
+    name: 'CrewView',
+    declaration: 'export interface CrewView {\n    readonly configured: boolean;\n    readonly repositoryRoot?: string;\n    readonly workItems: CrewWorkItemSnapshot[];\n    readonly reports: CrewReportSnapshot[];\n    readonly verifications: CrewVerificationSnapshot[];\n    readonly reviews: CrewReviewSnapshot[];\n    readonly integrations: CrewIntegrationSnapshot[];\n    readonly notifications: CrewNotificationSnapshot[];\n    readonly commits: CrewCommitSnapshot[];\n}',
+  },
+  {
+    name: 'CrewWorkerBinding',
+    declaration: 'export type CrewWorkerBinding = {\n    readonly role: \'developer\' | \'reviewer\';\n    readonly rootSessionId: SessionId;\n    readonly taskId: TeamTaskId;\n    readonly workItemRevision: number;\n} | {\n    readonly role: \'integrator\';\n    readonly rootSessionId: SessionId;\n    readonly integrationId: CrewIntegrationId;\n    readonly integrationRevision: number;\n};',
+  },
+  {
+    name: 'CrewWorkerRole',
+    declaration: 'export type CrewWorkerRole = \'developer\' | \'reviewer\' | \'integrator\';',
+  },
+  {
+    name: 'CrewWorkItemSnapshot',
+    declaration: 'export interface CrewWorkItemSnapshot {\n    readonly taskId: TeamTaskId;\n    readonly revision: number;\n    readonly moduleKey: string;\n    readonly specPath: string;\n    readonly specRevision: number;\n    readonly readScopes: string[];\n    readonly writeScopes: string[];\n    readonly requiredArtifacts: string[];\n    readonly testCommands: CrewCommandSpec[];\n    readonly baseline: CrewCheckoutSnapshot;\n    readonly stage: CrewStage;\n    readonly reason?: string;\n    readonly developerName?: string;\n    readonly developerSessionId?: SessionId;\n    readonly reviewerName?: string;\n    readonly reviewerSessionId?: SessionId;\n    readonly workerSessionIds: SessionId[];\n    readonly attempt: number;\n    readonly automaticRepairCount: number;\n    readonly reviewRound: number;\n    readonly latestReportId?: CrewReportId;\n    readonly latestVerificationId?: CrewVerificationId;\n    readonly latestReviewId?: CrewReviewId;\n    readonly acceptedIntegrationId?: CrewIntegrationId;\n}',
   },
   {
     name: 'DeepSeekLlmApiExtensionMap',
@@ -4012,6 +4414,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'DirectoryRegistrationHandle',
     declaration: 'export interface DirectoryRegistrationHandle {\n    (): void;\n    replace(entries: readonly LlmConfigurableProvider[]): void;\n}',
+  },
+  {
+    name: 'DispatchCrewWorkRequest',
+    declaration: 'export interface DispatchCrewWorkRequest {\n    readonly moduleKey: string;\n    readonly subject: string;\n    readonly description: string;\n    readonly specPath: string;\n    readonly specRevision: number;\n    readonly blockedBy?: readonly TeamTaskId[];\n    readonly readScopes: readonly string[];\n    readonly writeScopes: readonly string[];\n    readonly requiredArtifacts: readonly string[];\n    readonly testCommands: readonly CrewCommandSpec[];\n    readonly signal: AbortSignal;\n}',
   },
   {
     name: 'Domain',
@@ -4163,7 +4569,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'FsPathInfo',
-    declaration: 'export interface FsPathInfo {\n    version: FsVersion;\n    type: \'file\' | \'directory\' | \'symlink\' | \'other\';\n    size?: number;\n}',
+    declaration: 'export interface FsPathInfo {\n    version: FsVersion;\n    type: \'file\' | \'directory\' | \'symlink\' | \'other\';\n    size?: number;\n    linkCount?: number;\n}',
   },
   {
     name: 'FsTarget',
@@ -4284,6 +4690,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'InspectorJsonValue',
     declaration: 'export type InspectorJsonValue = InspectorJsonPrimitive | readonly InspectorJsonValue[] | InspectorJsonObject;',
+  },
+  {
+    name: 'IntegrateCrewRequest',
+    declaration: 'export interface IntegrateCrewRequest {\n    readonly taskIds?: readonly TeamTaskId[];\n    readonly testCommands: readonly CrewCommandSpec[];\n    readonly signal: AbortSignal;\n}',
   },
   {
     name: 'InvariantFailure',
@@ -4768,6 +5178,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ReasoningEffortId',
     declaration: 'export type ReasoningEffortId = Branded<\'ReasoningEffortId\'>;',
+  },
+  {
+    name: 'ReassignCrewWorkRequest',
+    declaration: 'export interface ReassignCrewWorkRequest {\n    readonly taskId: TeamTaskId;\n    readonly expectedRevision: number;\n    readonly reason: string;\n    readonly signal: AbortSignal;\n}',
+  },
+  {
+    name: 'RecordCrewReportRequest',
+    declaration: 'export interface RecordCrewReportRequest {\n    readonly verdict: CrewReportSnapshot[\'verdict\'];\n    readonly summary: string;\n    readonly changedPaths: readonly string[];\n    readonly issues: readonly CrewIssue[];\n    readonly verificationId?: CrewVerificationId;\n}',
   },
   {
     name: 'RedactedSecret',
@@ -5543,7 +5961,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SpawnTeammateRequest',
-    declaration: 'export interface SpawnTeammateRequest {\n    readonly name: string;\n    readonly description: string;\n    readonly prompt: ContentBlock[];\n    readonly context: \'fresh\' | \'fork\';\n    readonly provider: string;\n    readonly signal: AbortSignal;\n}',
+    declaration: 'export interface SpawnTeammateRequest {\n    readonly childId?: SessionId;\n    readonly name: string;\n    readonly description: string;\n    readonly prompt: ContentBlock[];\n    readonly promptSource?: MessageSource;\n    readonly context: \'fresh\' | \'fork\';\n    readonly provider: string;\n    readonly agentOptions?: AgentOptions;\n    readonly persona?: string;\n    readonly toolFilter?: ToolRestriction;\n    readonly maxDepth?: number;\n    readonly signal: AbortSignal;\n}',
   },
   {
     name: 'SpawnTeammateResult',
@@ -5564,6 +5982,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SpillSource',
     declaration: 'export interface SpillSource {\n    toolName: string;\n    callId: ToolCallId;\n    label: string;\n}',
+  },
+  {
+    name: 'StopCrewWorkRequest',
+    declaration: 'export interface StopCrewWorkRequest {\n    readonly taskId: TeamTaskId;\n    readonly expectedRevision: number;\n    readonly reason: string;\n}',
   },
   {
     name: 'StorageBackend',
@@ -5652,6 +6074,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SubagentSendMessageOptions',
     declaration: 'export interface SubagentSendMessageOptions {\n    readonly signal: AbortSignal;\n}',
+  },
+  {
+    name: 'SubagentSettlementNoticeInfo',
+    declaration: 'export interface SubagentSettlementNoticeInfo {\n    readonly parentSessionId: SessionId;\n    readonly childSessionId: SessionId;\n    readonly provider: string;\n    readonly stopReason: SubagentResult[\'stopReason\'];\n}',
   },
   {
     name: 'SubagentStartRequest',
@@ -6104,6 +6530,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'TypertTypeModel',
     declaration: 'export interface TypertTypeModel {\n    readonly name: string;\n    readonly declaration: string;\n}',
+  },
+  {
+    name: 'UpdateCrewWorkItemRequest',
+    declaration: 'export interface UpdateCrewWorkItemRequest {\n    readonly taskId: TeamTaskId;\n    readonly expectedRevision: number;\n    readonly stage: CrewStage;\n    readonly reason?: string;\n    readonly developerName?: string;\n    readonly developerSessionId?: SessionId;\n    readonly reviewerName?: string;\n    readonly reviewerSessionId?: SessionId;\n    readonly appendWorkerSessionId?: SessionId;\n    readonly attempt?: number;\n    readonly automaticRepairCount?: number;\n    readonly reviewRound?: number;\n    readonly latestReportId?: CrewReportId;\n    readonly latestVerificationId?: CrewVerificationId;\n    readonly latestReviewId?: CrewReviewId;\n    readonly acceptedIntegrationId?: CrewIntegrationId;\n}',
   },
   {
     name: 'UpdateTeamTaskRequest',

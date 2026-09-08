@@ -1,10 +1,12 @@
 /** Electron host for the existing dsh Web application. */
 
-import { app, BrowserWindow, dialog, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, Menu, session, shell, Tray } from 'electron'
 import { existsSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { BackendStartupError, startBackend, type BackendHandle, type BackendStartOptions } from './backend.ts'
+import { desktopText } from './locales.ts'
 
 const rendererFile = (name: string): string => fileURLToPath(new URL(`../renderer/${name}`, import.meta.url))
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url))
@@ -14,6 +16,10 @@ let mainWindow: BrowserWindow | undefined
 let quitting = false
 let bootGeneration = 0
 let bootAbort: AbortController | undefined
+let bootTask: Promise<void> | undefined
+let tray: Tray | undefined
+let closeChoicePending = false
+let exitTask: Promise<void> | undefined
 
 function safeErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -65,6 +71,7 @@ function bundledRuntime(): BackendStartOptions & { readonly argsPrefix: readonly
   return {
     executable,
     argsPrefix: ['--expose-internals', cli],
+    controlPatch: createRequire(cli).resolve('@deepseek-ai/dsh-web-app/desktop.patch.yml'),
     cwd: app.getPath('home'),
     environment: {
       ...process.env,
@@ -78,8 +85,10 @@ function dshRuntime(): BackendStartOptions & { readonly argsPrefix: readonly str
   const bundled = bundledRuntime()
   if (bundled !== undefined) return bundled
   const root = resolveCheckoutRoot()
+  const cli = resolve(root, 'apps', 'cli', 'lib', 'bin.js')
   return {
-    argsPrefix: ['--expose-internals', resolve(root, 'apps', 'cli', 'lib', 'bin.js')],
+    argsPrefix: ['--expose-internals', cli],
+    controlPatch: createRequire(cli).resolve('@deepseek-ai/dsh-web-app/desktop.patch.yml'),
     cwd: root,
     environment: process.env,
     executable: resolveNodeExecutable(),
@@ -113,7 +122,110 @@ function createMainWindow(): BrowserWindow {
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = undefined
   })
+  window.on('close', (event) => {
+    if (quitting || process.platform !== 'win32') return
+    event.preventDefault()
+    if (exitTask !== undefined || closeChoicePending) return
+    closeChoicePending = true
+    void chooseWindowClose(window).catch((error: unknown) => {
+      console.error('desktop close dialog failed:', safeErrorMessage(error))
+    }).finally(() => { closeChoicePending = false })
+  })
   return window
+}
+
+async function chooseWindowClose(window: BrowserWindow): Promise<void> {
+  const text = desktopText(app.getLocale())
+  const choice = await dialog.showMessageBox(window, {
+    type: 'question', title: text.closeTitle, message: text.closeMessage, detail: text.closeDetail,
+    buttons: [text.hide, text.exit, text.cancel], defaultId: 0, cancelId: 2, noLink: true,
+  })
+  if (window.isDestroyed() || quitting || exitTask !== undefined) return
+  if (choice.response === 0) window.hide()
+  else if (choice.response === 1) requestExit()
+}
+
+async function confirmActiveStop(): Promise<boolean> {
+  const text = desktopText(app.getLocale())
+  const options = {
+    type: 'warning' as const, title: text.activeTitle, message: text.activeMessage, detail: text.activeDetail,
+    buttons: [text.no, text.yes], defaultId: 0, cancelId: 0, noLink: true,
+  }
+  const choice = mainWindow === undefined ? await dialog.showMessageBox(options) : await dialog.showMessageBox(mainWindow, options)
+  return choice.response === 1
+}
+
+function finishExit(): void {
+  quitting = true
+  tray?.destroy()
+  tray = undefined
+  app.quit()
+}
+
+async function exitApplication(): Promise<void> {
+  const text = desktopText(app.getLocale())
+  tray?.setToolTip(text.checking)
+  try {
+    // A boot can publish a backend after the window's close request.
+    await bootTask
+    const running = backend
+    if (running !== undefined) {
+      let confirmed = false
+      if (await running.activity()) {
+        if (!await confirmActiveStop()) return
+        confirmed = true
+      }
+      // The backend checks again atomically with starting shutdown, so work
+      // admitted after the first inspection cannot skip confirmation.
+      if (!await running.shutdown(confirmed)) {
+        if (!await confirmActiveStop()) return
+        if (!await running.shutdown(true)) throw new Error('desktop shutdown confirmation was rejected')
+      }
+      backend = undefined
+    }
+    finishExit()
+  } catch (error) {
+    restoreMainWindow()
+    const options = {
+      type: 'error' as const, title: text.failureTitle, message: text.failureMessage,
+      detail: `${text.failureDetail}\n\n${safeErrorMessage(error)}`,
+      buttons: [text.cancel, text.force], defaultId: 0, cancelId: 0, noLink: true,
+    }
+    const choice = mainWindow === undefined ? await dialog.showMessageBox(options) : await dialog.showMessageBox(mainWindow, options)
+    if (choice.response === 1) {
+      bootAbort?.abort()
+      await bootTask
+      await backend?.stop()
+      backend = undefined
+      finishExit()
+    }
+  } finally {
+    tray?.setToolTip('DeepSeek Harness')
+  }
+}
+
+function requestExit(): void {
+  if (quitting || exitTask !== undefined) return
+  const task = exitApplication()
+  exitTask = task
+  void task.catch((error: unknown) => {
+    dialog.showErrorBox(desktopText(app.getLocale()).failureTitle, safeErrorMessage(error))
+  }).finally(() => { if (exitTask === task) exitTask = undefined })
+}
+
+async function createTray(): Promise<void> {
+  if (process.platform !== 'win32') return
+  const icon = await app.getFileIcon(process.execPath, { size: 'small' })
+  const text = desktopText(app.getLocale())
+  tray = new Tray(icon)
+  tray.setToolTip('DeepSeek Harness')
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: text.open, click: restoreMainWindow },
+    { type: 'separator' },
+    { label: text.exit, click: requestExit },
+  ]))
+  tray.on('click', restoreMainWindow)
+  tray.on('double-click', restoreMainWindow)
 }
 
 async function confirmExternalUrl(parent: BrowserWindow, raw: string): Promise<void> {
@@ -168,7 +280,7 @@ async function bootWebBackend(): Promise<void> {
     const current = mainWindow
     if (current !== undefined && !current.isDestroyed()) await current.loadURL(running.url.href)
     void running.exited.then((exit) => {
-      if (backend !== running || quitting) return
+      if (backend !== running || quitting || exitTask !== undefined) return
       backend = undefined
       void showBackendFailure(
         exit.error ?? new Error(`dsh web 已停止（${String(exit.exitCode ?? exit.signal)}）`),
@@ -184,10 +296,19 @@ async function bootWebBackend(): Promise<void> {
   }
 }
 
+function startWebBackend(): Promise<void> {
+  const task = bootWebBackend()
+  bootTask = task
+  return task.finally(() => {
+    if (bootTask === task) bootTask = undefined
+  })
+}
+
 function restoreMainWindow(): void {
+  if (quitting) return
   if (mainWindow === undefined) {
     mainWindow = createMainWindow()
-    if (backend === undefined) void bootWebBackend()
+    if (backend === undefined) void startWebBackend()
     else void mainWindow.loadURL(backend.url.href)
   }
   if (mainWindow.isMinimized()) mainWindow.restore()
@@ -198,8 +319,9 @@ function restoreMainWindow(): void {
 async function prepareApplication(): Promise<void> {
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => { callback(false) })
   session.defaultSession.setPermissionCheckHandler(() => false)
+  await createTray()
   mainWindow = createMainWindow()
-  await bootWebBackend()
+  await startWebBackend()
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -216,15 +338,11 @@ if (!app.requestSingleInstanceLock()) {
     restoreMainWindow()
   })
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
+    if (process.platform !== 'darwin' && tray === undefined) requestExit()
   })
   app.on('before-quit', (event) => {
     if (quitting) return
     event.preventDefault()
-    quitting = true
-    bootAbort?.abort()
-    const running = backend
-    backend = undefined
-    void (running?.stop() ?? Promise.resolve()).finally(() => { app.quit() })
+    requestExit()
   })
 }

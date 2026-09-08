@@ -1,0 +1,12 @@
+version: 1
+scenario: two-module
+profile: crew-native
+composition: crew-native
+recording: live
+header:
+  class: crew-native
+  pin: true
+  childSystemPrompts: [1, 2, 3, 4, 5, 6]
+  childToolSchemas: [1, 2, 3, 4, 5, 6]
+workspace:
+  final: true

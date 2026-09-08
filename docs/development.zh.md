@@ -10,6 +10,7 @@
 
 ### 前置条件
 
+- Windows 是主开发平台，Linux 为辅助平台。macOS 兼容代码保留，但不开展主动开发、原生 CI 或发布验证；见[维护范围](../.agents/notes/implemented/process/2026-09-05-windows-linux-maintenance-scope.zh.md)。
 - Node.js 支持 22.19+ 与 24+。CI 覆盖 22.19、24 和 26；见 [Node 引擎下限 Agent Note](../.agents/notes/implemented/process/2026-07-06-node-engine-floor.zh.md)。
 - 启用了 Corepack 的 pnpm。仓库在 `package.json` 中固定使用 `pnpm@11.7.0`；如果 `pnpm --version` 无法通过 Corepack 解析，请先运行 `corepack enable`。
 - Git 2.26 或更高版本；钩子设置会启用 Git 的 worktree 专属配置扩展。

@@ -13,7 +13,7 @@ pnpm install
 pnpm exec tsx scripts/build-exe-for-python-sdk.ts
 ```
 
-Use `--skip-build` when the required `lib/` artifacts already exist, or `--targets=node24-linux-x64,node24-linux-arm64,node24-macos-arm64,node24-macos-x64,node24-win-x64` to select platforms. Build each target on its native architecture. Products land in `dist-exe/` and the script syncs the selected carriers into `python/sdk-runtime/`. Windows emits `.exe` and `-rg.exe`; macOS also syncs the matching spawn helper required by `node-pty`.
+Use `--skip-build` when the required `lib/` artifacts already exist, or `--targets=node24-linux-x64,node24-linux-arm64,node24-win-x64` to select platforms. Build each target on its native architecture. Products land in `dist-exe/` and the script syncs the selected carriers into `python/sdk-runtime/`. Windows emits `.exe` and `-rg.exe`. macOS helpers are retained for contributor builds without active maintenance; see the [maintenance scope](../.agents/notes/implemented/process/2026-09-05-windows-linux-maintenance-scope.md).
 
 ## Validate the SDK
 
@@ -31,10 +31,10 @@ That suite drives fake runtime peers. `scripts/smoke-python-runtime.py` drives t
 
 ```sh
 uv run --project python/sdk python scripts/smoke-python-runtime.py \
-  --scenario sdk-minimal --exe dist-exe/deepseek-harness-sdk-runtime-macos-arm64
+  --scenario sdk-minimal --exe dist-exe/deepseek-harness-sdk-runtime-linux-x64
 ```
 
-Three scenarios compare committed expected output under `scripts/snapshots/python-sdk-single-exe/`. `minimal/model-visible.json` pins the Linux/macOS `sdk-minimal` profile's assembled system prompts, advertised tool schemas, and model-visible messages; `minimal/win-x64/model-visible.json` pins its PowerShell counterpart. A plugin that contributes an unintended system section or user message therefore fails the job, and every message the profile emits is compared. `advanced/` pins one complex process's SDK result and parent/child session logs across every target. `restart/` launches two complete SDK runtime processes against one persistence root and snapshots their isolated model histories, high-level results, and separate durable logs across every target. Rerun the owning scenario with `--update-snapshots` and review that diff before committing it.
+Four scenarios compare committed expected output under `scripts/snapshots/python-sdk-single-exe/`. `minimal/model-visible.json` pins the Linux/macOS `sdk-minimal` profile's assembled system prompts, advertised tool schemas, and model-visible messages; `minimal/win-x64/model-visible.json` pins its PowerShell counterpart. A plugin that contributes an unintended system section or user message therefore fails the job, and every message the profile emits is compared. `advanced/` pins one complex process's SDK result and parent/child session logs across every target. The independent `crew-projection/` owner adds a Crew configuration event with its complete execution limits; `--scenario sdk-crew-snapshot` selects it, and `all` runs both cases. `restart/` launches two complete SDK runtime processes against one persistence root and snapshots their isolated model histories, high-level results, and separate durable logs across every target. `--update-snapshots` creates a new scenario's expected files or a new writer generation; it refuses to overwrite different Session bytes at an existing generation path. Review every generated diff before committing it.
 
 Trusted pull requests also run `--scenario sdk-live --installed-wheel` on every native target. That scenario performs two tool-using turns against `https://api.deepseek.com`, verifies the created file externally, and fails when the repository secret is absent instead of self-skipping. Fork and Dependabot pull requests run the complete keyless installed-wheel path but receive no key.
 
@@ -73,17 +73,17 @@ print(release["pep440_version"](release["repository_version"]()))
 PY
 )"
 python scripts/build-python-release.py --package sdk --output-dir dist-python
-python scripts/build-python-release.py --package runtime --platform macos-arm64 --runtime-exe dist-exe/deepseek-harness-sdk-runtime-macos-arm64 --output-dir dist-python
+python scripts/build-python-release.py --package runtime --platform linux-x64 --runtime-exe dist-exe/deepseek-harness-sdk-runtime-linux-x64 --output-dir dist-python
 pip install \
   "dist-python/deepseek_harness_sdk-$version-py3-none-any.whl" \
-  "dist-python/deepseek_harness_runtime_bin-$version-py3-none-macosx_14_0_arm64.whl"
+  "dist-python/deepseek_harness_runtime_bin-$version-py3-none-manylinux_2_28_x86_64.whl"
 ```
 
-The runtime distribution is wheel-only. The release pipeline publishes five platform wheels with the pure SDK wheel: Linux x64, Linux arm64, macOS 14 or newer on arm64 and x64, and Windows x64 (`win_amd64`). A `python-v<repository-version>` tag is accepted only when it matches the repository version; prerelease repository versions such as `0.0.1-rc.1` use their normalized PEP 440 spelling, such as `0.0.1rc1`, inside wheel filenames and metadata.
+The runtime distribution is wheel-only. The release pipeline selects three platform wheels with the pure SDK wheel: Linux x64, Linux arm64, and Windows x64 (`win_amd64`). A `python-v<repository-version>` tag is accepted only when it matches the repository version; prerelease repository versions such as `0.0.1-rc.1` use their normalized PEP 440 spelling, such as `0.0.1rc1`, inside wheel filenames and metadata.
 
 ## Validate a release candidate
 
-Manually run the GitHub `Release (Python)` workflow with `publish=false` to build all six wheels, install the Linux release set on Python 3.10 and 3.14, check exact filenames and metadata, enforce PyPI's default per-file size limit, and retain one aggregate artifact with SHA-256 hashes. The run has no registry credentials; a dry run cannot enter either publication job.
+Manually run the GitHub `Release (Python)` workflow with `publish=false` to build all four wheels, install the Linux release set on Python 3.10 and 3.14, check exact filenames and metadata, enforce PyPI's default per-file size limit, and retain one aggregate artifact with SHA-256 hashes. The run has no registry credentials; a dry run cannot enter either publication job.
 
 Public publication runs from the private automation repository. Package metadata points to the separate read-only public source mirror, which does not run release Actions. The private repository defines the repository variable `PYPI_PUBLISHER_REPOSITORY` as its own `owner/name` and keeps `PUBLIC_PYPI_RELEASE_ENABLED=false` except during an intentional release.
 

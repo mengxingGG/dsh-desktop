@@ -12,6 +12,7 @@
  */
 import { createAlsRuntime, type AlsCausality, type AlsRuntime } from '../polyfill/async-context/als-runtime.ts'
 import { dirname, fileUrlToPath, isAbsolute, join, pathToFileUrl, resolve as resolvePath } from './posix-path.ts'
+import { packageSearchPaths } from './package-paths.ts'
 import { WRAPPER_PARAMS } from '../image-layout.ts'
 import type { MemoryVfs } from '../storage/memory.ts'
 
@@ -296,9 +297,11 @@ export class WorkerModuleLoader {
     const segments = specifier.split('/')
     const packageName = specifier.startsWith('@') ? segments.slice(0, 2).join('/') : segments[0] ?? specifier
     const rest = specifier.slice(packageName.length).replace(/^\//, '')
-    const packageDirectory = join(this.root, 'node_modules', packageName)
-    if (!this.vfs.existsSync(join(packageDirectory, 'package.json'))) {
-      return this.fail(`cannot resolve "${specifier}": ${packageDirectory}/package.json is not in the image`)
+    const packageDirectory = packageSearchPaths(fromDirectory, this.root)
+      .map(directory => join(directory, packageName))
+      .find(directory => this.vfs.existsSync(join(directory, 'package.json')))
+    if (packageDirectory === undefined) {
+      return this.fail(`cannot resolve "${specifier}": ${join(this.root, 'node_modules', packageName)}/package.json is not in the image`)
     }
     const manifest = this.manifestOf(packageDirectory)
     const subpath = rest === '' ? '.' : `./${rest}`
@@ -407,7 +410,7 @@ export class WorkerModuleLoader {
     resolve.paths = (specifier: string): string[] | null => {
       if (this.staticModule(specifier) !== undefined || specifier.startsWith('node:')) return null
       if (specifier.startsWith('.')) return [resolvePath(fromDirectory, '.')]
-      return [join(this.root, 'node_modules')]
+      return packageSearchPaths(fromDirectory, this.root)
     }
     return Object.assign(require, { resolve })
   }

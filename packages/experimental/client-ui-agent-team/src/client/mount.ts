@@ -3,8 +3,8 @@
 import type {
   TeamMemberView as TeamRosterMember,
   TeamView,
-} from '@deepseek-ai/dsh-experimental-agent-team/client'
-import type {} from '@deepseek-ai/dsh-experimental-agent-team/remote'
+} from '@deepseek-ai/dsh-agent-team/client'
+import type {} from '@deepseek-ai/dsh-agent-team/remote'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'

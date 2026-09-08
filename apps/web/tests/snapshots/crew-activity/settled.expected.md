@@ -1,0 +1,6 @@
+- region "Live worker activity":
+  - heading "Live worker activity" [level=3]
+  - paragraph: {{uuid}}
+  - status: Not running
+  - group: Task instruction
+  - text: Worker live prefix and completed suffix.

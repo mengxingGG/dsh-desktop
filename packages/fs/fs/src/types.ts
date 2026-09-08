@@ -95,6 +95,8 @@ export interface FsPathInfo {
   type: 'file' | 'directory' | 'symlink' | 'other'
   /** Byte size of the path entry, when the backend can report it. */
   size?: number
+  /** Observed hard-link count; absence means unavailable, never an implied count of one. */
+  linkCount?: number
 }
 
 /**

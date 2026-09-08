@@ -20,7 +20,7 @@ That list is the one the model reads as long as nothing downstream of the tool r
 
 `CHAT_WEB_MAX_SOURCES` and the primitive's `DEFAULT_WEB_MAX_SOURCES` are removed: with scroll, the chat row and the details panel show the same full list, differentiated only by their container height. `<li value={ordinal}>` still pins each source's 1-based citation index; without the collapse gap the ordinals are now simply contiguous.
 
-Making the list a scroll container also makes its `padding-left` a correctness constraint, not spacing. A scroll container clips inline-start overflow and offers no way to scroll it back, and `::marker` is right-aligned to the content edge, so a marker wider than the padding silently loses its leading digits — at the list's 20px the two-digit markers rendered as `0.` and `1.` where `10.` and `11.` belonged. `searchMaxResults` is an unbounded positive integer, so the padding is sized in `em` against the list's own font — the one a marker inherits — to hold a three-digit marker (`999. ` measures 2.35em in the app font stack) and keeps the gap the one-digit case already had.
+The scrolling list clips inline-start overflow, so `padding-left` must contain the citation marker as well as its gap. Markers inherit the list font and align against its content edge. The list reserves `3em` for three-digit markers; the browser regression measures an actual `999. ` marker in the active font and rejects insufficient room. This is a three-digit layout guarantee, not an unlimited source-count guarantee.
 
 ## Alternatives considered
 

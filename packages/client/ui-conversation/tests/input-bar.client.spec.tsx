@@ -983,6 +983,27 @@ describe('running and lock semantics', () => {
     expect(focused).toEqual([true])
   })
 
+  it.each([
+    { title: 'unlock keeps focus in another modal', change: 'unlock', modal: true, composerInside: false, keepsFocus: true },
+    { title: 'session switching keeps focus in another modal', change: 'switch', modal: true, composerInside: false, keepsFocus: true },
+    { title: 'a non-modal dialog allows session focus', change: 'switch', modal: false, composerInside: false, keepsFocus: false },
+    { title: 'the composer can take focus inside its own modal', change: 'switch', modal: true, composerInside: true, keepsFocus: false },
+  ])('$title', ({ change, modal, composerInside, keepsFocus }) => {
+    const { view, textarea, props } = bench({ inert: change === 'unlock' })
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.setAttribute('aria-modal', String(modal))
+    const other = document.createElement('input')
+    dialog.appendChild(other)
+    document.body.appendChild(dialog)
+    onTestFinished(() => { dialog.remove() })
+    if (composerInside) dialog.appendChild(view.container)
+    other.focus()
+    const next = change === 'unlock' ? { disabled: false } : { sessionId: 's2' as SessionId }
+    act(() => { view.rerender(<InputBar {...props} {...next} />) })
+    expect(document.activeElement).toBe(keepsFocus ? other : textarea)
+  })
+
   it('a persisted draft adopted after mount does not steal focus from another control', () => {
     const { shell } = bench()
     const other = document.createElement('input')

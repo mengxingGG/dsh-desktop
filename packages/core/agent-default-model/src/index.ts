@@ -6,7 +6,7 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { ModelSelection } from '@deepseek-ai/dsh-agent'
+import type { Agent, ModelSelection } from '@deepseek-ai/dsh-agent'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-settings'
 
@@ -68,6 +68,7 @@ export class AgentDefaultModelConfig extends Service {
   })
 
   private source: () => AgentDefaultModelSettings
+  private readonly agentDefaults = new WeakMap<Agent, (base: ModelSelection) => ModelSelection>()
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'agentDefaultModel')
@@ -85,10 +86,26 @@ export class AgentDefaultModelConfig extends Service {
 
   /**
    * Read the current default model selection.
+   * @param agent - Optional Agent with a registered role default; omit for the deployment default.
    * @returns a detached provider, model, and optional reasoning selection.
    */
-  currentSelection(): ModelSelection {
-    return selection(this.source())
+  currentSelection(agent?: Agent): ModelSelection {
+    const base = selection(this.source())
+    const resolve = agent === undefined ? undefined : this.agentDefaults.get(agent)
+    return resolve === undefined ? base : structuredClone(resolve(base))
+  }
+
+  /**
+   * Register one Agent's default resolver without changing user or Session selections.
+   * @param agent - Exact live Agent whose entry point requests the default.
+   * @param resolve - Synchronous resolver over the current deployment default.
+   * @returns Disposer; the caller must own it through an effect.
+   * @throws When the same Agent already has a default resolver.
+   */
+  register(agent: Agent, resolve: (base: ModelSelection) => ModelSelection): () => void {
+    if (this.agentDefaults.has(agent)) throw new Error(`agent "${agent.id}" already has a model default resolver`)
+    this.agentDefaults.set(agent, resolve)
+    return () => { if (this.agentDefaults.get(agent) === resolve) this.agentDefaults.delete(agent) }
   }
 
   /**

@@ -198,6 +198,77 @@ def test_snapshot_file_builder_order_is_checked_outside_update_mode(tmp_path: Pa
         compare({}, False, tmp_path, ("result.json",))
 
 
+@pytest.mark.parametrize("name", ["session.v2.jsonl", "session.1.v2.jsonl"])
+def test_snapshot_update_refuses_changed_generation_before_writing_sidecars(
+    tmp_path: Path, name: str,
+) -> None:
+    original = {
+        "result.json": '{"result":"original"}\n',
+        name: '{"type":"session","version":2,"id":"original"}\n',
+    }
+    for filename, content in original.items():
+        (tmp_path / filename).write_bytes(content.encode("utf-8"))
+    changed = {filename: content.replace("original", "changed") for filename, content in original.items()}
+
+    with pytest.raises(AssertionError, match="immutable Session generation"):
+        SMOKE["compare_snapshot_files"](changed, True, tmp_path, tuple(changed))
+
+    assert {filename: (tmp_path / filename).read_bytes() for filename in original} == {
+        filename: content.encode("utf-8") for filename, content in original.items()
+    }
+
+
+def test_snapshot_update_keeps_predecessor_when_adding_a_writer_generation(tmp_path: Path) -> None:
+    predecessor = b'{"type":"session","version":1}\n'
+    (tmp_path / "session.v1.jsonl").write_bytes(predecessor)
+    files = {"session.v2.jsonl": '{"type":"session","version":2}\n'}
+
+    SMOKE["compare_snapshot_files"](files, True, tmp_path, tuple(files))
+
+    assert (tmp_path / "session.v1.jsonl").read_bytes() == predecessor
+    assert (tmp_path / "session.v2.jsonl").read_bytes() == files["session.v2.jsonl"].encode("utf-8")
+
+
+def test_snapshot_new_owner_can_be_recorded_and_replayed(tmp_path: Path) -> None:
+    directory = tmp_path / "new-owner"
+    files = {
+        "result.json": '{"result":"ok"}\n',
+        "session.v2.jsonl": '{"type":"session","version":2}\n',
+    }
+    compare = SMOKE["compare_snapshot_files"]
+
+    compare(files, True, directory, tuple(files))
+    session_inode = (directory / "session.v2.jsonl").stat().st_ino
+    compare(files, True, directory, tuple(files))
+    compare(files, False, directory, tuple(files))
+
+    assert {path.name for path in directory.iterdir()} == set(files)
+    assert (directory / "session.v2.jsonl").stat().st_ino == session_inode
+
+
+@pytest.mark.parametrize(
+    ("sessions", "message"),
+    [
+        ({"session.v2.jsonl": '{"type":"session","version":1}\n'}, "filename declares"),
+        ({"session.invalid.jsonl": '{"type":"session","version":2}\n'}, "invalid snapshot"),
+        ({
+            "session.v1.jsonl": '{"type":"session","version":1}\n',
+            "session.v2.jsonl": '{"type":"session","version":2}\n',
+        }, "duplicate Session role"),
+    ],
+)
+def test_snapshot_update_validates_session_names_before_creating_files(
+    tmp_path: Path, sessions: dict[str, str], message: str,
+) -> None:
+    directory = tmp_path / "invalid-owner"
+    files = {"result.json": '{}\n', **sessions}
+
+    with pytest.raises(AssertionError, match=message):
+        SMOKE["compare_snapshot_files"](files, True, directory, tuple(files))
+
+    assert not directory.exists()
+
+
 def test_snapshot_comparison_expands_sdk_wrapped_attempts() -> None:
     normalize = SMOKE["normalize_session_format_comparison"]
     actual = [{

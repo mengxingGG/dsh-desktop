@@ -1,0 +1,113 @@
+# The `crew-manager` Agent preset: Crew orchestration is mandatory for every
+# session that selects it.
+#
+# The COMPOSITION is the enforcement. There is no shell, unscoped filesystem,
+# subagent, workflow, or web row here, so the model has no route to a project
+# code change other than dispatching a Crew worker — whatever a later
+# instruction, tool description, or user message suggests. `loadCrewProfilePresets`
+# checks every row name, including rows nested inside a group, against the
+# allowlist in `../../../src/index.ts`; adding a capability here is a
+# deliberate edit of both files, not a silent widening.
+#
+# The `crew_*` manager tools are deliberately ABSENT from this file:
+# `dsh-tool-crew` sits in the Host layer and installs them on whichever Agent
+# is the Team lead. What this preset chooses is what the manager has BESIDES
+# them, which is coordination only.
+#
+# A service row here MUST sit inside a group carrying an `isolate` realm; see
+# the `standard` preset for why `dsh-agent-presets` rejects an unscoped one.
+
+# ── identity ────────────────────────────────────────────────────────────────
+
+# Byte-identical to `presets/roles/manager.yml`; the profile loader compares
+# them and refuses to activate when they diverge.
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are the top-level manager of a DSH-native software Crew. This Agent preset mandates Crew orchestration: you write specifications and coordination documents, and every change to project source and tests reaches the repository through dispatched Crew workers, never through your own edits. Read project instructions and the supplied DSH-global memory before planning. Create versioned specifications, assign non-overlapping developer modules with shared docs/test/tests directories, and require host verification and independent review. This preset supplies no shell, unscoped filesystem, subagent, or workflow tools; when a request needs work no Crew role can carry out, say so instead of looking for another route. Command preferences do not grant permission; warn the user about dangerous operations. Never invoke an external agent CLI, modify Git metadata directly, or claim work is complete from an Agent report alone.
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+# ── coordination ────────────────────────────────────────────────────────────
+
+# The manager talks to the user and tracks its own dispatch queue. None of
+# these rows can reach the repository: `crew_read_file`/`crew_write_file` from
+# the Host layer remain the only file access, and they stay inside the
+# durable Crew path scopes.
+
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'
+
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: true
+
+# Skills carry the repository's own conventions into specification writing.
+# `skill-filesystem` contributes local-root discovery, `tool-skill` the
+# catalog and loader; both register into this preset's layer of the host
+# registry, so they need no realm.
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+
+# ── plan mode ───────────────────────────────────────────────────────────────
+
+# Plan state is per-agent by nature, so the entry-local realm is the correct
+# lifetime. The section below is this preset's own: the shipped presets' text
+# forbids file edits and mutation tools this preset never had, while what a
+# Crew manager must not do before approval is dispatch work and write
+# specifications.
+- id: planning
+  name: cordis:group
+  group: true
+  isolate:
+    planMode: true
+  config:
+    - id: plan-mode
+      name: '@deepseek-ai/dsh-plan-mode'
+      config:
+        section: |
+              You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to start the work means plan the Crew workflow, not run it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+              Explore first, read-only: crew_read_file, crew_list_files, crew_status, the skill catalog, and project instructions ground the plan in the actual repository. Do not write or edit any file, dispatch, append to, stop, or reassign a worker, integrate, commit, or save Crew memory. crew_memory reads are allowed; saves and deletions are not.
+
+              The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using a mutating Crew control; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks the dispatch queue after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+              Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+              Make the plan decision-complete: state the goal and success criteria; give the module split with each module's exact non-overlapping paths and the shared docs/test/tests directories; outline the specification each developer receives; name the exact verification commands and the review and integration criteria; cover edge cases, failure modes, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that the Crew can execute it without further design decisions.
+
+              When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and dispatch begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not dispatch.
+
+# ── compaction ──────────────────────────────────────────────────────────────
+
+# A manager conversation outlives several dispatch rounds, so it compacts.
+# `compaction-basic` reads `toolResultPrune` through `ctx.get`, so the pruner
+# shares this realm rather than sitting outside it; `tokenMeter` deliberately
+# stays on the host plane, as in the shipped presets.
+- id: compaction
+  name: cordis:group
+  group: true
+  isolate:
+    compaction: true
+    toolResultPruner: true
+  config:
+    - id: compaction-basic
+      name: '@deepseek-ai/dsh-compaction-basic'
+
+    - id: command-compact
+      name: '@deepseek-ai/dsh-command-compact'
+
+    - id: tool-result-pruner
+      name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+      config:
+        thresholdChars: 8192
+        headChars: 4096
+        tailChars: 1024

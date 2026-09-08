@@ -1,0 +1,2 @@
+- list "Background jobs":
+  - listitem: pwsh Wait-Event killed before exit {{duration}}

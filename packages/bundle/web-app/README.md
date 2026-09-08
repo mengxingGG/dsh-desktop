@@ -79,6 +79,8 @@ A patch replaces the targeted row's whole `config`, so each web row restates eve
 
 The URL line and browser handoff are readiness signals: supervisors RPC as soon as they observe the line, and a browser requests the page as soon as it opens, so both run only after the Loader tree settles and Connection authentication is available — or immediately in a hand-built tree without a Loader. A tree disposed mid-boot announces nothing.
 
+The desktop shell mounts [`desktop.patch.yml`](desktop.patch.yml) only for its owned child process. Its [IPC plugin](src/desktop.ts) inspects live work and coordinates the [durable exit protocol](../../../.agents/notes/implemented/feature/2026-09-05-windows-tray-durable-exit.md); ordinary browser launches expose no shutdown endpoint. Explicit mounting without inherited parent IPC or the launcher exit service fails at startup.
+
 ### LAN trust sampling
 
 `resolveLanTrust` samples the network once at boot: a loopback bind (`127.0.0.1`) derives no LAN addresses, while an all-interfaces bind adds every non-internal IPv4 literal. The derived literals plus the explicit `--trusted-host` authorities form the `/api` browser-trust fence, and the printed LAN URL always matches that fence.

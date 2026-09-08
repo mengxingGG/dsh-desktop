@@ -41,6 +41,7 @@
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`、`list_agents`、`send_message` | `ctx.tools`、`ctx.subagents`、`ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`、`tool/result`、`child session events through ctx.subagents` | - | 这些是控制可继续后台 subagent 的全局命名工具：绑定提供方的 `tool-subagent` 实例注册不同的委派工具；本包注册一次 `send_message` 和 `interrupt_agent`，另由 `list_agents` 通过单独加载的 `/list-agents` 插件提供，其目录行使用 sessionProjections 和实时 Agent 注册表。 |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`、`job_list`、`job_output` | `ctx.tools`、`ctx.jobs`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`user/message via agent.inject() for background completion notices` | - | 与任务种类无关的后台任务控制器：后台 bash 命令、PTY 发送和 subagent 都通过相同的 3 个工具读取、列出和终止。加载该插件会挂接控制器，从而启用生产方的 `ctx.jobs.start()`。 |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`、`list_agents`、`send_message`、`spawn_teammate`、`team_task_create`、`team_task_get`、`team_task_list`、`team_task_update`、`wait_agent` | `ctx.tools`、`ctx.systemPrompt`、`ctx.agentTeams`、`an exact live Team member Agent` | `tool/call`、`team/member`、`team/message/queued`、`team/message/delivered`、`team/task`、`tool/result` | - | 这 9 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。 |
+| `@deepseek-ai/dsh-tool-crew` | `crew_append`、`crew_commit`、`crew_dispatch`、`crew_edit_file`、`crew_integrate`、`crew_list_files`、`crew_memory`、`crew_read_file`、`crew_reassign`、`crew_status`、`crew_stop`、`crew_wait`、`crew_write_file` | `ctx.tools`、`ctx.systemPrompt`、`ctx.agents`、`ctx.agentTeams`、`ctx.crew`、`an exact live Crew manager Agent` | `tool/call`、`Crew and Team events through ctx.crew`、`tool/result` | - | 本目录记录厂长子集。必需的 Crew profile 安装精确角色预设；开发、审查与整合工人只在自己的 Agent 作用域中收到已声明子集。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`、`web_search` | `ctx.tools`、`ctx.web`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。 |
@@ -2032,7 +2033,473 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 
 来源：[`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
 
-这 10 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。
+这 9 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。
+
+
+<a id="deepseek-aidsh-tool-crew"></a>
+
+## `@deepseek-ai/dsh-tool-crew`
+
+### `crew_append`
+
+使用最新 Crew 工单 revision 向当前持久开发工人追加指令。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "task_id": {
+      "type": "string"
+    },
+    "expected_revision": {
+      "type": "integer"
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "task_id",
+    "expected_revision",
+    "message"
+  ]
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_commit`
+
+经用户批准后，只提交一项通过的 Crew integration 中精确列出的路径。本工具绝不 push。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "integration_id": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "integration_id",
+    "message"
+  ]
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_dispatch`
+
+创建一项带版本 Crew 工单，冻结其 checkout baseline，并启动一名 DSH 原生开发工人。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "module_key": {
+      "type": "string",
+      "description": "Stable lower-kebab-case module key."
+    },
+    "subject": {
+      "type": "string",
+      "description": "Concise work item title."
+    },
+    "description": {
+      "type": "string",
+      "description": "Complete implementation task and acceptance criteria."
+    },
+    "spec_path": {
+      "type": "string",
+      "description": "Repository-relative versioned specification path."
+    },
+    "spec_revision": {
+      "type": "integer",
+      "description": "Positive specification revision."
+    },
+    "blocked_by": {
+      "type": "array",
+      "description": "Completed Crew task ids required first.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "read_scopes": {
+      "type": "array",
+      "description": "Repository-relative readable scopes.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "write_scopes": {
+      "type": "array",
+      "description": "Non-overlapping repository-relative writable scopes.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "required_artifacts": {
+      "type": "array",
+      "description": "Files that must exist at developer handoff.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "test_commands": {
+      "type": "array",
+      "description": "Exact host verification commands.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique lower-kebab-case command id."
+          },
+          "argv": {
+            "type": "array",
+            "description": "Exact shell-free argv. The program must be allowed by Crew configuration.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Repository-relative working directory."
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "description": "Positive command timeout in milliseconds."
+          }
+        },
+        "required": [
+          "id",
+          "argv",
+          "cwd",
+          "timeout_ms"
+        ]
+      }
+    }
+  },
+  "required": [
+    "module_key",
+    "subject",
+    "description",
+    "spec_path",
+    "spec_revision",
+    "read_scopes",
+    "write_scopes",
+    "required_artifacts",
+    "test_commands"
+  ]
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_edit_file`
+
+通过 Crew 路径策略对仓库文件应用一次精确字面替换。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "old_string": {
+      "type": "string"
+    },
+    "new_string": {
+      "type": "string"
+    },
+    "replace_all": {
+      "type": "boolean",
+      "description": "Replace every occurrence; defaults to false."
+    }
+  },
+  "required": [
+    "path",
+    "old_string",
+    "new_string"
+  ]
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_integrate`
+
+启动原生整合工人以衔接已审查模块、执行必要的项目编辑并运行组合测试。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "task_ids": {
+      "type": "array",
+      "description": "Reviewed task ids; omit to select every integration-ready task.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "test_commands": {
+      "type": "array",
+      "description": "Exact combined verification commands.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique lower-kebab-case command id."
+          },
+          "argv": {
+            "type": "array",
+            "description": "Exact shell-free argv. The program must be allowed by Crew configuration.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Repository-relative working directory."
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "description": "Positive command timeout in milliseconds."
+          }
+        },
+        "required": [
+          "id",
+          "argv",
+          "cwd",
+          "timeout_ms"
+        ]
+      }
+    }
+  },
+  "required": [
+    "test_commands"
+  ]
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_list_files`
+
+通过 Crew 路径策略列出一个仓库目录的直接子项。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path"
+  ]
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_memory`
+
+读取、保存或删除 DSH 用户全局操作记忆。先读取，再使用其 revision 编辑。把观察到的偏好与明确的长期授权分开保存；授权始终询问用户。不要保存凭据、项目指令或任务进度。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "operation": {
+      "type": "string",
+      "enum": [
+        "read",
+        "save",
+        "delete"
+      ]
+    },
+    "entry_id": {
+      "type": "string",
+      "description": "Stable lower-kebab-case memory id; required for save and delete."
+    },
+    "expected_revision": {
+      "type": "integer",
+      "description": "Revision returned by the latest read; required for save and delete."
+    },
+    "kind": {
+      "type": "string",
+      "description": "Required for save. Repeated approvals are preferences, not standing authorization.",
+      "enum": [
+        "preference",
+        "authorization"
+      ]
+    },
+    "text": {
+      "type": "string",
+      "description": "Required for save; the user habit or explicit authorization to remember."
+    },
+    "scope": {
+      "type": "string",
+      "description": "Required for save; when and where the remembered choice applies."
+    }
+  },
+  "required": [
+    "operation"
+  ]
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_read_file`
+
+通过 Crew 路径策略读取一个有界 UTF-8 仓库文件。Git 元数据与凭据文件不可用。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path"
+  ]
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_reassign`
+
+用新的 DSH 原生 child 替换 paused、failed 或 revision-required 状态的开发工人。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "task_id": {
+      "type": "string"
+    },
+    "expected_revision": {
+      "type": "integer"
+    },
+    "reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "task_id",
+    "expected_revision",
+    "reason"
+  ]
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_status`
+
+读取当前 Crew 工单、integration、notification 与 commit revision。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_stop`
+
+中断并持久暂停一项活动 Crew 工单，但不删除其 child Session。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "task_id": {
+      "type": "string"
+    },
+    "expected_revision": {
+      "type": "integer"
+    },
+    "reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "task_id",
+    "expected_revision",
+    "reason"
+  ]
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_wait`
+
+无需模型轮询地等待一次 Crew 变化，或等待至工作流需要厂长处理。返回后重新读取 crew_status。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "timeout_ms": {
+      "type": "integer",
+      "description": "Wait duration in milliseconds, from 10000 through 3600000. Defaults to 30000."
+    },
+    "until": {
+      "type": "string",
+      "description": "Defaults to change. manager-action skips intermediate worker events until intervention, integration, or a terminal integration result is available.",
+      "enum": [
+        "change",
+        "manager-action"
+      ]
+    }
+  }
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+### `crew_write_file`
+
+通过 Crew 路径策略创建或替换一个 UTF-8 仓库文件，不改变 Git 元数据。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "content"
+  ]
+}
+```
+
+来源：[`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-crew/src/index.ts)
+
+本目录记录厂长子集。必需的 Crew profile 安装精确角色预设；开发、审查与整合工人只在自己的 Agent 作用域中收到已声明子集。
 
 
 <a id="deepseek-aidsh-tool-todo"></a>

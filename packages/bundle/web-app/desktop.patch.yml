@@ -1,0 +1,4 @@
+# Parent-only lifecycle control for the Electron shell; not part of ordinary Web startup.
+- insert:
+    - id: web-desktop-control
+      name: '@deepseek-ai/dsh-web-app/desktop'

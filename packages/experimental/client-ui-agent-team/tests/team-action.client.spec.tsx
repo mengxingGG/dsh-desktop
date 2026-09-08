@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
   TeamTaskId, TeamTaskView as TeamTask, TeamView,
-} from '@deepseek-ai/dsh-experimental-agent-team/client'
+} from '@deepseek-ai/dsh-agent-team/client'
 import { makeTranslate, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import {

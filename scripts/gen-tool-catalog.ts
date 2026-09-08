@@ -58,8 +58,10 @@ import * as ToolLsp from '@deepseek-ai/dsh-tool-lsp'
 import * as ToolSkill from '@deepseek-ai/dsh-tool-skill'
 import * as ToolSessionQuery from '@deepseek-ai/dsh-tool-session-query'
 import * as ToolTasks from '@deepseek-ai/dsh-tool-jobs'
-import type TeamService from '@deepseek-ai/dsh-experimental-agent-team'
+import type TeamService from '@deepseek-ai/dsh-agent-team'
 import * as ToolTeam from '@deepseek-ai/dsh-experimental-tool-agent-team'
+import type CrewService from '@deepseek-ai/dsh-crew'
+import * as ToolCrew from '@deepseek-ai/dsh-tool-crew'
 import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
 import * as ToolSubagent from '@deepseek-ai/dsh-tool-subagent'
 import { registerListSubagentModels } from '../packages/subagent/tool-subagent/src/list-models.ts'
@@ -544,6 +546,48 @@ const TOOL_PACKAGES: ToolPackage[] = [
     scope: ctx => catalogChildScopes.get(ctx) as Agent,
     note:
       'All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-crew',
+    dir: 'tool-crew',
+    source: 'packages/subagent/tool-crew/src/index.ts',
+    requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.agents', 'ctx.agentTeams', 'ctx.crew', 'an exact live Crew manager Agent'],
+    writes: ['tool/call', 'Crew and Team events through ctx.crew', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(AgentRegistry)
+      await ctx.plugin(SessionStore)
+      const session = ctx.sessions.create(SessionId('tool-catalog-crew-manager'))
+      let agent!: Agent
+      const membership = {
+        get root() { return agent },
+        id: session.id,
+        role: 'lead' as const,
+        name: 'manager',
+      }
+      ctx.provide('agentTeams', {
+        tryMembership: (candidate: Agent) => candidate === agent ? membership : undefined,
+        membership: () => membership,
+      } as unknown as TeamService)
+      ctx.provide('crew', {} as CrewService)
+      await ctx.plugin(Object.assign((inner: Context) => {
+        agent = {
+          id: session.id,
+          session,
+          options: {},
+          status: 'idle',
+        } as unknown as Agent
+        Object.assign(agent, { ctx: createScope(inner, agent).ctx })
+        inner.agents.register(agent)
+      }, { inject: ['tools', 'systemPrompt', 'agents', 'agentTeams', 'crew'] }))
+      await ctx.plugin(ToolCrew, {
+        requireRolePresets: true,
+        roleTools: ToolCrew.CREW_ROLE_TOOL_NAMES,
+      })
+      catalogChildScopes.set(ctx, agent)
+    },
+    scope: ctx => catalogChildScopes.get(ctx) as Agent,
+    note:
+      'The catalog records the manager subset. The required Crew profile installs exact role presets; developers, reviewers, and integrators receive only their declared subset on their own Agent scope.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-todo',

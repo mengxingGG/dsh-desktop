@@ -564,7 +564,7 @@ describe('ChatView', () => {
     const afterMount = railRenders
     expect(afterMount).toBeGreaterThan(0)
 
-    act(() => { h.setSelection({ turnSeq: 3, callId: 'a', toolName: 'bash' }) })
+    act(() => { h.setSelection({ kind: 'tool', turnSeq: 3, callId: 'a', toolName: 'bash' }) })
 
     expect(railRenders).toBe(afterMount)
   })
@@ -2087,7 +2087,7 @@ describe('ChatView', () => {
     const h = makeHarness({ nodes: [toolResult(3, 'a')] })
     render(<h.ChatView {...h.props} />)
     expect(h.toolOwners.at(-1)?.selectedCallId).toBeUndefined()
-    act(() => { h.setSelection({ turnSeq: 3, callId: 'a', toolName: 'bash' }) })
+    act(() => { h.setSelection({ kind: 'tool', turnSeq: 3, callId: 'a', toolName: 'bash' }) })
     expect(h.toolOwners.at(-1)?.selectedCallId).toBe('a')
   })
 

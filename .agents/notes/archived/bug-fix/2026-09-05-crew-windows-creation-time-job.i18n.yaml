@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-05-crew-windows-creation-time-job.md
+2026-09-05-crew-windows-creation-time-job.md: 49d631c73d4f32f5a1cb069d9ce28ce4579328c1
+2026-09-05-crew-windows-creation-time-job.zh.md: fab14b0c246dd67970facfdada876c08ceb0fe8c

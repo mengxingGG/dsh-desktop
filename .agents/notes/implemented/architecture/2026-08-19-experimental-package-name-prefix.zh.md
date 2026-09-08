@@ -12,9 +12,9 @@ Status: implemented
 
 `packages/experimental/` 直属的每个包都使用 `@deepseek-ai/dsh-experimental-*` npm 前缀。workspace constraints 门禁会发现这些 manifest，并在现有 `private: true` 与省略 `publishConfig` 要求之外拒绝缺少该前缀的包。
 
-Agent Teams 使用位于 `packages/experimental/agent-team` 的 `@deepseek-ai/dsh-experimental-agent-team`，以及位于 `packages/experimental/tool-agent-team` 的 `@deepseek-ai/dsh-experimental-tool-agent-team`。包 import、Cordis 配置项、生成目录和仓库元数据直接使用这些名称，不提供兼容别名。
+直接面向模型的 Agent Teams 界面使用位于 `packages/experimental/tool-agent-team` 的 `@deepseek-ai/dsh-experimental-tool-agent-team`，以及位于 `packages/experimental/client-ui-agent-team` 的 `@deepseek-ai/dsh-experimental-client-ui-agent-team`。包 import、Cordis 配置项、生成目录和仓库元数据直接使用这些名称，不提供兼容别名。
 
-promotion 会把包移至其产品职责组、从 npm 名中移除 `experimental-`，并原子更新全部仓库引用。预发布兼容策略允许该重命名不提供别名包。
+promotion 会把包移至其产品职责组、从 npm 名中移除 `experimental-`，并原子更新全部仓库引用。预发布兼容策略允许该重命名不提供别名包。Team 领域本身此后就走了这条路：[Crew 交付决策](../feature/2026-09-06-native-crew-default-delivery.zh.md)把它重命名为 `packages/subagent/agent-team` 中的 `@deepseek-ai/dsh-agent-team`，这正是本规则重命名条款被真正行使时的样子。
 
 ## 曾考虑的替代方案
 

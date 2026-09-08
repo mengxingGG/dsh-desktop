@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
-import type { TeamMemberView as TeamRosterMember, TeamTaskId } from '@deepseek-ai/dsh-experimental-agent-team/client'
-import type {} from '@deepseek-ai/dsh-experimental-agent-team/remote'
+import type { TeamMemberView as TeamRosterMember, TeamTaskId } from '@deepseek-ai/dsh-agent-team/client'
+import type {} from '@deepseek-ai/dsh-agent-team/remote'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import { TeamAction, type TeamActionInjected } from '../src/client/TeamAction.tsx'
@@ -15,7 +15,7 @@ const SESSION = 'team-session' as SessionId
 const CHILD = 'team-child' as SessionId
 const TASK_ID = 'task-1' as TeamTaskId
 const REMOTE: TypertRemoteContribution = {
-  package: '@deepseek-ai/dsh-experimental-agent-team',
+  package: '@deepseek-ai/dsh-agent-team',
   descriptors: [],
 }
 

@@ -32,6 +32,8 @@ kind: "package-library"
 
 Windows ACL 沙箱在这些原语上增加 SID、DACL、grant、workspace 与公共 child policy。
 
+实验性的 Crew LPAC 运行器也复用绑定扩展以及 `STARTUPINFOW`、`PROCESS_INFORMATION`、`ProcessInfoOutput` 和 `buildCommandLine` 导出。Crew 负责 AppContainer 策略、显式环境块和进程生命周期；这些导出不会让受限令牌启动辅助函数具备 AppContainer 感知能力。
+
 <a id="header-verification"></a>
 
 <a id="header-verification"></a>

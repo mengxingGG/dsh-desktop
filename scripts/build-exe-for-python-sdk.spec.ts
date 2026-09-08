@@ -32,9 +32,9 @@ describe('Python runtime executable builder CLI', () => {
     )
 
     expect(result.status).toBe(0)
-    expect(result.stdout).toContain(`${process.execPath} C:\\tools\\pnpm.cjs run verify-runtime-closure`)
-    expect(result.stdout).toContain(`${process.execPath} C:\\tools\\pnpm.cjs --filter dsh-python-runtime-closure deploy`)
-    expect(result.stdout).toContain(`${process.execPath} C:\\tools\\pnpm.cjs exec pkg`)
+    expect(result.stdout).toContain('C:\\tools\\pnpm.cjs run verify-runtime-closure')
+    expect(result.stdout).toContain('C:\\tools\\pnpm.cjs --filter dsh-python-runtime-closure deploy')
+    expect(result.stdout).toContain('C:\\tools\\pnpm.cjs exec pkg')
     expect(result.stdout).not.toMatch(/pnpm\.cmd/i)
   })
 
@@ -55,7 +55,7 @@ describe('Python runtime executable builder CLI', () => {
     )
 
     expect(result.status).toBe(0)
-    expect(result.stdout).toContain(`${process.execPath} ${entrypoint} run verify-runtime-closure`)
+    expect(result.stdout).toContain(`${entrypoint} run verify-runtime-closure`)
     expect(result.stdout).not.toMatch(/pnpm\.cmd/i)
   })
 

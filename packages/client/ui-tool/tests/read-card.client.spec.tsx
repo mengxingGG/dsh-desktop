@@ -299,6 +299,7 @@ describe('DetailsPanel Output section (read)', () => {
     return render(
       <DetailsPanel
         renderSlot={renderToolDetails(t, description)}
+        renderSlotChain={(_key, _owner, options) => options?.fallback ?? null}
         SessionProvider={({ children }) => children}
         sessionId={SID}
         t={chatT}
@@ -321,6 +322,7 @@ describe('DetailsPanel Output section (read)', () => {
         useStore={bindSnapshotSelector(chat)}
         actions={chat.actions}
         closeDetails={vi.fn()}
+        openDetails={vi.fn()}
       />,
     )
   }
@@ -334,7 +336,7 @@ describe('DetailsPanel Output section (read)', () => {
     return toolChatSnapshot(nodes, runningCalls)
   }
 
-  const target: SelectionTarget = { turnSeq: 10, callId: 'c1', toolName: 'read' }
+  const target: SelectionTarget = { kind: 'tool', turnSeq: 10, callId: 'c1', toolName: 'read' }
 
   it('renders the read card at full height, keeping the JSON Input section', () => {
     const long = Array.from({ length: 20 }, (_, i) => ({ number: i + 1, text: `row-${i}` }))

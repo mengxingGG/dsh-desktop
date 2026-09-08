@@ -106,39 +106,3 @@ jobs:
           node ./scripts/verify-packed-install.mjs .release/npm --current-platform-only
         env:
           NALR_REQUIRE_LANDLOCK: 1
-
-  darwin:
-    name: darwin (no platform package — degradation proof)
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: pnpm/action-setup@v5
-        with:
-          package_json_file: package.json
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --filter @deepseek-ai/node-addon-landlock-run-workspace... --frozen-lockfile
-
-      - name: Build TypeScript
-        run: pnpm build:ts
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Entry tests (keyless)
-        run: node ./test/entry.test.js
-
-      - name: Launcher tests (must self-skip cleanly)
-        run: node ./test/launcher.test.js
-
-      - name: Pack rehearsal (entry only — fallback resolution + unusable probe)
-        run: |
-          node ./scripts/pack-release.mjs .release/npm --current-platform-only
-          node ./scripts/verify-packed-install.mjs .release/npm --current-platform-only

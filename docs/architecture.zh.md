@@ -46,6 +46,8 @@ Vendored CLI、仅用于构建和测试的可执行文件、进程内直接挂�
 
 Python SDK 遵循相同的应用架构。其运行时 wheel 把普通 `dsh` CLI 打包为 `deepseek-harness-sdk-runtime-<platform>-<arch>`，客户端默认以显式 Harness home 启动 `dsh --profile sdk`。极简示例选择随附的 `sdk-minimal` profile。Python 暴露 profile 选择与有序 patch 文件，而不是完整 Cordis 树；持久外部插件通过 `dsh plugin` 安装。已删除的私有直读配置载体没有兼容 bin 或回退 parser。
 
+[桌面退出协议](../.agents/notes/implemented/feature/2026-09-05-windows-tray-durable-exit.zh.md)通过 `dsh-cmdline` 应用事件先停止生产者，再由 Agent 工厂关闭会话，确认持久化后才终止后端进程树。Agent-loop 提供已有工厂拆除能力与活动工作观察；桌面仍是 Web profile 的宿主，不改变回合或 Session 事件词汇。
+
 ## 核心包
 
 以下是向 Cordis 树贡献内容的部分核心包。

@@ -15,7 +15,8 @@
     "dsh": "lib/bin.js"
   },
   "files": [
-    "lib/*.js"
+    "lib/*.js",
+    "config"
   ],
   "dsh": {
     "configTrees": [
@@ -46,6 +47,8 @@
     "@deepseek-ai/dsh-compaction-basic": "workspace:^",
     "@deepseek-ai/dsh-compaction-tool-result-pruner": "workspace:^",
     "@deepseek-ai/dsh-cordis-client-runner": "workspace:^",
+    "@deepseek-ai/dsh-crew-profile": "workspace:^",
+    "@deepseek-ai/dsh-crew-web-profile": "workspace:^",
     "@deepseek-ai/dsh-fs-local": "workspace:^",
     "@deepseek-ai/dsh-goal": "workspace:^",
     "@deepseek-ai/dsh-goal-round-driver": "workspace:^",
@@ -108,7 +111,7 @@
     "@deepseek-ai/dsh-bash-local": "workspace:^",
     "@deepseek-ai/dsh-credentials-local": "workspace:^",
     "@deepseek-ai/dsh-deepseek-llm-api-extensions": "workspace:^",
-    "@deepseek-ai/dsh-experimental-agent-team": "workspace:^",
+    "@deepseek-ai/dsh-agent-team": "workspace:^",
     "@deepseek-ai/dsh-experimental-agent-team-profile": "workspace:^",
     "@deepseek-ai/dsh-experimental-code-runtime-python": "workspace:^",
     "@deepseek-ai/dsh-experimental-tool-agent-team": "workspace:^",

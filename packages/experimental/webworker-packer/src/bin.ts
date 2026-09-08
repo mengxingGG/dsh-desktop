@@ -16,7 +16,7 @@ import {
 } from '@deepseek-ai/dsh-experimental-webworker-runtime'
 import { packVfsImage, packVfsOverlay } from './pack.ts'
 import {
-  composeProfile, configTrees, describePack, indexWorkspacePackages, previewFixtures,
+  withComposedProfile, configTrees, describePack, indexWorkspacePackages, previewFixtures,
 } from './repository.ts'
 
 /**
@@ -45,14 +45,14 @@ const profile = flag('profile', 'web')
 const out = flag('out')
 const outputFile = isAbsolute(out) ? out : resolve(process.cwd(), out)
 
-const result = packVfsImage({
-  config: composeProfile(repoRoot, profile),
+const result = await withComposedProfile(repoRoot, profile, composition => packVfsImage({
+  ...composition,
   profile,
   root: flag('root', '/dsh'),
   workspaces: indexWorkspacePackages(repoRoot),
   resolveFrom: repoRoot,
   configTrees: configTrees(repoRoot),
-})
+}))
 
 if (result.missing.length > 0) {
   throw new Error(`vfs image: ${String(result.missing.length)} dependencies did not resolve; the image would be incomplete`)

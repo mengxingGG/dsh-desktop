@@ -565,11 +565,35 @@ const SERVICE_ROLES: ServiceRole[] = [
   },
   {
     key: 'agentTeams',
-    pkg: 'experimental-agent-team',
+    pkg: 'agent-team',
     title: 'Agent Teams coordination domain',
     mode: 'core',
     consumers: ['experimental-tool-agent-team', 'experimental-client-ui-agent-team'],
     note: 'Owns the implicit-root roster, durable peer mailbox, shared task DAG, continuable-child lifecycle, and generated Team Remote methods; tool-agent-team contributes model controls and client-ui-agent-team mounts the browser contribution.',
+  },
+  {
+    key: 'crew',
+    pkg: 'crew',
+    title: 'Native software Crew workflow',
+    mode: 'core',
+    consumers: ['tool-crew', 'client-ui-crew'],
+    note: 'Owns versioned software work items, scoped native workers, host verification, independent review, integration, restart reconciliation, manager notifications, and approved local commits.',
+  },
+  {
+    key: 'crewPreferences',
+    pkg: 'crew',
+    title: 'Global Crew memory and role defaults',
+    mode: 'core',
+    consumers: ['tool-crew', 'client-ui-crew'],
+    note: 'Stores user operating preferences, scoped authorizations, and role model defaults through DSH settings; project data remains separate.',
+  },
+  {
+    key: 'crewProfilePresets',
+    pkg: 'crew-profile',
+    title: 'Validated Crew role composition',
+    mode: 'bundle',
+    consumers: ['crew', 'tool-crew', 'crew-web-profile'],
+    note: 'Loads the required manager, developer, reviewer, and integrator declarations once and publishes immutable values for profile configuration interpolation.',
   },
   {
     key: 'inspector',
@@ -856,7 +880,7 @@ type CallSiteIndex = Map<ts.SignatureDeclaration | ts.JSDocSignature, ts.CallExp
  * must appear here — the prefilter drops non-members before any branch runs,
  * so a branch for an unlisted name is silently dead.
  */
-const EVENT_API_METHODS = new Set(['on', 'once', 'emit', 'parallel', 'serial', 'waterfall', 'dispatch'])
+const EVENT_API_METHODS = new Set(['on', 'once', 'emit', 'bail', 'parallel', 'serial', 'waterfall', 'dispatch'])
 
 /**
  * Collect event dispatch/listener relations from real cross-file receiver types.
@@ -1014,7 +1038,7 @@ export class EventRelationCollector {
             const eventNames = this.eventNamesFromCall(node, receiverKind)
             if (method === 'on' || method === 'once') {
               for (const event of eventNames) this.ensure(event).listeners.add(source.pkg)
-            } else if (method === 'emit' || method === 'parallel' || method === 'serial' || method === 'waterfall') {
+            } else if (method === 'emit' || method === 'bail' || method === 'parallel' || method === 'serial' || method === 'waterfall') {
               for (const event of eventNames) this.addDispatcher(event, source.pkg, method)
             }
           }

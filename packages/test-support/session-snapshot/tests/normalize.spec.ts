@@ -894,6 +894,29 @@ describe('tokenizeSessionFixtureCwd', () => {
     expect(tokenizeSessionFixtureCwd(out)).toBe(out)
   })
 
+  it('tokenizes a Windows cwd rendered with escaped separators inside prose', () => {
+    const cwd = String.raw`C:\Users\runner\AppData\Local\Temp\crew-snapshot\repository`
+    const escapedCwd = cwd.replaceAll('\\', '\\\\')
+    const raw = [
+      JSON.stringify({ type: 'session', id: 's', createdAt: 1, cwd }),
+      JSON.stringify({
+        type: 'user/message',
+        seq: 1,
+        time: 2,
+        data: { content: [{ type: 'text', text: `workspace: \"${escapedCwd}\".` }] },
+      }),
+      '',
+    ].join('\n')
+
+    const out = tokenizeSessionFixtureCwd(raw)
+    const result = JSON.parse(out.split('\n')[1] as string) as {
+      data: { content: { text: string }[] }
+    }
+    expect(result.data.content[0]?.text).toBe('workspace: "{{cwd}}".')
+    expect(out).not.toContain('crew-snapshot')
+    expect(tokenizeSessionFixtureCwd(out)).toBe(out)
+  })
+
   it('rejects a log without a session cwd', () => {
     expect(() => tokenizeSessionFixtureCwd('')).toThrow(
       'acp-snapshot: cannot tokenize a cwd without a basename',

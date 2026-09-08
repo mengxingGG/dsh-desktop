@@ -1,27 +1,33 @@
-/** Published dsh web + pnpm dev:web → browser HMR, with no page reload. */
+/**
+ * Published dsh web + pnpm dev:web → browser HMR, with no page reload.
+ * Artifact cleanup: .agents/notes/implemented/bug-fix/2026-09-05-hmr-test-restores-compiler-state.md.
+ */
 
 import { existsSync, globSync, statSync } from 'node:fs'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
-import { expect, it } from 'vitest'
+import { expect, it, onTestFailed } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Fiber } from '@deepseek-ai/cordis'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import type { SubprocessHandle, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
 import { readClientBuildRecord } from '../../../scripts/client-build-environment.ts'
-import { REPO_ROOT } from './support.ts'
+import { pnpmInvocation } from '../../../scripts/pnpm-invocation.ts'
+import { newEnglishPage, REPO_ROOT, saveFailureShot } from './support.ts'
 
-const CLIENT_ARTIFACT_PATTERNS = [
+const HMR_ARTIFACT_PATTERNS = [
   'apps/web/dist/**/*',
   'packages/*/*/lib/client.js',
   'packages/*/*/lib/client.js.map',
+  // The edited package's type emit and incremental state feed later builds.
+  'packages/client/ui-conversation/lib/**/*',
 ]
 
-/** Return every artifact that `pnpm run dev:web` can rewrite. */
-function clientArtifactPaths(): string[] {
-  return globSync(CLIENT_ARTIFACT_PATTERNS, { cwd: REPO_ROOT })
+/** Return browser artifacts and the edited package's compiler outputs and state. */
+function hmrArtifactPaths(): string[] {
+  return [...new Set(globSync(HMR_ARTIFACT_PATTERNS, { cwd: REPO_ROOT }))]
     .map(path => join(REPO_ROOT, path))
     .filter(path => statSync(path).isFile())
     .sort()
@@ -88,9 +94,9 @@ it('hot-reloads a real client-plugin source edit without refreshing the page', a
   const binPath = join(REPO_ROOT, 'apps/cli/lib/bin.js')
   if (!existsSync(binPath)) throw new Error('HMR browser test needs the built dsh bin; run pnpm run build first')
   const clientBuildEnvironment = readClientBuildRecord(REPO_ROOT).environment
-  const originalClientArtifacts = await Promise.all(clientArtifactPaths()
+  const originalArtifacts = await Promise.all(hmrArtifactPaths()
     .map(async path => [path, await readFile(path)] as const))
-  const originalClientArtifactPaths = new Set(originalClientArtifacts.map(([path]) => path))
+  const originalArtifactPaths = new Set(originalArtifacts.map(([path]) => path))
   const originalSource = await readFile(sourcePath)
   const oldText = 'Into the Unknown'
   const sourceNeedle = "'hero.headline': 'Into the Unknown'"
@@ -104,14 +110,18 @@ it('hot-reloads a real client-plugin source edit without refreshing the page', a
   let host: SubprocessHandle | undefined
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   const failures: unknown[] = []
+  let phase = 'starting the watcher'
+  onTestFailed(() => { console.error(`HMR phase at failure: ${phase}`) })
   try {
     subprocessFiber = await subprocessCtx.plugin(LocalSubprocessRuntime)
+    const devWeb = pnpmInvocation(['run', 'dev:web'])
     watcher = subprocessCtx.subprocess.spawn(spawnSpec(
-      ['pnpm', 'run', 'dev:web'],
+      [devWeb.command, ...devWeb.args],
       REPO_ROOT,
       { ...clientBuildEnvironment },
     ))
     await waitForOutput(watcher, /dev-web: watching/, 'pnpm run dev:web')
+    phase = 'starting the Host'
     host = subprocessCtx.subprocess.spawn(spawnSpec(
       [process.execPath, binPath, 'web', '--no-open', '--port', '0'],
       world,
@@ -121,11 +131,16 @@ it('hot-reloads a real client-plugin source edit without refreshing the page', a
       },
     ))
     const baseUrl = await waitForOutput(host, /dsh web: (http:\/\/[^\s]+)/, 'built dsh web')
+    phase = 'opening the browser'
     browser = await chromium.launch()
-    const page = await browser.newPage()
+    const page = await newEnglishPage(browser)
     const pageErrors: string[] = []
     page.on('pageerror', error => pageErrors.push(String(error)))
     await page.goto(baseUrl, { waitUntil: 'load' })
+    // This isolated DSH home has not acknowledged the first-run notice.
+    const welcome = page.getByRole('dialog', { name: 'Internal Testing Notice' })
+    await welcome.getByRole('button', { name: 'Continue', exact: true }).click()
+    await welcome.waitFor({ state: 'detached', timeout: 15_000 })
     await page.getByText(oldText, { exact: true }).waitFor({ timeout: 15_000 })
     const pageIdentity = await page.evaluate(() => {
       // In-page code: an import would not survive serialization, and the page
@@ -135,31 +150,43 @@ it('hot-reloads a real client-plugin source edit without refreshing the page', a
       return identity
     })
 
+    phase = 'waiting for the source update'
     await writeFile(sourcePath, updatedSource)
     await page.getByText(newText, { exact: true }).waitFor({ timeout: 30_000 })
     expect(await page.evaluate(() => (window as Window & { __dshHmrPageIdentity?: string }).__dshHmrPageIdentity))
       .toBe(pageIdentity)
     expect(pageErrors).toEqual([])
   } catch (error) {
+    const failedPage = browser?.contexts()[0]?.pages()[0]
+    if (failedPage !== undefined) await saveFailureShot(failedPage, 'web-e2e-hmr-live')
     failures.push(error)
   } finally {
-    await writeFile(sourcePath, originalSource).catch((error: unknown) => failures.push(error))
+    phase = 'stopping owned processes'
     if (watcher !== undefined) await stopTree(watcher).catch((error: unknown) => failures.push(error))
     if (host !== undefined) await stopTree(host).catch((error: unknown) => failures.push(error))
     await browser?.close().catch((error: unknown) => failures.push(error))
     await subprocessFiber?.dispose().catch((error: unknown) => failures.push(error))
-    await Promise.all(clientArtifactPaths()
-      .filter(path => !originalClientArtifactPaths.has(path))
+    phase = 'restoring source and artifacts'
+    await writeFile(sourcePath, originalSource).catch((error: unknown) => failures.push(error))
+    await Promise.all(hmrArtifactPaths()
+      .filter(path => !originalArtifactPaths.has(path))
       .map(async (path) => { await rm(path, { force: true }) }))
       .catch((error: unknown) => failures.push(error))
-    await Promise.all(originalClientArtifacts.map(async ([path, content]) => {
+    await Promise.all(originalArtifacts.map(async ([path, content]) => {
       await writeFile(path, content)
     })).catch((error: unknown) => failures.push(error))
     try {
+      phase = 'checking restored bytes'
+      expect((await readFile(sourcePath)).equals(originalSource)).toBe(true)
+      expect(hmrArtifactPaths()).toEqual([...originalArtifactPaths])
+      for (const [path, content] of originalArtifacts) {
+        expect((await readFile(path)).equals(content), path).toBe(true)
+      }
       readClientBuildRecord(REPO_ROOT)
     } catch (error) {
       failures.push(error)
     }
+    phase = 'removing the private test directory'
     await rm(world, { recursive: true, force: true }).catch((error: unknown) => failures.push(error))
   }
   if (failures.length > 0) throw new AggregateError(failures, 'HMR browser test or cleanup failed')

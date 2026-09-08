@@ -1,0 +1,42 @@
+- text: Crew workspace
+- button "Close Crew workspace":
+  - img
+- region "Project status":
+  - text: Manager
+  - strong: Coordinating work
+  - text: Repository
+  - strong: {{cwd}}
+- heading "Active workers 1" [level=2]
+- button "browser-module Planned · —" [pressed]:
+  - strong: browser-module
+  - text: Planned · —
+- heading "Finished workers 0" [level=2]
+- text: No finished workers yet
+- region "Select worker activity"
+- region "Live worker activity":
+  - heading "Live worker activity" [level=3]
+  - paragraph: None
+  - paragraph: No activity recorded yet.
+- 'region "Module: browser-module"':
+  - heading "browser-module" [level=3]
+  - paragraph: Read-only evidence; worker conversations cannot be continued here.
+  - term: Stage
+  - definition: Planned
+  - term: Role
+  - definition: Developer
+  - term: Child Session
+  - definition: —
+  - term: Reason
+  - definition: None
+  - term: Changed paths
+  - definition: None
+  - term: Out-of-scope paths
+  - definition: None
+  - term: Missing artifacts
+  - definition: None
+- region "Integration evidence":
+  - heading "Integration evidence" [level=3]
+  - paragraph: None
+- region "Commit gate":
+  - heading "Commit gate" [level=3]
+  - paragraph: No commit request yet; commit approval appears only in the manager conversation.

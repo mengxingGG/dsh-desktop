@@ -1,0 +1,114 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 860px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.section h2,
+.section h3,
+.section p {
+  margin: 0;
+}
+
+.section h3 {
+  margin-top: 12px;
+}
+
+.roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 12px;
+}
+
+.role,
+.memories li,
+.editor {
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.role,
+.editor,
+.memories li {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.section label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section select,
+.section textarea,
+.section button {
+  font: inherit;
+  color: inherit;
+  background: var(--dsw-alias-bg-base);
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.section textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.section select {
+  width: 100%;
+}
+
+.section button {
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.section button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.section :focus-visible {
+  outline: 2px solid var(--dsw-alias-link);
+  outline-offset: 2px;
+}
+
+.memories {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.kind {
+  font-weight: 600;
+}
+
+.warning {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.prose {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.actions,
+.confirmation {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.confirmation p {
+  width: 100%;
+}

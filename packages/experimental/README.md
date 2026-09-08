@@ -9,7 +9,9 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The experimental group contains prototype capabilities that are not part of any official release: they run on the real harness, but their contracts can change and they carry no support promise. The group holds Agent Teams, the cross-realm Inspector, the CPython subprocess backend for the code-execution seam, and the browser-worker runtime and image packer used by preview deployments. Use these packages to try an unreleased capability; they carry no stability promise, and released products must not depend on them.
+The experimental group contains prototype capabilities that are not part of any official release: they run on the real harness, but their contracts can change and they carry no support promise. The group holds the direct-to-model Agent Teams surface and its profile layers, the cross-realm Inspector, the CPython subprocess backend for the code-execution seam, and the browser-worker runtime and image packer used by preview deployments. Use these packages to try an unreleased capability; they carry no stability promise, and released products must not depend on them.
+
+The Team domain itself and the DSH-native software Crew are no longer here: they were promoted to their product-role groups by the [Crew delivery decision](../../.agents/notes/implemented/feature/2026-09-06-native-crew-default-delivery.md), which is also where the reason the packages below stayed behind is recorded.
 
 ## Table of Contents
 
@@ -25,7 +27,6 @@ The experimental group contains prototype capabilities that are not part of any 
 | Package | Role | ctx key |
 |---|---|---|
 | [`agent-team-profile`](agent-team-profile/README.md) | Explicit source-checkout profile layer for Agent Teams | — |
-| [`agent-team`](agent-team/README.md) | Named teammates with durable messages and a shared task board | `ctx.agentTeams` |
 | [`agent-team-web-profile`](agent-team-web-profile/README.md) | Explicit source-checkout Web layer for Agent Teams | — |
 | [`client-ui-agent-team`](client-ui-agent-team/README.md) | Team roster, task board, and teammate navigation for Web | — |
 | [`code-runtime-python`](code-runtime-python/README.md) | CPython subprocess backend for the code-execution seam | `ctx.codeRuntime` |
@@ -40,6 +41,7 @@ The experimental group contains prototype capabilities that are not part of any 
 ## Related documentation
 
 - [Experimental package decision](../../.agents/notes/implemented/architecture/2026-08-18-experimental-agent-teams-packages.md) — placement, release exclusion, and dependency isolation.
+- [Crew delivery decision](../../.agents/notes/implemented/feature/2026-09-06-native-crew-default-delivery.md) — which packages were promoted out of this group, and why these stayed.
 - [Agent Teams subsystem](../../docs/subsystems/agent-team.md) — durable Team types and the `ctx.agentTeams` service API.
 - [Experimental subtree rules](AGENTS.md) — what experimental status does and does not relax.
 

@@ -13,7 +13,9 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { MarkdownFileMentions } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { createChatStore } from '../stores.ts'
-import type { ToolCallId, SelectionTarget } from './store.ts'
+import type {
+  DetailsSelection, ToolCallId, ToolDetailsSelection,
+} from './store.ts'
 import type { ChatConversationViewNode, ChatNode, ChatNodeKind } from './chat-nodes.ts'
 import type {
   ChatNodeProcessSource, ChatNodeSource, ChatSnapshot, ChatTurnProcessPresentation,
@@ -101,7 +103,14 @@ export interface TurnProcessOwnerProps {
 export type ChatNodeViewProps<Kind extends ChatNodeKind = ChatNodeKind> =
   PropsRuntime<'conversation.chat.node', Kind> & PropsLocale<'chat'>
 
-/** Tool block rendered in the details panel. */
+/** Selection and navigation actions owned by the shared details column. */
+export interface DetailsViewOwnerProps {
+  selection: DetailsSelection
+  closeDetails: () => void
+  openDetails: (selection: DetailsSelection) => void
+}
+
+/** Tool block rendered by a specialized Tool detail card. */
 export interface DetailsToolOwnerProps {
   block: ToolCallBlock
   cwd?: string | undefined
@@ -138,7 +147,7 @@ export interface ChatViewInjected {
     /** Resolve the stable Turn-process source for one Chat Node key. */
     chatNodeProcess: (key: string) => ChatNodeProcessSource
   }
-  openDetails: (target: SelectionTarget) => void
+  openDetails: (target: ToolDetailsSelection) => void
   openFile: (path: string) => Promise<void>
   loadOlder: () => void
   /** Jump loader: page history back through seq; resolves when the window covers it. */
@@ -163,17 +172,25 @@ export type ChatViewSlotProps =
 /** Full props of the durable-message image renderer. */
 export type MessageImagesProps = PropsRuntime<'conversation.message.images'> & PropsLocale<'conversation'>
 
-/** Details-panel callbacks. */
+/** Details-column callbacks. */
 export interface DetailsInjected {
   closeDetails: () => void
+  openDetails: (selection: DetailsSelection) => void
 }
 
-/** Full details-panel props. */
+/** Full typed details-router props. */
 export type DetailsSlotProps =
   PropsRuntime<'details'>
-  & PropsRenderSlots<'conversation.details.tool'>
+  & PropsRenderSlots<'conversation.details.tool' | 'conversation.details.view'>
   & PropsStore<ChatStore>
   & InjectFace<DetailsInjected>
+  & PropsLocale<'chat'>
+
+/** Full props of the built-in Tool details view. */
+export type ToolDetailsViewProps =
+  PropsRuntime<'conversation.details.view'>
+  & { matched: ToolDetailsSelection }
+  & PropsRenderSlots<'conversation.details.tool'>
   & PropsLocale<'chat'>
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -226,7 +243,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'conversation.chat.assistant-actions': { kind: 'list'; scope: 'session'; owner: AssistantActionOwnerProps }
     /**
-     * Whole details-panel body for the selected Tool call. The component receives
+     * Selector-routed right-column view. Each selection kind elects one whole
+     * details surface; all-declined selections use Chat's empty fallback.
+     */
+    'conversation.details.view': { kind: 'chain'; scope: 'session'; owner: DetailsViewOwnerProps }
+    /**
+     * Output body for the selected Tool call. The component receives
      * the running or settled block and optional workspace root. A registration
      * replaces the shipped Tool details renderer; absence uses the raw fallback.
      */

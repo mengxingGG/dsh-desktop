@@ -1,0 +1,29 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../vendor/cosmokit" },
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../util/brand" },
+    { "path": "../../boot/cmdline" },
+    { "path": "../../util/timeout" },
+    { "path": "../../llm/llm" },
+    { "path": "../../core/session" },
+    { "path": "../../core/agent" },
+    { "path": "../../core/scope" },
+    { "path": "../../core/tools" },
+    { "path": "../../settings/settings" },
+    { "path": "../../fs/fs" },
+    { "path": "../../runtime-diagnostics/invariants" },
+    { "path": "../../subprocess/subprocess" },
+    { "path": "../../typert/protocol" },
+    { "path": "../subagent" },
+    { "path": "../../session/session-projection" },
+    { "path": "../agent-team" }
+  ]
+}

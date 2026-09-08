@@ -92,6 +92,8 @@ kind: "package-reference"
 
 ### 销毁
 
+在[应用退出准备](../../../.agents/notes/implemented/feature/2026-09-05-windows-tray-durable-exit.zh.md)中，生产者阶段拒绝新任务，并等待同一个服务拆除过程。取消抛出仍会为清理而把记录强制标为失败，但准备请求会拒绝，不把该记录当作生产者已停止的证据。
+
 所有者释放（`disposeOwned`）会取消该所有者的任务、等待其结算、移除其记录，并宣布移除——这是任何逐任务记录都无法表达的可见集变更。服务释放（`disposeAll`）会关闭监听器、取消所有存活任务、等待结算、清空存储、向不同的所有者宣布清空，然后分离跨 fiber 的所有者清理 effect。
 
 </details>

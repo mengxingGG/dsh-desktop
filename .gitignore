@@ -31,9 +31,15 @@ python/sdk-runtime/src/deepseek_harness_runtime/runtime/deepseek-harness-sdk-run
 python/sdk-runtime/src/deepseek_harness_runtime/runtime/node/
 python/**/__pycache__/
 python/**/.pytest_cache/
+# pytest tmp_path roots: scratch Sessions the Python SDK tests write and keep.
+/.pytest-tmp/
 packages/**/__pycache__/
 apps/web/dist/
+apps/desktop/dist/
+/DeepSeek-Harness.exe
+/debug.log
 .artifacts/
+/.run/
 .dsh-build/
 .playwright-mcp/
 .orig

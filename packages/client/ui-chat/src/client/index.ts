@@ -27,14 +27,18 @@ export type {
   FinalAssistantChatData, ManualCompactionChatData, RetryChatData, ToolChatData,
   TurnProcessChatData, TurnTailChatData,
 } from './contract/chat-nodes.ts'
-export type { ChatStoreState, SelectionTarget, ToolCallId, TurnProcessViewEntry } from './contract/store.ts'
+export type {
+  ChatStoreState, DetailsSelection, SelectionTarget, ToolCallId, ToolDetailsSelection,
+  TurnProcessViewEntry,
+} from './contract/store.ts'
+import type { ToolDetailsSelection as PublicToolDetailsSelection } from './contract/store.ts'
 export type { TranscriptViewRowInjected, TranscriptViewRowProps } from './settings/TranscriptViewRow.tsx'
 export type { TranscriptViewMode } from '../chat-settings.ts'
 export type {
   AssistantActionOwnerProps, ChatFileMentions, ChatNodeOwnerProps, ChatNodeTurnDataInjected,
   ChatNodeViewProps, ChatScrollPosition, ChatStore, ChatViewInjected, ChatViewSlotProps,
   CommandRowOwnerProps, CommandRowProps, DetailsInjected, DetailsSlotProps,
-  DetailsToolOwnerProps, MessageImagesProps,
+  DetailsToolOwnerProps, DetailsViewOwnerProps, MessageImagesProps, ToolDetailsViewProps,
   TurnProcessOwnerProps, TurnTailOwnerProps, UseChat, UseChatNodeTurnData,
 } from './contract/slots.ts'
 export type {
@@ -51,6 +55,27 @@ export type {
 
 export { isRunningTool, isSettledTool } from './contract/chat-nodes.ts'
 export { EMPTY_CHAT_SNAPSHOT } from './contract/snapshot.ts'
+export { ChatDetailsController } from './details/service.ts'
+export type { IChatDetails } from './details/service.ts'
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /** Cross-plugin typed details-column control face. */
+    chatDetails: import('./details/service.ts').IChatDetails
+  }
+}
+
+/** Public merge surface for right-column details selections. */
+export interface DetailsSelectionMap {
+  /** Built-in Tool-call details branch. */
+  tool: PublicToolDetailsSelection
+}
+
+type PublicDetailsSelectionMap = DetailsSelectionMap
+
+declare module './contract/store.ts' {
+  interface DetailsSelectionMap extends PublicDetailsSelectionMap {}
+}
 
 /** Public merge surface for Chat renderer payloads contributed by other plugins. */
 export interface ChatNodeDataMap {}

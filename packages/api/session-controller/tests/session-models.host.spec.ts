@@ -542,6 +542,23 @@ describe('Web session model selection', () => {
     await ctx.fiber.dispose()
   })
 
+  it('requests an exact-Agent default only before a conversation model is selected', async () => {
+    const { ctx, agent } = await harness()
+    try {
+      const resolveDefault = vi.fn(() => ({ provider: 'duplicate', model: 'same' }))
+      createSessionTestRemote(ctx, { defaultModelSelection: resolveDefault, cwd: '/tmp' })
+      const controller = new ApiSessionAgentController(ctx)
+      expect(controller.selectionFor(agent).current).toEqual({ provider: 'duplicate', model: 'same' })
+      expect(resolveDefault).toHaveBeenLastCalledWith(agent)
+      resolveDefault.mockClear()
+      controller.selectForNextRequest(agent, { provider: 'deepseek-official', model: 'deepseek-chat' })
+      expect(controller.selectionFor(agent).current).toEqual({ provider: 'deepseek-official', model: 'deepseek-chat' })
+      expect(resolveDefault).not.toHaveBeenCalled()
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('does not reinterpret an adapter-owned reasoning default as an explicit Web selection', async () => {
     const { ctx, agent } = await harness({
       provider: 'deepseek-official',

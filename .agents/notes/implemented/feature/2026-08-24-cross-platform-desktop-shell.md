@@ -12,7 +12,7 @@ One artifact cannot satisfy both checkout development and end-user distribution 
 
 ## Decision
 
-`apps/desktop` is an Electron host for the existing Web profile. Its main process owns one sandboxed browser window and one hidden child process running `dsh web --no-open --host 127.0.0.1 --port 0`. The shell waits for the loopback URL that the Web bundle emits after startup, navigates only after that readiness signal, captures bounded diagnostics, and terminates the complete child process tree before application shutdown completes.
+`apps/desktop` is an Electron host for the existing Web profile. Its main process owns one sandboxed browser window and one hidden child process running `dsh web --no-open --host 127.0.0.1 --port 0`. The shell waits for the loopback URL that the Web bundle emits after startup, navigates only after that readiness signal, captures bounded diagnostics, and follows the [confirmed durable exit protocol](2026-09-05-windows-tray-durable-exit.md) before terminating the complete child process tree. Window hiding leaves the backend running.
 
 On Windows and Linux, the ordinary `pnpm run build` produces a current-host direct artifact at the repository root. This artifact contains Electron but not the dsh runtime. It locates the built checkout, selects a compatible system Node.js executable, and starts `apps/cli/lib/bin.js`; double-clicking replaces both the CLI startup command and the external browser while keeping the checkout as the source of executable product code. Other hosts complete the core and Web build without attempting to create a desktop artifact.
 

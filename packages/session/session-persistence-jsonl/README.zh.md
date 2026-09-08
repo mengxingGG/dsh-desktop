@@ -101,6 +101,7 @@ kind: "package-reference"
 |---|---|
 | [`src/index.ts`](src/index.ts) | 插件入口：`Config` schema、后端服务类与文件存储原语 |
 | [`src/storage.ts`](src/storage.ts) | JSONL 句柄、已路由实时事件缓冲、进程内写入者记账、监听器、teardown |
+| [`src/lease.ts`](src/lease.ts) | 跨进程写入者排他；POSIX 按需加载可选的 `fs-ext` flock 实现，Windows 则使用原生命名信号量路径且不解析 `fs-ext` |
 | [`src/format.ts`](src/format.ts) | 日志路径派生、header 编码与当前记录扫描 |
 | [`src/generation.ts`](src/generation.ts) | 稳定 generation 读取、格式 adapter 调用、排他后继发布与已提交 reopen |
 | [`src/zstd.ts`](src/zstd.ts) | Zstandard 帧压缩、解码与帧扫描 |

@@ -16,6 +16,15 @@ describe('presetDisplayText', () => {
     })
   })
 
+  it('resolves a bundle-shipped preset through its dictionary keys', () => {
+    // `crew-manager` ships in `dsh-crew-profile`, reaching the roster as a
+    // second `system` root; the fold keys on the id, not on which root.
+    expect(presetDisplayText({ id: 'crew-manager', trust: 'system', name: '编排模式' }, t)).toEqual({
+      name: 't:presetCrewManagerName',
+      description: 't:presetCrewManagerDescription',
+    })
+  })
+
   it('keeps user-authored metadata untranslated', () => {
     expect(presetDisplayText({ id: 'mine', trust: 'user', name: '我的模式', description: '自述' }, t))
       .toEqual({ name: '我的模式', description: '自述' })

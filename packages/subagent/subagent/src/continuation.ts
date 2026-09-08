@@ -80,6 +80,18 @@ export interface SubagentSettledMessageSource {
   readonly senderSessionId: SessionId
 }
 
+/** Identity and terminal reason offered before a continuable settlement notice reaches its parent. */
+export interface SubagentSettlementNoticeInfo {
+  /** Durable direct parent that would receive the notice. */
+  readonly parentSessionId: SessionId
+  /** Durable continuable child that settled. */
+  readonly childSessionId: SessionId
+  /** Provider recorded for the child Activation. */
+  readonly provider: string
+  /** Terminal outcome of the settling Activation. */
+  readonly stopReason: SubagentResult['stopReason']
+}
+
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
     'agent-message': AgentMessageSource
@@ -99,6 +111,8 @@ export interface ContinuableStartSpec {
    * before child materialization without a second identity handshake.
    */
   readonly childId?: SessionId
+  /** Optional host-owned provenance for the accepted initial prompt. */
+  readonly initialSource?: MessageSource
   /**
    * The delegation request. The manager reserves the stable child id, resolves
    * the durable descriptor, and composes the child itself.
@@ -514,7 +528,7 @@ export class SubagentContinuationManager {
           isAdjacentAgentSendMessageTool(this.ctx.get('tools')?.get('send_message', activation.handle.agent))
             ? continuableInitialPrompt(parent.id, request.prompt)
             : request.prompt,
-          { source: { kind: 'user' }, signal: spec.signal, delivery: 'queue' },
+          { source: spec.initialSource ?? { kind: 'user' }, signal: spec.signal, delivery: 'queue' },
           parent,
         )
       })
@@ -1631,6 +1645,13 @@ export class SubagentContinuationManager {
   private notifySettlement(activation: Activation, terminal: ActivationTerminal): void {
     if (!activation.announced) return
     try {
+      const suppress = this.ctx.bail('subagent/settlement-notice', {
+        parentSessionId: activation.parentSession,
+        childSessionId: activation.childId,
+        provider: activation.provider,
+        stopReason: terminal.stopReason,
+      })
+      if (suppress === true) return
       const parent = this.ctx.agents.get(activation.parentSession)
       if (parent === undefined) return
       const summary = settlementSummary(activation.childId, terminal.stopReason)

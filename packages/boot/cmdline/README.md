@@ -39,6 +39,8 @@ An app launched with no arguments sees an empty list — that is the honest answ
 
 `exitOnStdinEnd(ctx, label)` binds a successfully started stdio application's EOF to `ctx.appExit(0)`. It never reads or resumes stdin, so a protocol transport receives bytes buffered before it mounts; startup rejection wins over a racing EOF, and the owning fiber removes both pending listeners.
 
+Application shutdown coordination uses the typed `app/active-work` and `app/prepare-exit` events declared in this package. The [desktop shutdown decision](../../../.agents/notes/implemented/feature/2026-09-05-windows-tray-durable-exit.md) owns their ordered producer/Agent preparation, failure propagation, and persistence requirements; these events add no model-visible content.
+
 ### Parsing your flags
 
 You bring your own commander program: declare your flags and your actions, and the package runs it against the inner arguments. Your action is the only place validation happens, and it publishes whatever your rows need. The plugin's Loader row carries no special marker:

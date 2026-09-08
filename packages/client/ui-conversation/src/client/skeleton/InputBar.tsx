@@ -173,16 +173,19 @@ export const InputBar = memo(function InputBar({
     else if (rect.top < box.top) scrollEl.scrollTop -= box.top - rect.top
   }
 
-  // Unlock (mount / session switch) returns focus to the box, and owns the
-  // reveal that comes with it. Lexical's focus() suppresses the browser's
+  // Unlock (mount / session switch) returns focus to the box unless another
+  // modal holds it. Lexical's focus() suppresses the browser's
   // scroll walk (preventScroll inside), so the reveal in our own scrollport
   // is ours to perform — switching to a longer draft otherwise leaves the
   // caret (restored at the draft's end) off screen.
   useEffect(() => {
     if (locked || editor === null) return
+    const root = editor.getRootElement()
+    const focusedModal = document.querySelector('[aria-modal="true"]:focus-within')
+    if (focusedModal !== null && !focusedModal.contains(root)) return
     // Lexical's focus() restores the editor selection but never calls the DOM
     // focus itself; preventScroll keeps the conversation scrollport still.
-    editor.getRootElement()?.focus({ preventScroll: true })
+    root?.focus({ preventScroll: true })
     editor.focus(() => { revealSelection() })
   }, [locked, sessionId, editor])
 

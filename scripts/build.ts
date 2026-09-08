@@ -15,8 +15,11 @@ import {
 import { pnpmInvocation } from './pnpm-invocation.ts'
 
 /** Run one package script through the package manager that invoked this build. */
-function runScript(script: string, environment: NodeJS.ProcessEnv): void {
-  const invocation = pnpmInvocation(['run', script], environment)
+function runScript(script: string, environment: NodeJS.ProcessEnv, workspace?: string): void {
+  const invocation = pnpmInvocation([
+    ...workspace === undefined ? [] : ['--filter', workspace],
+    'run', script,
+  ], environment)
   const result = spawnSync(invocation.command, invocation.args, {
     cwd: resolve(import.meta.dirname, '..'),
     env: environment,
@@ -51,9 +54,9 @@ function main(): void {
 
   rmSync(resolve(root, CLIENT_BUILD_RECORD_PATH), { force: true })
   runScript('build:lib', buildEnvironment)
-  runScript('build:web', buildEnvironment)
+  runScript('build', buildEnvironment, '@deepseek-ai/dsh-web-frontend')
   if (supportsDirectDesktopArtifact(process.platform)) {
-    runScript('build:desktop:app', buildEnvironment)
+    runScript('build:app', buildEnvironment, '@deepseek-ai/dsh-desktop')
   }
   const record = writeClientBuildRecord(root, clientEnvironment)
   console.log(

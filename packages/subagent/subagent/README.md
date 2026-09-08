@@ -91,7 +91,7 @@ A request is validated against the provider's advertised capabilities, a durable
 
 ### Continuable flow
 
-The manager reserves a child identity, resolves the durable descriptor, creates (or cold-resumes) the child Agent, installs it in an Activation, and submits the prompt. Model-authored messages cross one parent/child edge through fixed Steer scheduling; host protocols retain an internal Queue adapter for distinct turns. An absent direct-child Activation cold-resumes from the persisted session. When a resident Activation settles, the manager tells the child's direct parent in the parent's own turn stream.
+The manager reserves a child identity, resolves the durable descriptor, creates (or cold-resumes) the child Agent, installs it in an Activation, and submits the prompt. A host workflow may reserve the exact child id and attach its own typed `MessageSource` to the initial prompt, so durable provisioning and prompt provenance share one identity without impersonating a user. Model-authored messages cross one parent/child edge through fixed Steer scheduling; host protocols retain an internal Queue adapter for distinct turns. An absent direct-child Activation cold-resumes from the persisted session. When a resident Activation settles, the manager tells the child's direct parent in the parent's own turn stream unless a `subagent/settlement-notice` bail listener confirms that a durable product workflow owns and replaces that generic notice.
 
 ### Ownership and invariants
 
@@ -125,7 +125,7 @@ Read these pages when the package-level contract is not enough. They move from t
 
 #### What the model sees
 
-One user-role parent message opening with the outcome — `Background subagent <child-id> finished and will do no further work unless you send it more.`, or the matching line for a child that was stopped, ran out of room, declined, or failed — followed by `Its closing message:` and the child's final assistant content, or `It left no closing message.` when it produced none. This runtime-owned notice is distinct from model-authored parent/child messages, which use `sendMessage()` and `AgentMessageSource`; delegation schemas and model controls belong to the Consumer packages.
+One user-role parent message opening with the outcome — `Background subagent <child-id> finished and will do no further work unless you send it more.`, or the matching line for a child that was stopped, ran out of room, declined, or failed — followed by `Its closing message:` and the child's final assistant content, or `It left no closing message.` when it produced none. This runtime-owned notice is distinct from model-authored parent/child messages, which use `sendMessage()` and `AgentMessageSource`; delegation schemas and model controls belong to the Consumer packages. A product workflow that durably records and replaces this notice may return `true` from `subagent/settlement-notice`; all other children keep the default message.
 
 #### Token effect
 

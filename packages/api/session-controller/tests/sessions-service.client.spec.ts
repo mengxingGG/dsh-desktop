@@ -887,6 +887,63 @@ describe('catalog-addressed navigation', () => {
   })
 })
 
+describe('secondary child observation', () => {
+  it('shares a child follow stream without selecting it and releases the last observer', async () => {
+    const b = bench()
+    await b.ctx.plugin(() => undefined)
+    try {
+      await feedList(b, [{ id: 'manager' }])
+      b.api.onSubagentList = () => Promise.resolve(ok({
+        parentAvailable: true,
+        entries: [{ kind: 'child', id: sid('worker'), mode: 'continuable', label: 'Worker', activity: 'running', hasChildren: false }],
+      }))
+      b.svc.open(sid('manager'))
+      await b.svc.refreshSubagents(sid('manager'))
+      const address = { parentSessionId: sid('manager'), childSessionId: sid('worker'), mode: 'continuable' } as const
+      const first = b.svc.observeSubagent(address)
+      const second = b.svc.observeSubagent(address)
+      await first.binding.ctx.fiber.await()
+      expect(first.binding).toBe(second.binding)
+      expect(first.binding.session.getSnapshot().subagent?.address).toEqual(address)
+      expect(b.svc.list.getSnapshot().current).toBe(sid('manager'))
+      const dispose = vi.fn()
+      first.binding.ctx.effect(() => dispose, 'observation cleanup probe')
+      first.dispose()
+      first.dispose()
+      expect(b.svc.binding(sid('worker'))).toBe(second.binding)
+      second.dispose()
+      expect(b.svc.binding(sid('worker'))).toBeUndefined()
+      const next = b.svc.observeSubagent(address)
+      await next.binding.ctx.fiber.await()
+      expect(next.binding).not.toBe(first.binding)
+      second.dispose()
+      expect(b.svc.binding(sid('worker'))).toBe(next.binding)
+      next.dispose()
+      await b.ctx.fiber.dispose()
+      expect(dispose).toHaveBeenCalledOnce()
+      expect(() => b.svc.observeSubagent(address)).toThrow('service disposed')
+    } finally {
+      await b.ctx.fiber.dispose()
+    }
+  })
+
+  it('rejects an undiscovered or mismatched child without changing selection', async () => {
+    const b = bench()
+    await b.ctx.plugin(() => undefined)
+    try {
+      await feedList(b, [{ id: 'manager' }])
+      b.svc.open(sid('manager'))
+      expect(() => b.svc.observeSubagent({
+        parentSessionId: sid('other'), childSessionId: sid('worker'), mode: 'continuable',
+      })).toThrow('not a healthy catalog child')
+      expect(b.svc.binding(sid('worker'))).toBeUndefined()
+      expect(b.svc.list.getSnapshot().current).toBe(sid('manager'))
+    } finally {
+      await b.ctx.fiber.dispose()
+    }
+  })
+})
+
 describe('create', () => {
   it('passes a preallocated id and preserves it on ordinary failure', async () => {
     const b = bench()

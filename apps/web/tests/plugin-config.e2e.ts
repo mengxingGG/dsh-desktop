@@ -8,7 +8,7 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
-import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, onTestFailed, onTestFinished } from 'vitest'
 import { join } from 'node:path'
 import {
   assertFixtureInventory, captureStableAria, compareOrRefreshGolden,
@@ -19,6 +19,9 @@ import { ZH_BROWSER_LOCALE, saveFailureShot } from './support.ts'
 const SNAPSHOT_DIR = fileURLToPath(new URL('./expected/plugin-config', import.meta.url))
 const SECTION_EXPECTED = join(SNAPSHOT_DIR, 'section.expected.md')
 const MODE = webSnapshotMode()
+// The base profile pins Bash to 60 seconds; its Windows PowerShell row
+// inherits the executor's 120-second default.
+const COMPOSED_SHELL_TIMEOUT = process.platform === 'win32' ? '120000' : '60000'
 
 describe('web e2e: plugin configuration section', () => {
   let scaffold: WebScaffold
@@ -137,7 +140,7 @@ describe('web e2e: plugin configuration section', () => {
     const timeout = dialog.getByLabel('命令超时（毫秒）')
     await timeout.waitFor({ timeout: 10_000 })
     // The composed default this deployment ships, before any user layer.
-    expect(await timeout.inputValue()).toBe('60000')
+    expect(await timeout.inputValue()).toBe(COMPOSED_SHELL_TIMEOUT)
     await timeout.fill('12000')
     await timeout.blur()
 
@@ -204,7 +207,7 @@ describe('web e2e: plugin configuration section', () => {
     // The reset stages the composed default; the document still carries the
     // override until the save lands.
     await dialog.getByRole('button', { name: '恢复默认' }).click()
-    await expect.poll(() => timeout.inputValue(), { timeout: 5_000 }).toBe('60000')
+    await expect.poll(() => timeout.inputValue(), { timeout: 5_000 }).toBe(COMPOSED_SHELL_TIMEOUT)
     expect(await settingsDocument()).toContain('timeoutMs: 12000')
 
     await dialog.getByRole('button', { name: '保存', exact: true }).click()
@@ -214,7 +217,7 @@ describe('web e2e: plugin configuration section', () => {
     const expandTerminal = dialog.getByRole('button', { name: '展开设置: 终端' })
     await expandTerminal.waitFor({ timeout: 5_000 })
     await expandTerminal.click()
-    expect(await timeout.inputValue()).toBe('60000')
+    expect(await timeout.inputValue()).toBe(COMPOSED_SHELL_TIMEOUT)
     expect(await dialog.getByText('已覆盖').count()).toBe(0)
     expect(tripwire.pageErrors).toEqual([])
   }, 60_000)
@@ -222,5 +225,87 @@ describe('web e2e: plugin configuration section', () => {
   it.skipIf(MODE === 'record')('keeps the fixture inventory closed', async () => {
     expect(tripwire.warnings).toEqual([])
     await assertFixtureInventory(SNAPSHOT_DIR, ['section.expected.md'])
+  })
+
+  it('keeps marketplace cards and shortcuts within the shared theme when expanded by keyboard', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-plugin-marketplace-styles'))
+    const searchPattern = '**/api/pluginMarketplace/search'
+    const installPattern = '**/api/pluginMarketplace/add'
+    const searches: unknown[] = []
+    let installations = 0
+    // The browser owns presentation here; the nondeterministic marketplace
+    // response is fixed at the Remote wire, and installation cannot reach the Host.
+    await page.route(searchPattern, async (route) => {
+      const envelope = route.request().postDataJSON() as { rpcId: string; payload: unknown }
+      searches.push(envelope.payload)
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          type: 'server-response',
+          rpcId: envelope.rpcId,
+          result: {
+            ok: true,
+            value: {
+              entries: [{
+                repository: 'fixture/crew-memory',
+                packageName: '@fixture/crew-memory',
+                description: 'Recorded marketplace presentation fixture',
+                htmlUrl: 'https://github.com/fixture/crew-memory',
+                defaultBranch: 'main',
+                stars: 3,
+                forks: 1,
+                license: 'MIT',
+                updatedAt: '2026-09-01T12:00:00.000Z',
+              }],
+              rateLimitRemaining: 12,
+            },
+          },
+        }),
+      })
+    })
+    onTestFinished(() => page.unroute(searchPattern))
+    await page.route(installPattern, async (route) => {
+      installations += 1
+      await route.abort()
+    })
+    onTestFinished(() => page.unroute(installPattern))
+
+    const dialog = await openPlugins()
+    await dialog.getByRole('tab', { name: '插件市场', exact: true }).click()
+    const shortcut = dialog.getByRole('button', { name: 'memory', exact: true })
+    await shortcut.focus()
+    await shortcut.press('Enter')
+    const card = dialog.getByRole('listitem').filter({
+      has: page.getByRole('link', { name: 'fixture/crew-memory', exact: true }),
+    })
+    await card.waitFor()
+    expect(searches).toEqual([{ args: { request: { query: 'memory' } } }])
+    expect(await shortcut.evaluate(element => getComputedStyle(element).getPropertyValue('corner-shape')))
+      .toBe('round')
+    expect(await card.evaluate(element => Number.parseFloat(getComputedStyle(element).borderTopWidth)))
+      .toBeGreaterThan(0)
+
+    const expand = card.getByRole('button', { name: '查看详情', exact: true })
+    await expand.focus()
+    await expand.press('Enter')
+    await card.getByText('MIT', { exact: true }).waitFor()
+    expect(await card.getByRole('button', { name: '收起详情', exact: true }).getAttribute('aria-expanded'))
+      .toBe('true')
+    const expandedStyle = await card.evaluate((element) => {
+      const style = getComputedStyle(element)
+      return { border: style.borderTopWidth, shadow: style.boxShadow }
+    })
+    expect(expandedStyle.border).toBe('0px')
+    expect(expandedStyle.shadow).toContain('0.5px')
+
+    await card.getByRole('button', { name: '收起详情', exact: true }).press('Enter')
+    expect(await card.getByText('MIT', { exact: true }).count()).toBe(0)
+    expect(await expand.getAttribute('aria-expanded')).toBe('false')
+    expect(await card.evaluate(element => Number.parseFloat(getComputedStyle(element).borderTopWidth)))
+      .toBeGreaterThan(0)
+    expect(installations).toBe(0)
+    expect(tripwire.pageErrors).toEqual([])
+    expect(tripwire.warnings).toEqual([])
   })
 })

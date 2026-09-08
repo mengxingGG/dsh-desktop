@@ -320,9 +320,10 @@ async function fixtureFiles(scenario: CorpusScenario): Promise<string[]> {
 async function hydrateReplayFixtures(scenario: CorpusScenario, cwd: string): Promise<string[]> {
   const root = join(cwd, '.replay-fixtures')
   await mkdir(root, { recursive: true })
+  const jsonCwd = JSON.stringify(cwd).slice(1, -1)
   return Promise.all((await fixtureFiles(scenario)).map(async (source) => {
     const destination = join(root, basename(source))
-    await writeFile(destination, (await readFile(source, 'utf8')).replaceAll('{{cwd}}', cwd))
+    await writeFile(destination, (await readFile(source, 'utf8')).replaceAll('{{cwd}}', jsonCwd))
     return destination
   }))
 }

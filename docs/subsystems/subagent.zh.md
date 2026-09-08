@@ -216,6 +216,22 @@ interface SubagentSettledMessageSource {
 }
 ```
 
+产品工作流可以用自己持久化的通知取代这条通用通知。投递前，运行时会通过 `subagent/settlement-notice` bail 事件提供以下身份记录。返回 `true` 只会抑制通用 parent 通知；不返回值则会保留该通知。
+
+```ts type-equiv
+/** Identity and terminal reason offered before a continuable settlement notice reaches its parent. */
+interface SubagentSettlementNoticeInfo {
+  /** Durable direct parent that would receive the notice. */
+  readonly parentSessionId: SessionId
+  /** Durable continuable child that settled. */
+  readonly childSessionId: SessionId
+  /** Provider recorded for the child Activation. */
+  readonly provider: string
+  /** Terminal outcome of the settling Activation. */
+  readonly stopReason: SubagentResult['stopReason']
+}
+```
+
 提供方只参与准备初始创建 spec，`spawn` 与 `fork` 在此有所不同。其返回的 spec 只携带分离的、提供方专属的创建输入——即可选的父级历史种子——不含 Agent、`AgentHandle`、提示词投递、结果、dispose 或恢复操作。冷恢复根本不经由提供方分发：管理器折叠通用描述符，通过同一个 activation-owner 作用域调用 `ctx.agents.resume()`，并提交等待中的轮次。
 
 ```ts type-equiv
@@ -740,6 +756,25 @@ A provider left the registry. Accepted runs remain holder-owned.
  * @mode emit
  */
 'subagent/provider-removed'(name: string): void
+```
+
+Source: [`packages/subagent/subagent/src/index.ts`](../../packages/subagent/subagent/src/index.ts)
+
+<a id="subagentsettlement-notice--bail"></a>
+
+#### `subagent/settlement-notice` — bail
+
+Let a product workflow suppress the generic parent notice for a child it durably owns and replaces with its own recorded notification. Returning `true` suppresses only that notice; absence preserves default delivery.
+
+```ts cordis-catalog
+/**
+ * Let a product workflow suppress the generic parent notice for a child it
+ * durably owns and replaces with its own recorded notification. Returning
+ * `true` suppresses only that notice; absence preserves default delivery.
+ * @param info - Parent, child, provider, and terminal outcome identity.
+ * @mode bail
+ */
+'subagent/settlement-notice'(info: SubagentSettlementNoticeInfo): true | void
 ```
 
 Source: [`packages/subagent/subagent/src/index.ts`](../../packages/subagent/subagent/src/index.ts)

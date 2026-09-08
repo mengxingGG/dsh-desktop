@@ -1,0 +1,10 @@
+version: 1
+scenario: crew-projection
+profile: sdk
+composition: sdk-crew-projection
+recording: live
+header:
+  class: sdk-crew-projection
+  pin: true
+workspace:
+  final: true

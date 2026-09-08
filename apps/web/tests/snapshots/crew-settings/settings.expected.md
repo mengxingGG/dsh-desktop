@@ -1,0 +1,40 @@
+- heading "Agent orchestration" [level=2]
+- paragraph: Saved in DSH user settings, shared across projects, never written to the project or committed to Git.
+- heading "Role models" [level=3]
+- paragraph: Choose defaults independently for manager, developer, reviewer, and integrator. New Sessions use new choices; existing Sessions and revisions keep their bound model.
+- group "Manager":
+  - text: Manager Model
+  - combobox "Manager · Model":
+    - option "Inherit DSH configuration"
+    - option "DeepSeek · DeepSeek-V4-Flash" [selected]
+    - option "DeepSeek · DeepSeek-V4-Flash-Vision-Exp"
+- group "Developer":
+  - text: Developer Model
+  - combobox "Developer · Model":
+    - option "Inherit DSH configuration"
+    - option "DeepSeek · DeepSeek-V4-Flash"
+    - option "DeepSeek · DeepSeek-V4-Flash-Vision-Exp" [selected]
+- group "Reviewer":
+  - text: Reviewer Model
+  - combobox "Reviewer · Model":
+    - option "Inherit DSH configuration"
+    - option "DeepSeek · DeepSeek-V4-Flash" [selected]
+    - option "DeepSeek · DeepSeek-V4-Flash-Vision-Exp"
+- group "Integrator":
+  - text: Integrator Model
+  - combobox "Integrator · Model":
+    - option "Inherit DSH configuration"
+    - option "DeepSeek · DeepSeek-V4-Flash"
+    - option "DeepSeek · DeepSeek-V4-Flash-Vision-Exp" [selected]
+- heading "DSH global memory" [level=3]
+- paragraph: Remember operating preferences and explicit authorization scopes, not secrets, project specifications, or task progress. Frequent past approvals are preferences, not standing authorization.
+- paragraph: Before dangerous actions, the manager must still explain the target, impact, and recoverability, even after earlier approvals.
+- list:
+  - listitem:
+    - text: Operating preference
+    - paragraph: Do not automatically delete files.
+    - paragraph: "Applies to: All projects"
+    - button "Edit"
+    - button "Delete"
+- button "Add memory"
+- status: Saved in DSH.

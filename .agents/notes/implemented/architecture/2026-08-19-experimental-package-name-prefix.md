@@ -12,9 +12,9 @@ Directory placement, private manifests, and release-family filtering keep experi
 
 Every package directly below `packages/experimental/` uses the `@deepseek-ai/dsh-experimental-*` npm prefix. The workspace constraints gate discovers those manifests and rejects a missing prefix alongside the existing `private: true` and omitted-`publishConfig` requirements.
 
-Agent Teams uses `@deepseek-ai/dsh-experimental-agent-team` from `packages/experimental/agent-team` and `@deepseek-ai/dsh-experimental-tool-agent-team` from `packages/experimental/tool-agent-team`. Package imports, Cordis configuration rows, generated catalogs, and repository metadata use those names without compatibility aliases.
+The direct-to-model Agent Teams surface uses `@deepseek-ai/dsh-experimental-tool-agent-team` from `packages/experimental/tool-agent-team` and `@deepseek-ai/dsh-experimental-client-ui-agent-team` from `packages/experimental/client-ui-agent-team`. Package imports, Cordis configuration rows, generated catalogs, and repository metadata use those names without compatibility aliases.
 
-Promotion moves a package to its product-role group, removes `experimental-` from its npm name, and updates every repository reference atomically. The pre-release compatibility policy permits that rename without an alias package.
+Promotion moves a package to its product-role group, removes `experimental-` from its npm name, and updates every repository reference atomically. The pre-release compatibility policy permits that rename without an alias package. The Team domain itself has since taken that path: the [Crew delivery decision](../feature/2026-09-06-native-crew-default-delivery.md) renamed it to `@deepseek-ai/dsh-agent-team` in `packages/subagent/agent-team`, which is what this rule's rename clause looks like when exercised.
 
 ## Alternatives considered
 
