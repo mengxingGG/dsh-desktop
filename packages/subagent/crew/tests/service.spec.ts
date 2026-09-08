@@ -18,7 +18,6 @@ import {
   type SessionHandle,
   type SessionPersistenceSnapshot,
 } from '@deepseek-ai/dsh-session-persistence'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SubagentService from '@deepseek-ai/dsh-subagent'
 import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process'
 import TeamService from '@deepseek-ai/dsh-agent-team'
@@ -106,7 +105,9 @@ class MemoryPersistence extends SessionPersistence {
       header: structuredClone(record.header),
       inheritedEventCount: record.inheritedEventCount,
       access,
-      read: async (offset = 0, length = Number.MAX_SAFE_INTEGER) => structuredClone(record.events.slice(offset, offset + length)),
+      read: async (offset = 0, length = Number.MAX_SAFE_INTEGER) => ({
+        eventState: 'detached', events: structuredClone(record.events.slice(offset, offset + length)),
+      }),
       append: async (events) => {
         if (access !== 'write' || closed) throw new Error('memory persistence handle is not writable')
         record.events.push(...structuredClone(events))
@@ -122,7 +123,6 @@ async function stack(store: MemoryStore, repositoryRoot = process.cwd()) {
   const ctx = new Context()
   contexts.add(ctx)
   await mountAgentLoopTestDependencies(ctx)
-  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(MemoryPersistence, store)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(SubagentService)

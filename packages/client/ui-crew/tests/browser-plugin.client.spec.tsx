@@ -5,12 +5,11 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import type { DetailsViewOwnerProps } from '@deepseek-ai/dsh-client-ui-chat/client'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type { TeamTaskId } from '@deepseek-ai/dsh-agent-team/client'
 import type { CrewProjectionView, CrewStage } from '@deepseek-ai/dsh-crew/client'
 import { CrewAction, type CrewActionInjected, type CrewActionProps } from '../src/client/CrewAction.tsx'
-import { CrewDetailsView, type CrewDetailsViewProps } from '../src/client/CrewDetailsView.tsx'
+import { CrewDetailsView, CrewSidebarView, type CrewDetailsViewProps } from '../src/client/CrewDetailsView.tsx'
 import { CrewSettings } from '../src/client/CrewSettings.tsx'
 import { catalog, preferencesFixture } from './preferences.fixture.client.ts'
 import { en, zh, type CrewKey } from '../src/client/locales.ts'
@@ -397,10 +396,13 @@ describe('Crew browser UI', () => {
     expect(screen.getByText(`${en.commitRejected} · feat: auth`)).toBeTruthy()
   })
 
-  it('registers disposable header and details-chain entries', async () => {
+  it('registers disposable Crew tab and header navigation', async () => {
     const ctx = new Context()
     const open = vi.fn()
-    ctx.provide('chatDetails', { open })
+    ctx.provide('sidebarRight', { openTab: open })
+    const unregisterTab = vi.fn()
+    const tabs = { register: vi.fn(() => unregisterTab) }
+    ctx.provide('sidebarRightTabs', tabs)
     ctx.provide('sessions', {})
     ctx.provide('uiConversation', {})
     ctx.provide('settingsScope', { bind: () => preferencesFixture().scope })
@@ -412,7 +414,7 @@ describe('Crew browser UI', () => {
       name: 'root',
       children: {
         'conversation.session.header.actions': { kind: 'list', scope: 'session' },
-        'conversation.details.view': { kind: 'chain', scope: 'session' },
+        'sidebar.right.pane.tab': { kind: 'keyed', scope: 'session' },
         'settings.section': { kind: 'list', scope: 'root' },
       },
     } as never, () => null)
@@ -421,23 +423,20 @@ describe('Crew browser UI', () => {
 
     const header = ctx.slots.entries('conversation.session.header.actions')
       .find(entry => entry.component === CrewAction)!
-    const details = ctx.slots.entries('conversation.details.view')
-      .find(entry => entry.component === CrewDetailsView)!
-    expect(inject).toEqual(['slots', 'locale', 'chatDetails', 'settingsScope', 'remote', 'remote.session', 'sessions', 'uiConversation'])
+    const details = ctx.slots.entries('sidebar.right.pane.tab')
+      .find(entry => entry.component === CrewSidebarView)!
+    expect(details.options).toMatchObject({ key: '@deepseek-ai/dsh-client-ui-crew' })
+    expect(tabs.register).toHaveBeenCalledWith(expect.objectContaining({ kind: 'crew' }))
     expect(ctx.slots.entries('settings.section').some(entry => entry.component === CrewSettings)).toBe(true)
     expect(header.options).toMatchObject({ id: 'crew', order: 15 })
-    const select = details.select as unknown as (owner: DetailsViewOwnerProps) => unknown
-    expect(select({ selection: { kind: 'crew', taskId: TASK } } as DetailsViewOwnerProps)).toEqual({
-      kind: 'crew', taskId: TASK,
-    })
-    expect(select({ selection: { kind: 'tool', callId: 'call' } } as DetailsViewOwnerProps)).toBeNull()
     const actions = (header.inject as unknown as (sessionId: SessionId) => CrewActionInjected)(MANAGER)
     actions.openCrew({ kind: 'crew', taskId: TASK })
-    expect(open).toHaveBeenCalledWith(MANAGER, { kind: 'crew', taskId: TASK })
+    expect(open).toHaveBeenCalledWith('crew', { params: { kind: 'crew', taskId: TASK } })
 
     await fiber.dispose()
     expect(ctx.slots.entries('conversation.session.header.actions')).toHaveLength(0)
-    expect(ctx.slots.entries('conversation.details.view')).toHaveLength(0)
+    expect(ctx.slots.entries('sidebar.right.pane.tab')).toHaveLength(0)
+    expect(unregisterTab).toHaveBeenCalledOnce()
     expect(ctx.slots.entries('settings.section')).toHaveLength(0)
   })
 

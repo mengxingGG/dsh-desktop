@@ -173,9 +173,10 @@ describe('web e2e: long Chat interaction contract', () => {
 
   it.skipIf(MODE === 'record')('keeps heterogeneous rows and their actions bound to exact semantic identities', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-chat-long-interactions'))
-    // Cold history arrives before the controller's background activation
-    // registers its Agent, so rendered rows are not an activation barrier.
-    await expect.poll(() => scaffold.ctx.agents.get(SessionId(SESSION_ID)), { timeout: 15_000 }).toBeDefined()
+    await expect.poll(
+      () => scaffold.ctx.agents.get(SessionId(SESSION_ID)) !== undefined,
+      { timeout: 10_000 },
+    ).toBe(true)
     const source = scaffold.ctx.agents.get(SessionId(SESSION_ID))
     if (source === undefined) throw new Error('seeded long-history agent is not attached')
 

@@ -1,0 +1,188 @@
+diff --git a/lib/index.js b/lib/index.js
+index 2db261ae2bd468e660dd604edb9562409b1d4935..075cdbdc7d6577478f16b8da7b3422476e2e6b18 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -40,7 +40,8 @@ import { ACCOUNT_REFRESH_MS, createAccountService, validateAccountConfig } from
+ const name = "usage-stats";
+ 
+ /** Services required before this plugin activates. */
+-const inject = ["webServer", "credentials", "sessions", "sessionPersistence", "settings", "llm"];
++const inject = ["connection", "credentials", "sessions", "sessionPersistence", "settings", "llm"];
++const trustedFetch = Symbol("usage-stats trusted Fetch carrier");
+ 
+ const USAGE_PATH = "/api/usage-stats/usage";
+ const PROVIDERS_PATH = "/api/usage-stats/providers";
+@@ -48,7 +49,7 @@ const BALANCE_PATH = "/api/usage-stats/balance";
+ const SUBSCRIPTIONS_PATH = "/api/usage-stats/subscriptions";
+ const ACCOUNT_PATH = "/api/usage-stats/account";
+ const UPSTREAM_TIMEOUT_MS = 15000;
+-const CACHE_VERSION = 3;
++const CACHE_VERSION = 4;
+ 
+ /** Default DeepSeek connection facts when the settings namespace is absent. */
+ const DEEPSEEK_DEFAULTS = {
+@@ -112,6 +113,8 @@ function rejectForeignCaller(req, res) {
+ 		res.end(JSON.stringify({ ok: false, error: "method-not-allowed" }));
+ 		return true;
+ 	}
++	// Connection applies carrier authentication before invoking this private adapter.
++	if (req[trustedFetch] === true) return false;
+ 	const peer = req.socket?.remoteAddress;
+ 	if (isLoopbackAddress(peer) && isLoopbackHostHeader(req)) return false;
+ 	json(res, 403, { ok: false, error: "forbidden" });
+@@ -282,7 +285,7 @@ export async function collectUsage(ctx) {
+ 					state.currentModel = null;
+ 					state.consumed = 0;
+ 				}
+-				const count = session.events.length;
++				const count = session.seq;
+ 				if (count < (state.consumed ?? 0)) {
+ 					// The in-memory log shrank below the folded cursor — DSH
+ 					// restores sessions from disk as compressed summaries after
+@@ -296,7 +299,7 @@ export async function collectUsage(ctx) {
+ 					state.consumed = 0;
+ 				}
+ 				if ((state.consumed ?? 0) < count) {
+-					applyUsageDelta(state, session.events.slice(state.consumed ?? 0));
++					applyUsageDelta(state, session.snapshotEvents(state.consumed ?? 0));
+ 					state.consumed = count;
+ 				}
+ 				state.kind = "live";
+@@ -306,58 +309,26 @@ export async function collectUsage(ctx) {
+ 		const persistence = ctx.get("sessionPersistence");
+ 		const persistedIds = new Set();
+ 		if (persistence !== void 0) {
+-			// Prefer the backend's opaque per-log revisions (no file I/O in the
+-			// plugin, works for any backend that exposes listSnapshots).
+-			let snapshots = null;
+-			if (typeof persistence.listSnapshots === "function") {
+-				try {
+-					snapshots = await persistence.listSnapshots();
+-				} catch (error) {
+-					ctx.logger.warn(`usage-stats: listSnapshots failed, falling back to list(): ${String(error)}`);
+-				}
+-			}
+-			const metas = snapshots !== null ? snapshots.map((entry) => entry.header) : await persistence.list();
+-			const revisionOf = new Map();
+-			if (snapshots !== null) for (const entry of snapshots) revisionOf.set(entry.header.id, entry.revision);
+-			for (const meta of metas) {
++			const snapshots = await persistence.list();
++			for (const snapshot of snapshots) {
++				const meta = snapshot.header;
+ 				persistedIds.add(meta.id);
+ 				if (attached.has(meta.id)) continue;
+-				const state = cache.sessions[meta.id] ?? createUsageState();
+-				const revision = revisionOf.get(meta.id);
+-				const changed = state.kind !== "persisted" || (revision !== void 0 && revision !== state.revision) || revision === void 0;
+-				if (changed) {
+-					try {
+-						const wasPersisted = state.kind === "persisted";
+-						const fromSeq = wasPersisted ? state.consumed : 0;
+-						const { events } = await persistence.readFrom(meta.id, fromSeq);
+-						if (!wasPersisted) {
+-							state.days = new Map();
+-							state.lastSample = null;
+-							state.currentModel = null;
+-							state.consumed = 0;
+-						}
+-						const fresh = wasPersisted ? events.filter((event) => event.seq > (state.consumed ?? 0)) : events;
+-						const contiguous = fresh.length === 0 ? state.consumed === 0 : fresh[0].seq === state.consumed + 1;
+-						if (!contiguous && state.consumed > 0) {
+-							// Log truncated or rewritten: refold the whole log.
+-							state.days = new Map();
+-							state.lastSample = null;
+-							state.currentModel = null;
+-							state.consumed = 0;
+-							const { events: allEvents } = await persistence.readFrom(meta.id, 0);
+-							applyUsageDelta(state, allEvents);
+-							state.consumed = allEvents.length > 0 ? allEvents[allEvents.length - 1].seq : 0;
+-						} else if (fresh.length > 0) {
+-							applyUsageDelta(state, fresh);
+-							state.consumed = fresh[fresh.length - 1].seq;
+-						}
+-						state.kind = "persisted";
+-						if (revision !== void 0) state.revision = revision;
+-					} catch (error) {
+-						ctx.logger.warn(`usage-stats: reading persisted session "${meta.id}" failed: ${String(error)}`);
+-					}
++				let state = cache.sessions[meta.id] ?? createUsageState();
++				if (state.kind === "persisted" && state.revision === snapshot.revision) continue;
++				const handle = await persistence.open(meta.id, "read");
++				try {
++					if (state.kind !== "persisted" || (snapshot.eventCount !== undefined && snapshot.eventCount < state.consumed)) state = createUsageState();
++					const { events } = await handle.read(state.consumed);
++					if (events.length > 0 && events[0].seq !== state.consumed) throw new Error("usage-stats: non-contiguous persisted events");
++					applyUsageDelta(state, events);
++					state.consumed += events.length;
++					state.kind = "persisted";
++					state.revision = snapshot.revision;
++					cache.sessions[meta.id] = state;
++				} finally {
++					await handle.close();
+ 				}
+-				cache.sessions[meta.id] = state;
+ 			}
+ 		}
+ 		for (const id of Object.keys(cache.sessions)) {
+@@ -577,6 +548,28 @@ const Config = {
+ 	}
+ };
+ 
++function registerRoute(ctx, route) {
++	const server = ctx.get("webServer");
++	if (server !== undefined) return server.register(route);
++	return ctx.connection.fetch.register({
++		path: route.path, methods: ["GET"], requestBody: "buffered",
++		async fetch(request) {
++			let status = 200;
++			let headers = {};
++			let body;
++			await route.handler({
++				[trustedFetch]: true, method: request.method, url: request.url,
++				headers: Object.fromEntries(request.headers),
++			}, {
++				writeHead(code, values) { status = code; headers = values; },
++				end(value) { body = value; },
++			});
++			if (body === undefined) throw new Error("usage-stats: JSON handler did not finish its response");
++			return new Response(body, { status, headers });
++		},
++	});
++}
++
+ async function apply(ctx, rawConfig = {}, deps = {}) {
+ 	const config = validateAccountConfig(rawConfig);
+ 	const accounts = deps.accounts ?? createAccountService({
+@@ -588,27 +581,27 @@ async function apply(ctx, rawConfig = {}, deps = {}) {
+ 	// Provider ids come from the async Harness settings service, so this dynamic
+ 	// part of config validation must finish before any routes or timers start.
+ 	await accounts.validate();
+-	ctx.effect(() => ctx.webServer.register({
++	ctx.effect(() => registerRoute(ctx, {
+ 		kind: "exact",
+ 		path: USAGE_PATH,
+ 		handler: (req, res) => handleUsage(ctx, req, res)
+ 	}), "usage-stats: usage route");
+-	ctx.effect(() => ctx.webServer.register({
++	ctx.effect(() => registerRoute(ctx, {
+ 		kind: "exact",
+ 		path: PROVIDERS_PATH,
+ 		handler: (req, res) => handleProviders(ctx, accounts, req, res)
+ 	}), "usage-stats: providers route");
+-	ctx.effect(() => ctx.webServer.register({
++	ctx.effect(() => registerRoute(ctx, {
+ 		kind: "exact",
+ 		path: ACCOUNT_PATH,
+ 		handler: (req, res) => handleAccount(ctx, accounts, req, res)
+ 	}), "usage-stats: account route");
+-	ctx.effect(() => ctx.webServer.register({
++	ctx.effect(() => registerRoute(ctx, {
+ 		kind: "exact",
+ 		path: BALANCE_PATH,
+ 		handler: (req, res) => handleBalance(ctx, accounts, req, res)
+ 	}), "usage-stats: balance route");
+-	ctx.effect(() => ctx.webServer.register({
++	ctx.effect(() => registerRoute(ctx, {
+ 		kind: "exact",
+ 		path: SUBSCRIPTIONS_PATH,
+ 		handler: (req, res) => handleSubscriptions(ctx, accounts, req, res)

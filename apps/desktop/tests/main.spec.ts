@@ -1,4 +1,4 @@
-import type { BackendHandle } from '../src/backend.ts'
+import type { DesktopHostProcess } from '../src/host-process.ts'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
     loadFile: vi.fn().mockResolvedValue(undefined), loadURL: vi.fn().mockResolvedValue(undefined),
     isDestroyed: () => false, isMinimized: () => false,
     hide: vi.fn(), show: vi.fn(), focus: vi.fn(), restore: vi.fn(),
-    webContents: { setWindowOpenHandler: vi.fn(), on: vi.fn() },
+    webContents: { setWindowOpenHandler: vi.fn(), on: vi.fn(), send: vi.fn(), openDevTools: vi.fn() },
   },
 }))
 
@@ -20,19 +20,23 @@ vi.mock('electron', () => ({
   app: {
     isPackaged: false, requestSingleInstanceLock: () => true, whenReady: () => Promise.resolve(),
     getLocale: () => 'zh-CN', getFileIcon: () => Promise.resolve({}),
+    getVersion: () => '0.1.3-alpha.2',
     on: (name: string, listener: (...args: unknown[]) => void) => { mocks.listeners.set(name, listener) },
     quit: mocks.quit,
   },
-  BrowserWindow: function () {
+  BrowserWindow: Object.assign(function () {
     return {
       ...mocks.window,
       on: (name: string, listener: (...args: unknown[]) => void) => { mocks.windowListeners.set(name, listener) },
+      once: (name: string, listener: (...args: unknown[]) => void) => { mocks.windowListeners.set(name, listener) },
     }
-  },
+  }, { getAllWindows: () => [] }),
   Tray: function () {
     return { ...mocks.tray, on: (name: string, listener: () => void) => { mocks.trayListeners.set(name, listener) } }
   },
-  Menu: { buildFromTemplate: (menu: typeof mocks.menu) => { mocks.menu = menu; return menu } },
+  Menu: { setApplicationMenu: vi.fn(), buildFromTemplate: (menu: typeof mocks.menu) => { mocks.menu = menu; return menu } },
+  protocol: { registerSchemesAsPrivileged: vi.fn(), handle: vi.fn() },
+  ipcMain: { handle: vi.fn() },
   session: { defaultSession: { setPermissionRequestHandler: vi.fn(), setPermissionCheckHandler: vi.fn() } },
   dialog: { showErrorBox: vi.fn(), showMessageBox: mocks.dialog }, shell: {},
 }))
@@ -42,32 +46,52 @@ vi.mock('node:fs', async importOriginal => ({
   existsSync: () => true,
 }))
 
-vi.mock('../src/backend.ts', async importOriginal => ({
-  ...await importOriginal<typeof import('../src/backend.ts')>(), startBackend: mocks.startBackend,
+vi.mock('../src/host-process.ts', () => ({
+  DesktopHostProcess: class {
+    async start() { Object.assign(this, await mocks.startBackend()) }
+  },
+}))
+vi.mock('../src/project-manager.ts', () => ({
+  DesktopProjectManager: class {
+    recover() {}
+    async applyRelease() {}
+  },
+}))
+vi.mock('../src/update-coordinator.ts', () => ({
+  DesktopUpdateCoordinator: class {
+    async check() { return { phase: 'idle' } }
+  },
 }))
 
 const platform = Object.getOwnPropertyDescriptor(process, 'platform')!
+const resourcesPath = Object.getOwnPropertyDescriptor(process, 'resourcesPath')
 beforeEach(() => {
   // These tests exercise Windows shell decisions without calling native APIs.
   Object.defineProperty(process, 'platform', { ...platform, value: 'win32' })
+  vi.stubEnv('DSH_DESKTOP_DEV_PROJECT_DIR', '')
+  vi.stubEnv('DSH_DESKTOP_OPEN_DEVTOOLS', '0')
+  Object.defineProperty(process, 'resourcesPath', { configurable: true, value: 'C:/desktop-resources' })
 })
 afterEach(() => {
   Object.defineProperty(process, 'platform', platform)
+  if (resourcesPath === undefined) Reflect.deleteProperty(process, 'resourcesPath')
+  else Object.defineProperty(process, 'resourcesPath', resourcesPath)
+  vi.unstubAllEnvs()
   mocks.listeners.clear(); mocks.windowListeners.clear(); mocks.trayListeners.clear(); mocks.menu = []
   vi.clearAllMocks(); mocks.startBackend.mockReset(); mocks.dialog.mockReset(); vi.resetModules()
 })
 
 function runningBackend(busy = false) {
   return {
-    url: new URL('http://127.0.0.1:1234'), logs: () => '', exited: new Promise(() => {}),
     activity: vi.fn().mockResolvedValue(busy), shutdown: vi.fn().mockResolvedValue(true), stop: vi.fn().mockResolvedValue(undefined),
-  } satisfies BackendHandle
+  } satisfies Pick<DesktopHostProcess, 'activity' | 'shutdown' | 'stop'>
 }
 
 async function boot(backend = runningBackend()) {
   mocks.startBackend.mockResolvedValue(backend)
   await import('../src/main.ts')
   await expect.poll(() => mocks.window.loadURL.mock.calls.length).toBe(1)
+  await expect.poll(() => mocks.menu.some(item => item.label === '彻底退出')).toBe(true)
   return backend
 }
 
@@ -110,7 +134,7 @@ it('leaves active tasks running when the second confirmation is declined', async
   expect(backend.stop).not.toHaveBeenCalled()
   expect(mocks.window.hide).not.toHaveBeenCalled()
   expect(mocks.quit).not.toHaveBeenCalled()
-  expect(mocks.dialog.mock.calls[1]?.[1]).toMatchObject({ defaultId: 0, cancelId: 0 })
+  expect(mocks.dialog.mock.calls[1]?.[0]).toMatchObject({ defaultId: 0, cancelId: 0 })
 })
 
 it('waits for confirmed task shutdown and persistence before removing the tray and exiting', async () => {
@@ -176,17 +200,19 @@ it('coalesces repeated window-close requests while the choice remains open', asy
   expect(mocks.quit).not.toHaveBeenCalled()
 })
 
-it('waits for an in-flight launch and asks about its real activity before exiting', async () => {
+it('publishes the tray only after the official Host is ready', async () => {
   const started = Promise.withResolvers<undefined>()
-  const launch = Promise.withResolvers<BackendHandle>()
+  const launch = Promise.withResolvers<ReturnType<typeof runningBackend>>()
   mocks.startBackend.mockImplementation(() => { started.resolve(undefined); return launch.promise })
   await import('../src/main.ts')
   await started.promise
-  exitFromTray()
+  expect(mocks.menu.some(item => item.label === '彻底退出')).toBe(false)
   expect(mocks.quit).not.toHaveBeenCalled()
   const backend = runningBackend(true)
   mocks.dialog.mockResolvedValue({ response: 0 })
   launch.resolve(backend)
+  await expect.poll(() => mocks.menu.some(item => item.label === '彻底退出')).toBe(true)
+  exitFromTray()
   await expect.poll(() => mocks.dialog.mock.calls.length).toBe(1)
   await expect.poll(() => mocks.tray.setToolTip.mock.calls.at(-1)?.[0]).toBe('DeepSeek Harness')
   expect(backend.shutdown).not.toHaveBeenCalled()

@@ -123,7 +123,7 @@
         - term: 已超时
         - definition: 否
         - heading "标准输出" [level=6]
-        - region "标准输出": ✔ {{uuid}} value ({{duration}}) ℹ tests 1 ℹ suites 0 ℹ pass 1 ℹ fail 0 ℹ cancelled 0 ℹ skipped 0 ℹ todo 0 ℹ duration_ms 44.162663
+        - region "标准输出": ✔ {{uuid}} value ({{duration}}) ℹ tests 1 ℹ suites 0 ℹ pass 1 ℹ fail 0 ℹ cancelled 0 ℹ skipped 0 ℹ todo 0 ℹ duration_ms 126.1299
         - heading "标准错误" [level=6]
         - paragraph: 无输出
   - heading "问题" [level=4]
@@ -141,4 +141,4 @@
       - listitem: modules/alpha/index.mjs
       - listitem: modules/beta/index.mjs
   - term: 提交哈希
-  - definition: 9d4e276ca31b4de8024eb9b64da95138f06ffc59
+  - definition: 6b5848e75be7eb0362633dd76632fcb20ee710d0

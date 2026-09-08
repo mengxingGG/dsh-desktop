@@ -1,10 +1,17 @@
 .root {
   display: flex;
   min-width: 0;
+  width: 100%;
+  min-height: 0;
   height: 100%;
   flex-direction: column;
   color: var(--dsw-alias-label-primary);
   background: var(--dsw-alias-bg-base);
+}
+
+.root,
+.root * {
+  box-sizing: border-box;
 }
 
 .trigger {
@@ -73,6 +80,7 @@
 }
 
 .body {
+  min-width: 0;
   min-height: 0;
   flex: 1;
   overflow: auto;

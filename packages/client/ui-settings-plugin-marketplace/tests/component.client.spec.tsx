@@ -42,6 +42,19 @@ function props(overrides: Partial<MarketplaceInjected> = {}): MarketplaceProps {
 }
 
 describe('MarketplaceTab', () => {
+  it('opens the desktop installer without mutating the Web profile', async () => {
+    const openDesktopManager = vi.fn().mockResolvedValue(undefined)
+    const inputs = props({ openDesktopManager })
+    render(<MarketplaceTab {...inputs} />)
+    fireEvent.click(screen.getByRole('button', { name: 'balance' }))
+    await screen.findByText(entry.repository)
+    fireEvent.click(screen.getByRole('button', { name: en.desktopManage }))
+    expect(await screen.findByText(en.desktopOpened)).toBeTruthy()
+    expect(openDesktopManager).toHaveBeenCalledOnce()
+    expect(inputs.install).not.toHaveBeenCalled()
+    expect(inputs.confirm).not.toHaveBeenCalled()
+  })
+
   it('renders cards and expandable details', async () => {
     render(<MarketplaceTab {...props()} />)
     fireEvent.click(screen.getByRole('button', { name: 'balance' }))

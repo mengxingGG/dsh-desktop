@@ -12,7 +12,7 @@ Status: implemented
 
 如果焦点位于不包含 composer 的模态窗口中，[composer](../../../../packages/client/ui-conversation/src/client/skeleton/InputBar.tsx) 会放弃挂载、解锁和切换 Session 时的自动聚焦。键盘输入仍由模态窗口接收；非模态控件或包含 composer 的模态窗口不会抑制正常自动聚焦。普通 composer 聚焦仍保留 `preventScroll` 与 Lexical 选区恢复。
 
-这条规则属于发起聚焦的代码，而非目录导航或 Session 创建。它不增加全局焦点限制、延迟重新聚焦或 Host 状态。[Lexical 编辑器归属](../architecture/2026-08-20-web-composer-lexical-editor.zh.md)、[单一 Workspace 创建路径](../simplification/2026-07-31-one-route-to-add-a-workspace.zh.md)与[首次运行引导的显式 inert 生命周期](../feature/2026-08-13-shared-modal-product-onboarding.zh.md)仍是独立决策。
+这条规则属于发起聚焦的代码，而非目录导航或 Session 创建。它不增加全局焦点限制、延迟重新聚焦或 Host 状态。[Lexical 编辑器归属](../../archived/architecture/2026-08-20-web-composer-lexical-editor.md)、[单一 Workspace 创建路径](../../archived/simplification/2026-07-31-one-route-to-add-a-workspace.md)与[首次运行引导的显式 inert 生命周期](../../archived/feature/2026-08-13-shared-modal-product-onboarding.md)仍是独立决策。
 
 ## 考虑过的替代方案
 

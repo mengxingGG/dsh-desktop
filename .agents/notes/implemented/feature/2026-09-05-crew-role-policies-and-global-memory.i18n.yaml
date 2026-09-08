@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-05-crew-role-policies-and-global-memory.md
-2026-09-05-crew-role-policies-and-global-memory.md: 71c95aec751ae89ae7010f8d74543e58633eb68f
-2026-09-05-crew-role-policies-and-global-memory.zh.md: 11a57ba08e95cae64217e8561b9289e5c6a1e7b4
+2026-09-05-crew-role-policies-and-global-memory.md: 3327380fea4b72e08b2654c988cf39c87f9cde1e
+2026-09-05-crew-role-policies-and-global-memory.zh.md: be0f6f54c12ebe0cb71c7fc40eb3cdba53db4081

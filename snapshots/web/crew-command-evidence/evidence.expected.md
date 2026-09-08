@@ -123,7 +123,7 @@
         - term: Timed out
         - definition: "No"
         - heading "Standard output" [level=6]
-        - region "Standard output": ✔ {{uuid}} value ({{duration}}) ℹ tests 1 ℹ suites 0 ℹ pass 1 ℹ fail 0 ℹ cancelled 0 ℹ skipped 0 ℹ todo 0 ℹ duration_ms 44.162663
+        - region "Standard output": ✔ {{uuid}} value ({{duration}}) ℹ tests 1 ℹ suites 0 ℹ pass 1 ℹ fail 0 ℹ cancelled 0 ℹ skipped 0 ℹ todo 0 ℹ duration_ms 126.1299
         - heading "Standard error" [level=6]
         - paragraph: No output
   - heading "Issues" [level=4]
@@ -141,4 +141,4 @@
       - listitem: modules/alpha/index.mjs
       - listitem: modules/beta/index.mjs
   - term: Commit hash
-  - definition: 9d4e276ca31b4de8024eb9b64da95138f06ffc59
+  - definition: 6b5848e75be7eb0362633dd76632fcb20ee710d0

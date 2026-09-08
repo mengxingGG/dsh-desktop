@@ -1,5 +1,5 @@
 // Keyless assembled-browser coverage for the native Crew profiles over
-// the real Session projection and typed Chat details-view chain.
+// the real Session projection and Session-owned right-sidebar tabs.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -207,7 +207,12 @@ describe('web e2e: native Crew panel', () => {
     tripwire = watchConsole(page)
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
-    await connectFreshWorkspace(page, scaffold.workspaceCwd, WORKSPACE_NAME)
+    try {
+      await connectFreshWorkspace(page, scaffold.workspaceCwd, WORKSPACE_NAME)
+    } catch (error) {
+      await saveFailureShot(page, 'web-e2e-crew-workspace')
+      throw new Error(`Crew workspace did not unlock: ${await page.locator('body').innerText()}; console: ${JSON.stringify(tripwire)}`, { cause: error })
+    }
   }, 120_000)
 
   afterAll(async () => {

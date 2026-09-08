@@ -4,8 +4,11 @@
     "rootDir": "src",
     "outDir": "lib/types"
   },
-  "include": [
-    "src"
-  ],
-  "references": [{ "path": "../../packages/bundle/web-app" }]
+  "include": ["src"],
+  "references": [
+    { "path": "../../packages/bundle/web-app" },
+    { "path": "../../packages/llm/llm" },
+    { "path": "../../packages/subprocess/win32-process" },
+    { "path": "../../packages/util/home-paths" }
+  ]
 }

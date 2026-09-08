@@ -89,6 +89,7 @@
     "tests/agent-team-panel.e2e.ts",
     "tests/crew-panel.e2e.ts",
     "tests/crew-settings.e2e.ts",
+    "tests/sidebar-right.e2e.ts",
     "tests/startup-auto-selection.e2e.ts",
     "tests/produced-files.e2e.ts",
     "tests/produced-file-mentions.e2e.ts",

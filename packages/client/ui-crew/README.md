@@ -1,5 +1,5 @@
 ---
-description: "Inspect live DSH-native Crew status, worker evidence, integration, and commit outcomes in the manager conversation's shared details panel."
+description: "Inspect live DSH-native Crew status, worker evidence, integration, and commit outcomes in the manager conversation's right sidebar."
 kind: "package-reference"
 ---
 
@@ -32,7 +32,7 @@ Mount it through [`@deepseek-ai/dsh-crew-web-profile`](../../bundle/crew-web-pro
 <a id="panel-behavior"></a>
 ## Panel behavior
 
-The header action appears only on a root manager Session. Its badge counts work items that have not reached `accepted`, `failed`, or `cancelled`. Opening it uses the same resizable details area as tool-call details, preserving the center conversation and typed selection across live projection updates.
+The header action appears only on a root manager Session. Its badge counts work items that have not reached `accepted`, `failed`, or `cancelled`. Opening it selects the Crew tab in the right sidebar. Each Session retains its own worker selection while tool details and workspace files remain available in adjacent tabs.
 
 Panel separators and neutral outlines use the shared theme's 0.5px hairlines.
 
@@ -55,7 +55,7 @@ Memory entries distinguish operating preferences from explicitly scoped standing
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The Client mount registers locale dictionaries, a conversation-header slot entry, and one selector in `chatDetails`. `useProjection('crew')` reads the Session projection already distributed by the stable Client session layer; the package does not poll the Host or keep a second workflow store. Every registration is an effect and disappears when its plugin fiber unloads.
+The Client mount registers locale dictionaries, a conversation-header action, a `sidebarRightTabs` contribution, and its `sidebar.right.pane.tab` body. `useProjection('crew')` reads the Session projection already distributed by the stable Client session layer; the package does not poll the Host or keep a second workflow store. Every registration is an effect and disappears when its plugin fiber unloads.
 
 Worker activity retains a secondary Session observation and uses the existing Chat projection for streamed text, reasoning, tool calls, results, errors, and paged history. Opening it never selects the child or starts a model turn. Switching workers or closing details releases the observer; reopening reads the durable child history. The view displays the latest 100 nodes and expands history on demand.
 
@@ -80,7 +80,7 @@ Worker activity retains a secondary Session observation and uses the existing Ch
 
 - [Crew Web profile](../../bundle/crew-web-profile/README.md) — additive default Web composition.
 - [Crew service](../../subagent/crew/README.md) — authoritative projection and evidence semantics.
-- [Conversation UI](../ui-chat/README.md) — typed details-view owner and tool-details coexistence.
+- [Right sidebar](../ui-sidebar-right/README.md) — Session-owned tab navigation and selection.
 
 -----
 

@@ -73,6 +73,7 @@ export class RepositoryCleaner {
     await this.addIfPresent(targets, join(this.root, 'DeepSeek-Harness.app'), canonicalRoot)
     await this.addIfPresent(targets, join(this.root, 'apps/desktop/dist'), canonicalRoot)
     await this.addIfPresent(targets, join(this.root, 'apps/web/dist'), canonicalRoot)
+    await this.addIfPresent(targets, join(this.root, 'apps/desktop/.desktop-build'), canonicalRoot)
 
     // These checks cover legacy root-level incremental state emitted by older configs.
     await this.addIfPresent(targets, join(this.root, '.typecheck'), canonicalRoot)

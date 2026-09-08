@@ -12,7 +12,7 @@ Adding a Workspace starts a blank Session asynchronously. The user can open the 
 
 The [composer](../../../../packages/client/ui-conversation/src/client/skeleton/InputBar.tsx) yields its mount, unlock, and Session-switch autofocus when focus is inside a modal that does not contain the composer. The modal keeps keyboard input; a non-modal control or a modal containing the composer does not suppress normal autofocus. Ordinary composer focus retains `preventScroll` and Lexical selection restoration.
 
-This rule belongs to the code requesting focus, not to directory navigation or Session creation. It adds no global focus trap, delayed refocus, or Host state. [Lexical editor ownership](../architecture/2026-08-20-web-composer-lexical-editor.md), the [single Workspace creation route](../simplification/2026-07-31-one-route-to-add-a-workspace.md), and [onboarding's explicit inert lifetime](../feature/2026-08-13-shared-modal-product-onboarding.md) remain independent decisions.
+This rule belongs to the code requesting focus, not to directory navigation or Session creation. It adds no global focus trap, delayed refocus, or Host state. [Lexical editor ownership](../../archived/architecture/2026-08-20-web-composer-lexical-editor.md), the [single Workspace creation route](../../archived/simplification/2026-07-31-one-route-to-add-a-workspace.md), and [onboarding's explicit inert lifetime](../../archived/feature/2026-08-13-shared-modal-product-onboarding.md) remain independent decisions.
 
 ## Alternatives considered
 

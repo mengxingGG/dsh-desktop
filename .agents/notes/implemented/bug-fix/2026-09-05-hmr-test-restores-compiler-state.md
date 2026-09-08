@@ -12,7 +12,7 @@ The HMR browser test changes `ui-conversation/src/client/locales.ts`. Its watche
 
 `apps/web/tests/hmr-live.e2e.ts` snapshots the browser artifacts and the edited package's complete `lib` tree, including type emit and `.tsbuildinfo`. Cleanup stops the owned watcher and Host processes before restoring the source and generated files. It removes files introduced within that captured artifact inventory, restores the original bytes, and verifies the source, artifact paths, artifact bytes, and existing complete-build digest. Cleanup errors fail the test together with any interaction error.
 
-The [client build environment](../architecture/2026-08-18-client-build-environment.md) still owns public variables and the complete browser-artifact digest. The [keyless browser lane](../testing/2026-07-24-web-gui-browser-e2e-lane.md) still owns replay and browser acceptance. Neither digest validation nor a clean source diff proves that intermediate compiler outputs match the restored source.
+The [client build environment](../../archived/architecture/2026-08-18-client-build-environment.md) still owns public variables and the complete browser-artifact digest. The [keyless browser lane](../testing/2026-07-24-web-gui-browser-e2e-lane.md) still owns replay and browser acceptance. Neither digest validation nor a clean source diff proves that intermediate compiler outputs match the restored source.
 
 ## Alternatives considered
 

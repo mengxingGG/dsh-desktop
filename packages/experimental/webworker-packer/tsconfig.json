@@ -22,6 +22,9 @@
     },
     {
       "path": "../../util/home-paths"
+    },
+    {
+      "path": "../../util/package-manifest"
     }
   ]
 }

@@ -1,70 +1,58 @@
 {
   "name": "@deepseek-ai/dsh-desktop",
-  "description": "Windows and Linux Electron shell for the DeepSeek Harness Web application",
-  "version": "0.1.3-alpha.1",
-  "publishConfig": {
-    "access": "public"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
-    "directory": "apps/desktop"
-  },
+  "description": "Electron desktop shell for an isolated pnpm-installed dsh runtime",
+  "version": "0.1.3-alpha.2",
+  "private": true,
+  "license": "MIT",
   "type": "module",
   "main": "lib/main.js",
-  "files": [
-    "lib/*.js",
-    "renderer"
-  ],
-  "license": "MIT",
   "scripts": {
     "build": "tsc -b && tsdown",
-    "build:app": "tsx scripts/build-app.ts",
-    "stage:installer": "tsx scripts/prepare-installer.ts",
-    "start": "electron .",
-    "dist": "tsx scripts/build-installer.ts",
-    "dist:win": "tsx scripts/build-installer.ts win",
-    "dist:linux": "tsx scripts/build-installer.ts linux"
+    "dev": "tsx scripts/dev.ts",
+    "start": "tsx scripts/dev.ts --skip-build",
+    "prepare:runtime": "tsx scripts/prepare-runtime.ts",
+    "prepare:packages": "tsx scripts/prepare-package-set.ts",
+    "prepare:seed": "tsx scripts/prepare-seed.ts",
+    "prepare:package": "tsx scripts/package-target.ts --prepare-only",
+    "verify:mac-signature": "node scripts/verify-macos-signature.mjs",
+    "package": "tsx scripts/package-target.ts",
+    "package:dir": "tsx scripts/package-target.ts --dir",
+    "package:mac:arm64": "tsx scripts/package-target.ts mac-arm64",
+    "package:mac:arm64:dir": "tsx scripts/package-target.ts mac-arm64 --dir",
+    "package:mac:x64": "tsx scripts/package-target.ts mac-x64",
+    "package:mac:x64:dir": "tsx scripts/package-target.ts mac-x64 --dir",
+    "package:win:x64": "tsx scripts/package-target.ts win-x64",
+    "package:win:x64:dir": "tsx scripts/package-target.ts win-x64 --dir",
+    "package:linux:x64": "tsx scripts/package-target.ts linux-x64",
+    "package:linux:x64:dir": "tsx scripts/package-target.ts linux-x64 --dir",
+    "upload:mac:arm64": "tsx scripts/upload-target.ts mac-arm64",
+    "upload:mac:x64": "tsx scripts/upload-target.ts mac-x64",
+    "upload:win:x64": "tsx scripts/upload-target.ts win-x64"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "semver": "^7.8.5"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-loader-smoke": "workspace:^",
-    "@deepseek-ai/dsh-win32-process": "workspace:^",
     "@deepseek-ai/dsh-web-app": "workspace:^",
-    "electron": "^43.4.1",
+    "@deepseek-ai/dsh-win32-process": "workspace:^",
+    "@aws-sdk/client-s3": "3.1067.0",
+    "@deepseek-ai/dsh-home-paths": "workspace:^",
+    "@electron/notarize": "2.5.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.20.0",
+    "@types/semver": "^7.8.0",
+    "app-builder-lib": "26.15.3",
+    "electron": "^44.0.0",
     "electron-builder": "^26.15.3",
-    "pnpm": "11.19.0"
-  },
-  "build": {
-    "appId": "ai.deepseek.harness.desktop",
-    "productName": "DeepSeek Harness",
-    "executableName": "DeepSeek-Harness",
-    "asar": true,
-    "npmRebuild": false,
-    "asarUnpack": [
-      "**/*.node"
-    ],
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "lib/**/*",
-      "renderer/**/*",
-      "package.json"
-    ],
-    "win": {
-      "artifactName": "DeepSeek-Harness-Setup-${version}-${arch}.${ext}",
-      "target": [
-        "nsis"
-      ]
-    },
-    "linux": {
-      "artifactName": "DeepSeek-Harness-${version}-${arch}.${ext}",
-      "category": "Development",
-      "target": [
-        "deb"
-      ]
-    }
+    "extract-zip": "^2.0.1",
+    "js-yaml": "^4.2.0",
+    "msgpackr": "2.0.4",
+    "pnpm": "11.7.0",
+    "tar": "^7.5.0",
+    "typescript": "^6.0.3"
   }
 }

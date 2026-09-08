@@ -1,29 +1,31 @@
-/** Real dsh Web-profile IPC shutdown with an isolated user home and durable Session log. */
+/** Real Desktop Host IPC shutdown with an isolated user home and durable Session log. */
 
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { expect, it } from 'vitest'
-import { resolveExampleLaunch } from '@deepseek-ai/dsh-loader-smoke'
-import { startBackend, type BackendHandle } from '../../../../../desktop/src/backend.ts'
+import { DesktopHostProcess } from '../../../../../desktop/src/host-process.ts'
+import { prepareDevelopmentProject } from '../../../../../desktop/scripts/development-project.ts'
+import { DESKTOP_HOST_PROTOCOL_VERSION } from '../../../../../desktop/src/host-protocol.ts'
 
 const repository = resolve(import.meta.dirname, '../../../../../..')
 
-it.each(['idle', 'busy'] as const)('starts the shipped Web profile and performs %s desktop shutdown through private IPC', { timeout: 90_000 }, async (mode) => {
+it.each(['idle', 'busy'] as const)('starts the private Desktop Host and performs %s desktop shutdown through private IPC', { timeout: 90_000 }, async (mode) => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-desktop-profile-'))
-  let backend: BackendHandle | undefined
+  let backend: DesktopHostProcess | undefined
   try {
     const home = join(root, 'home')
-    const profile = join(home, 'profiles', 'web')
+    const profile = join(home, 'profiles', 'desktop')
     const sessions = join(home, 'sessions')
     const marker = join(root, 'task-running')
-    await mkdir(profile, { recursive: true })
-    await writeFile(join(profile, 'package.json'), JSON.stringify({
-      name: 'desktop-profile-fixture', private: true,
-      dependencies: { '@deepseek-ai/dsh-web-app': 'workspace:^' },
-      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] } },
-    }))
+    await mkdir(home, { recursive: true })
+    const { version } = JSON.parse(await readFile(join(repository, 'apps/cli/package.json'), 'utf8')) as { version: string }
+    prepareDevelopmentProject({
+      projectDir: profile, cliDir: join(repository, 'apps/cli'), hostDir: join(repository, 'apps/desktop-host'),
+      dependencyDir: join(repository, 'node_modules/.pnpm/node_modules'),
+      release: { schemaVersion: 1, version, hostProtocolVersion: DESKTOP_HOST_PROTOCOL_VERSION, nodeVersion: process.versions.node, pnpmVersion: '11.7.0' },
+    })
     await writeFile(join(profile, 'cordis.patch.yml'), [
       '- id: llm-deepseek', '  disabled: true',
       '- id: session-persistence-jsonl', '  config:', `    root: ${JSON.stringify(sessions)}`, '    compression: none',
@@ -31,23 +33,21 @@ it.each(['idle', 'busy'] as const)('starts the shipped Web profile and performs 
       `      name: ${JSON.stringify(pathToFileURL(join(import.meta.dirname, 'fixtures/desktop-task.mjs')).href)}`,
       '      config:', `        mode: ${mode}`, `        marker: ${JSON.stringify(marker)}`, '',
     ].join('\n'))
-    const launch = resolveExampleLaunch({
-      srcBin: join(repository, 'apps/cli/src/bin.ts'), tsconfigPath: join(repository, 'tsconfig.json'), sourceImport: 'tsx/esm',
-      env: { DSH_HOME: home, DSH_AGENTS_HOME: join(root, 'agents'), DSH_TELEMETRY_DISABLED: '1', DEEPSEEK_API_KEY: '' },
-    })
-    backend = await startBackend({
-      executable: launch.command, argsPrefix: launch.args, environment: { ...process.env, ...launch.env }, cwd: root,
-      controlPatch: join(repository, 'packages/bundle/web-app/desktop.patch.yml'), startupTimeoutMs: 60_000,
-    })
+    backend = new DesktopHostProcess(process.execPath, profile, undefined, {
+      ...process.env, DSH_HOME: home, DSH_AGENTS_HOME: join(root, 'agents'), DSH_TELEMETRY_DISABLED: '1', DEEPSEEK_API_KEY: '',
+    }, true)
+    await backend.start()
     if (mode === 'busy') await expect.poll(async () => readFile(marker, 'utf8'), { timeout: 10_000 }).toBe('running')
+    const usage = await backend.fetch(new Request('dsh-app://app/api/usage-stats/usage'))
+    expect(usage.status).toBe(200)
+    expect(await usage.json()).toMatchObject({ ok: true })
     expect(await backend.activity()).toBe(mode === 'busy')
     if (mode === 'busy') {
       expect(await backend.shutdown(false)).toBe(false)
       expect(await backend.activity()).toBe(true)
     }
     expect(await backend.shutdown(mode === 'busy')).toBe(true)
-    expect((await backend.exited).error).toBeUndefined()
-    await expect(fetch(backend.url)).rejects.toThrow()
+    await expect(backend.fetch(new Request('dsh-app://app/'))).rejects.toThrow('unavailable')
     if (mode === 'busy') {
       const files = (await readdir(sessions, { recursive: true })).filter(file => file.endsWith('.jsonl'))
       expect(files.length).toBeGreaterThan(0)
@@ -58,7 +58,7 @@ it.each(['idle', 'busy'] as const)('starts the shipped Web profile and performs 
       expect(events.at(-1)).toMatchObject({ type: 'turn/end', data: { reason: { kind: 'aborted', reason: { kind: 'disposed' } } } })
     }
   } catch (error) {
-    throw new Error(`desktop profile ${mode} failed\n${backend?.logs().replace(/token=[^\s&]+/gu, 'token=<redacted>') ?? ''}`, { cause: error })
+    throw new Error(`desktop profile ${mode} failed`, { cause: error })
   } finally {
     await backend?.stop()
     await rm(root, { recursive: true, force: true })

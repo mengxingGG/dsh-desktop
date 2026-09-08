@@ -1,5 +1,5 @@
 ---
-description: "在厂长对话的共享详情栏中查看实时 DSH 原生 Crew 状态、工人证据、整合与提交结果。"
+description: "在厂长对话的右侧栏中查看实时 DSH 原生 Crew 状态、工人证据、整合与提交结果。"
 kind: "package-reference"
 ---
 
@@ -32,7 +32,7 @@ kind: "package-reference"
 <a id="panel-behavior"></a>
 ## 面板行为
 
-标题栏操作只出现在根厂长 Session。徽标统计尚未进入 `accepted`、`failed` 或 `cancelled` 的工单。打开面板会使用与工具调用详情相同的可缩放详情区域，保留中央对话，并在实时投影更新期间保留类型化选择。
+标题栏操作只出现在根厂长 Session。徽标统计尚未进入 `accepted`、`failed` 或 `cancelled` 的工单。打开面板会选中右侧栏的 Crew 标签页。每个 Session 保留自己的工人选择，工具详情和工作区文件仍可从相邻标签页打开。
 
 面板分隔线与中性描边使用共享主题的 0.5px 细线。
 
@@ -55,7 +55,7 @@ kind: "package-reference"
 <details>
 <summary>实现内部——点击展开</summary>
 
-Client mount 注册 locale 字典、对话标题栏 slot 项与 `chatDetails` 中的一个 selector。`useProjection('crew')` 读取由稳定 Client Session 层分发的 Session 投影；本包不轮询 Host，也不保存第二套工作流状态。每项注册都是 effect，并随插件 fiber 卸载而移除。
+Client mount 注册 locale 字典、对话标题栏操作、`sidebarRightTabs` 项及其 `sidebar.right.pane.tab` 内容。`useProjection('crew')` 读取由稳定 Client Session 层分发的 Session 投影；本包不轮询 Host，也不保存第二套工作流状态。每项注册都是 effect，并随插件 fiber 卸载而移除。
 
 工人活动通过附加 Session 观察复用现有 Chat 投影，显示流式文本、推理、工具调用、结果、错误和分页历史。打开记录不会选中子对话或启动模型回合。切换工人或关闭详情会释放观察；重新打开从持久子历史读取。视图默认显示最近 100 个节点，按需展开历史。
 
@@ -80,7 +80,7 @@ Client mount 注册 locale 字典、对话标题栏 slot 项与 `chatDetails` �
 
 - [Crew Web profile](../../bundle/crew-web-profile/README.zh.md)——增量扩展默认 Web 组合。
 - [Crew 服务](../../subagent/crew/README.zh.md)——权威投影与证据语义。
-- [对话 UI](../ui-chat/README.zh.md)——类型化详情视图所有者及其与工具详情的共存。
+- [右侧栏](../ui-sidebar-right/README.zh.md)——Session 所有的标签页导航与选择。
 
 -----
 

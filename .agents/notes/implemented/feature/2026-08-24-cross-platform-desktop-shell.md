@@ -6,46 +6,25 @@ English | [中文](2026-08-24-cross-platform-desktop-shell.zh.md)
 
 ## Problem
 
-The Web profile is a complete product interface, but using it locally requires a terminal command and an external browser. A desktop distribution needs to replace those two entry steps without creating a second application, changing profile behavior, or keeping `dsh` in a foreground console.
-
-One artifact cannot satisfy both checkout development and end-user distribution efficiently. A checkout already has the built CLI, Web assets, and production dependencies; copying them into every ordinary build makes that path slow and large. An installer must make the opposite guarantee: it cannot depend on a source checkout, a system Node.js installation, or a separately installed package manager.
+Desktop development can reuse a built checkout, while distribution must carry its own Node.js, package manager, and dependency graph. Copying a complete runtime into every development build is costly; depending on a developer's checkout makes an installer unusable elsewhere.
 
 ## Decision
 
-`apps/desktop` is an Electron host for the existing Web profile. Its main process owns one sandboxed browser window and one hidden child process running `dsh web --no-open --host 127.0.0.1 --port 0`. The shell waits for the loopback URL that the Web bundle emits after startup, navigates only after that readiness signal, captures bounded diagnostics, and follows the [confirmed durable exit protocol](2026-09-05-windows-tray-durable-exit.md) before terminating the complete child process tree. Window hiding leaves the backend running.
+The Electron shell reuses the Web application and its plugin composition. The [upstream integration decision](../architecture/2026-09-08-upstream-desktop-crew-integration.md) owns its private Desktop Host and compatibility with Crew. The [packaging architecture](../architecture/2026-08-25-electron-desktop-packaging-and-updates.md) owns the isolated profile, offline seed, and bundled runtime.
 
-On Windows and Linux, the ordinary `pnpm run build` produces a current-host direct artifact at the repository root. This artifact contains Electron but not the dsh runtime. It locates the built checkout, selects a compatible system Node.js executable, and starts `apps/cli/lib/bin.js`; double-clicking replaces both the CLI startup command and the external browser while keeping the checkout as the source of executable product code. Other hosts complete the core and Web build without attempting to create a desktop artifact.
+Development uses the built workspace through a disposable linked desktop project. Packaged applications install an exact release into their own profile using bundled Node.js and pnpm. The [desktop README](../../../../apps/desktop/README.md) owns launch and package commands.
 
-The `desktop:dist`, `desktop:dist:win`, and `desktop:dist:linux` commands produce self-contained installers on matching Windows and Linux hosts. Before electron-builder runs, `apps/desktop/runtime/package.json` deploys the CLI's production dependency graph plus every required workspace peer into a hoisted dependency tree, and staging adds the build host's Node.js executable, the pinned pnpm package, and the matching Node.js license. A portability check rejects any dependency link whose resolved target leaves the deployed runtime. The packaged shell selects this bundled runtime before attempting checkout discovery.
+Windows is the primary acceptance platform and Linux is secondary. Linux x64 target selection is retained; native installation and runtime qualification follow the [maintenance scope](../process/2026-09-05-windows-linux-maintenance-scope.md). Retained macOS source and helpers carry no downstream native-test or release commitment.
 
-The downstream desktop distribution exposes no macOS command or electron-builder target. Native macOS installation, startup, backend shutdown, plugin installation, and signing have not been verified. Restoring that platform requires those checks on macOS hardware; the core Harness and Web profile remain available there independently of the Electron distribution.
-
-The CLI plugin command accepts a JavaScript pnpm entry supplied through `npm_execpath` and otherwise keeps its PATH-based `pnpm` behavior. An installed desktop application can therefore manage profile bundles with its bundled package manager without changing the profile manifest or plugin format.
-
-The renderer enables context isolation and the Chromium sandbox, disables Node integration, rejects permission requests, and prevents ordinary navigation away from the backend origin. HTTP and HTTPS links require confirmation before the system browser opens them. The desktop app registers no model-facing or plugin-facing API; external functionality continues to use ordinary dsh bundles.
+The shell preserves context isolation, Chromium sandboxing, and disabled Node integration in renderers. The [durable exit protocol](2026-09-05-windows-tray-durable-exit.md) separates hiding from stopping tasks and saving history.
 
 ## Alternatives considered
 
-**Fork the Web application into a desktop UI.** Rejected because it creates two presentation implementations and makes settings, profiles, plugin slots, and future Web behavior drift. A native host around the assembled Web profile preserves one product interface.
-
-**Run the backend inside Electron's Node process.** Rejected because the native window lifecycle, dsh process tree, native dependencies, and profile-installed packages would share one failure and packaging domain. A plain-Node child preserves the CLI runtime assumptions and gives shutdown one explicit process-tree owner.
-
-**Start the checkout through pnpm instead of the built CLI.** Rejected because a direct artifact would still require pnpm and would treat a package-manager implementation entrypoint as a product runtime API. The direct shell requires the public built CLI and only a compatible Node.js executable.
-
-**Make every ordinary build self-contained.** Rejected because it duplicates the checkout's runtime closure and Node.js on the development path. Separate direct and installer artifacts keep the ordinary build convenient while retaining a distributable package.
-
-**Publish an unverified macOS target.** Rejected because a generated `.app` or DMG does not demonstrate native installation, backend lifecycle, plugin loading, or signing behavior. Omitting the target keeps the advertised desktop surface aligned with available verification.
-
-**Implement plugin discovery and installation inside the Electron host.** Rejected because those operations are ordinary Web-profile bundle functionality. The [default plugin marketplace](2026-08-26-default-github-plugin-marketplace.md) follows the same Host Remote, Client slot, profile manifest, and installation path as other plugins, while Electron remains a generic lifecycle host.
-
-## Testing
-
-Unit tests pin loopback URL parsing, bounded logs, startup failure diagnostics, cancellation, process-tree shutdown, and rejection of dependency links that leave installer staging. A runtime-closure test requires every required workspace peer in the CLI dependency graph to remain reachable from the private deploy root.
-
-The built runtime starts its bundled CLI with its bundled Node.js executable and serves the Web boot manifest over a random loopback port. With the build staging directory absent, the Windows `win-unpacked` application has no dependency links, starts the hidden bundled backend, returns HTTP 200, and releases the complete Electron and backend process tree after its main window closes. The ordinary Windows build produces the repository-root direct executable, and the installer path produces an NSIS executable and block map. Linux direct-artifact packaging runs on a native CI host; DEB installation and runtime behavior remain Linux release-verification responsibilities. Configuration tests reject macOS scripts and electron-builder targets.
+- **Fork the Web UI.** Two presentation implementations would make settings, profiles, and plugin slots drift.
+- **Run the backend inside Electron's Node process.** Native window lifetime, backend subprocesses, and plugin dependencies would share one failure domain.
+- **Copy the full runtime into every development build.** The built checkout already owns that dependency graph; packaging remains an explicit step.
+- **Publish an unverified platform.** A generated installer does not establish native startup, shutdown, or plugin-install behavior.
 
 ## Consequences
 
-Users can open the local Web product as a desktop application without a foreground terminal. Checkout users receive a small runtime shell through the existing build command, while installer users receive Node.js, pnpm, dsh, and Web assets in one platform package.
-
-The direct artifact is intentionally coupled to the checkout that built it and still requires compatible system Node.js. Installers are larger, must be built on their target operating system, and remain unsigned unless the release environment supplies signing credentials. macOS users use the CLI or Web profile rather than a downstream desktop artifact. The private runtime manifest is a maintained list of required workspace peers; its closure test fails when a new production package introduces another one.
+The development shell requires the checkout; installers require their complete bundled runtime. Platform qualification must match the current packaging implementation. Historical artifacts do not establish that a newly merged runtime installs or starts correctly.

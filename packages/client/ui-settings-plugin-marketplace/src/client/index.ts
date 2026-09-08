@@ -44,6 +44,7 @@ export function apply(ctx: ClientContext): void {
   const injected = (): MarketplaceInjected => ({
     search,
     install,
+    openDesktopManager: (window as Window & { dshDesktop?: { openPluginManager?: () => Promise<void> } }).dshDesktop?.openPluginManager,
     confirm: entry => window.confirm(t('confirm', {
       packageName: entry.packageName,
       repository: entry.repository,

@@ -14,12 +14,30 @@ import type { CrewActivityInjected } from './activity.ts'
 import { WorkerActivity } from './WorkerActivity.tsx'
 import css from './CrewPanel.module.css'
 
-/** Full props of the Crew branch in Chat's typed details chain. */
+/** Session readers and navigation callbacks for the Crew evidence view. */
 export type CrewDetailsViewProps =
-  PropsRuntime<'conversation.details.view'>
-  & { matched: CrewDetailsSelection }
+  Pick<PropsRuntime<'sidebar.right.pane.tab'>, 'useProjection' | 'useSession'>
+  & {
+    matched: CrewDetailsSelection
+    closeDetails: () => void
+    openDetails: (selection: CrewDetailsSelection) => void
+  }
   & PropsLocale<typeof NS>
   & InjectFace<CrewActivityInjected>
+
+/** Framework-bound Crew tab props. */
+export type CrewSidebarViewProps = PropsRuntime<'sidebar.right.pane.tab'>
+  & PropsLocale<typeof NS> & InjectFace<CrewActivityInjected>
+
+/** Render Crew evidence in its owning Session's Sidebar tab. */
+export function CrewSidebarView(props: CrewSidebarViewProps) {
+  const { tab } = props.useTabInfo()
+  const params = tab.navigation.params
+  const matched: CrewDetailsSelection = params !== undefined && 'kind' in params
+    ? params : { kind: 'crew' }
+  return <CrewDetailsView {...props} matched={matched} closeDetails={() => { tab.actions.close() }}
+    openDetails={(selection) => { tab.actions.openTab('crew', { params: selection }) }} />
+}
 
 function terminal(stage: CrewStage): boolean {
   return stage === 'accepted' || stage === 'failed' || stage === 'cancelled'

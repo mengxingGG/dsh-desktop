@@ -40,13 +40,13 @@ Integration tests may live outside every developer's module. Full-project integr
 
 When a worker reaches an actionable terminal edge, record and coalesce a Crew manager-notification batch and submit it through the normal Session input queue after the active manager turn. Progress changes update projections only. This preserves the model-visible-is-logged rule without creating a resident manager process or a self-MCP bridge.
 
-The Crew Web profile reuses the existing Web details column. A typed details-view selection lets current tool details and the Crew view share the single owner. The Crew view exposes live, read-only worker status and evidence; it never mounts the normal editable child composer. Approval remains a manager conversation tool action.
+The Crew Web profile registers a Session-owned tab in the shared right sidebar. Typed tab navigation retains task and worker selection alongside existing tool-detail tabs. The Crew view exposes live, read-only worker status and evidence; it never mounts the normal editable child composer. Approval remains a manager conversation tool action.
 
 Command exit codes cannot replace the other process facts: a timed-out process can still exit zero. The Web evidence view therefore renders exit code, signal, and timeout independently, and displays each host-retained output stream as plain text with its own truncation notice. Collapsed logs and bounded scroll regions preserve access to later evidence without opening another worker interaction path.
 
 A verdict does not identify the specification, review round, or verification it accepted. The read-only view retains these recorded references and the expected correction for each review or integration issue. Commit requests retain their target paths even when rejected before staging; the UI labels those paths as requested and separately displays the recorded commit hash or denial reason, without inferring Git effects from a path list.
 
-The capability remains experimental while its public contracts are evaluated. A delivery-profile recorded snapshot, restart matrix, browser evidence, hard policy tests, TypeScript and Python SDK projections, and a real DeepSeek-provider smoke pin the current behavior. The implemented sequence and gates are in the [core development plan](../../../../docs/developer/discussion/agent-orchestration-core-development-plan.md). External provider findings and their later order are in the [CLI research](../../../../docs/developer/discussion/agent-orchestration-cli-integration-research.md).
+The [delivery decision](2026-09-06-native-crew-default-delivery.md) promotes Crew and the Team domain into the default Web profile; generic Team tools and UI remain private experimental consumers. A delivery-profile recorded snapshot, restart matrix, browser evidence, hard policy tests, TypeScript and Python SDK projections, and a real DeepSeek-provider smoke pin the current behavior. The implemented sequence and gates are in the [core development plan](../../../../docs/developer/discussion/agent-orchestration-core-development-plan.md). External provider findings and their later order are in the [CLI research](../../../../docs/developer/discussion/agent-orchestration-cli-integration-research.md).
 
 ## Alternatives considered
 
@@ -73,12 +73,12 @@ The capability remains experimental while its public contracts are evaluated. A 
 
 ## Consequences
 
-The manager, Team, Crew projection, and child Sessions now share one event-sourced runtime, so recovery and UI state do not require a second process, MCP self-bridge, or workflow database. The cost is a private experimental package family and a profile with deliberately narrower tools than ordinary DSH sessions.
+The manager, Team, Crew projection, and child Sessions now share one event-sourced runtime, so recovery and UI state do not require a second process, MCP self-bridge, or workflow database. The cost is a separate Crew projection and a profile with deliberately narrower tools than ordinary DSH sessions.
 
-The shared checkout can expose another module's partial work to tests. Dispatch therefore requires disjoint real paths, independent focused tests, prepared shared interfaces, overlap rejection, and quiescent integration. If these controls stop producing deterministic results, worktree isolation requires a new decision before promotion.
+The shared checkout can expose another module's partial work to tests. Dispatch therefore requires disjoint real paths, independent focused tests, prepared shared interfaces, overlap rejection, and quiescent integration. If these controls stop producing deterministic results, worktree isolation requires a new decision.
 
 Tool filtering can look secure while an unrestricted shell or filesystem alias bypasses it. The implementation must validate resolved operations and real paths at execution and inspect Git facts again at settlement and commit; advisory Team write scopes are not sufficient.
 
 Manager notification enqueue, delivery identity, and acknowledgement are durable and serialized with the Session queue. This adds whole-value notification records, but preserves delivery across each tested crash edge without a resident manager process.
 
-Experimental Crew packages may become a parallel architecture. Promotion requires explicit review after the shipped profile evidence; the follow-up decision must consolidate, stabilize, or remove them rather than silently preserving duplication.
+Crew must keep consuming the shared Team and Subagent services. Changes that duplicate their lifecycle or persistence require a new architecture decision.

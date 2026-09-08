@@ -11,6 +11,8 @@ kind: "package-bundle"
 
 `dsh-crew-profile` 为用户选择的 DSH Agent 增加原生软件团队协作。默认 Web profile 已包含本层；自定义 profile 可以将它添加到基础和应用 bundle 之后。厂长的普通工具和 Agent 预设保持可用，本包另外随附一个 Agent 预设，选中它的会话被强制以 Crew 编排工作。开发、审查和整合工人分别使用可独立配置的模型与任务专用工具。
 
+厂长 Agent 预设将岗位文本放入 persona 插件的 `prefix`，并显式清空 `suffix`。Profile 校验要求此前缀与厂长岗位文件相同，使两种组合获得一致身份。
+
 ## 目录
 
 - [使用本包](#use-this-package)

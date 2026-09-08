@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-05-hmr-test-restores-compiler-state.md
-2026-09-05-hmr-test-restores-compiler-state.md: cd9bc3a2e3a8a44f43a37ca0723e01bf4f73eebb
-2026-09-05-hmr-test-restores-compiler-state.zh.md: 282e66601ff37a86eb7155c1b144cd8977ec67bf
+2026-09-05-hmr-test-restores-compiler-state.md: 9d8bcadd4e571a389c628361cff5b7b6c91ca4f2
+2026-09-05-hmr-test-restores-compiler-state.zh.md: 17134145ee6c3bf355ba1c037b54f2d1e6daecff

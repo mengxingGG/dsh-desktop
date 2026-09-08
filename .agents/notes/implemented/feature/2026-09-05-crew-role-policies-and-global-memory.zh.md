@@ -12,7 +12,7 @@ Crew 的私有命令快照和 OS 专用限制，使普通 Windows 项目测试�
 
 ## 决策
 
-[Crew 偏好插件](../../../../packages/subagent/crew/src/preferences.ts)向现有 [DSH 设置提供方](../../../../packages/settings/settings-file/README.zh.md)注册一个命名空间。[统一 home 解析器](../architecture/2026-07-24-single-harness-home-resolver.zh.md)、[设置归属](../architecture/2026-07-28-user-settings-seam.zh.md)与[浏览器设置镜像](../architecture/2026-08-17-settings-describe-mirror.zh.md)继续具有权威性。不新增项目记忆文件、浏览器本地持久记忆或第二套偏好数据库。项目规格、任务进度与 transcript（文本记录）保持现有归属。
+[Crew 偏好插件](../../../../packages/subagent/crew/src/preferences.ts)向现有 [DSH 设置提供方](../../../../packages/settings/settings-file/README.zh.md)注册一个命名空间。[统一 home 解析器](../architecture/2026-07-24-single-harness-home-resolver.zh.md)、[设置归属](../../archived/architecture/2026-07-28-user-settings-seam.md)与[浏览器设置镜像](../../archived/architecture/2026-08-17-settings-describe-mirror.md)继续具有权威性。不新增项目记忆文件、浏览器本地持久记忆或第二套偏好数据库。项目规格、任务进度与 transcript（文本记录）保持现有归属。
 
 条目区分操作偏好与明确限定范围的授权。厂长记忆工具保存授权前始终取得通用审批。Web 编辑器使用专门的授权确认。两条写入路径都保留观察到的设置 revision，因此陈旧草稿不能覆盖较新的选择。删除使条目不再进入后续权威快照，但不重写历史 Session 消息。
 

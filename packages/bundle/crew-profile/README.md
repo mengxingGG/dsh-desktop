@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 `dsh-crew-profile` adds native software-team coordination to the selected DSH Agent. The default Web profile includes it; custom profiles can add it after their base and application bundles. Ordinary manager tools and Agent presets remain available, and the package additionally ships one Agent preset that mandates Crew orchestration for the sessions selecting it. Developers, reviewers, and integrators receive independently configured models and assignment-specific tools.
 
+The manager Agent preset places its role text in the persona plugin's `prefix` and explicitly clears `suffix`. Profile validation requires the prefix to equal the manager role file so the same identity reaches both compositions.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

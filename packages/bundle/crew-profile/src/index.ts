@@ -191,7 +191,7 @@ function assertManagerAgentPreset(root: string, manager: ManagerRolePresetDocume
   const rows = compositionRows(parsed, 'crew-manager')
   const persona = rows.find(row => row.id === 'persona')
   const personaConfig = persona === undefined ? undefined : object(persona.config, 'crew-manager persona config')
-  if (personaConfig?.text !== manager.persona) {
+  if (personaConfig?.prefix !== manager.persona || personaConfig.suffix !== '') {
     throw new Error('crew-profile: crew-manager Agent persona differs from manager role preset')
   }
   const forbidden = rows.find(row => typeof row.name === 'string' && !MANAGER_AGENT_PRESET_MODULES.has(row.name))

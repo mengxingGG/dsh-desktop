@@ -12,7 +12,7 @@ HMR 浏览器测试会修改 `ui-conversation/src/client/locales.ts`。监听器
 
 `apps/web/tests/hmr-live.e2e.ts` 保存浏览器产物及被修改包的完整 `lib` 目录，包括类型编译产物与 `.tsbuildinfo`。清理先停止所拥有的监听器和 Host 进程，再恢复源码与生成文件。清理会删除所记录产物范围内新增的文件，恢复原始字节，并验证源码、产物路径、产物字节及现有完整构建摘要。清理错误会与交互错误一起使测试失败。
 
-[客户端构建环境](../architecture/2026-08-18-client-build-environment.zh.md)仍负责公开变量和完整浏览器产物摘要。[无密钥浏览器测试通道](../testing/2026-07-24-web-gui-browser-e2e-lane.zh.md)仍负责回放与浏览器验收。摘要校验和无差异源码都不能证明中间编译产物与恢复后的源码一致。
+[客户端构建环境](../../archived/architecture/2026-08-18-client-build-environment.md)仍负责公开变量和完整浏览器产物摘要。[无密钥浏览器测试通道](../testing/2026-07-24-web-gui-browser-e2e-lane.zh.md)仍负责回放与浏览器验收。摘要校验和无差异源码都不能证明中间编译产物与恢复后的源码一致。
 
 ## 考虑过的替代方案
 

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-05-composer-autofocus-respects-modal-focus.md
-2026-09-05-composer-autofocus-respects-modal-focus.md: 6be96198cae7c6aaf8dafba59bb6af48c8353089
-2026-09-05-composer-autofocus-respects-modal-focus.zh.md: 33a9358ae94c70c743274abf23323efa8fe5362d
+2026-09-05-composer-autofocus-respects-modal-focus.md: 2f7eb6a7351a81bf9650eb7afa3d78a1a3fdb5ff
+2026-09-05-composer-autofocus-respects-modal-focus.zh.md: a43985f80e72c68e34ecf489dbebe91bd4b34914

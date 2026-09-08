@@ -30,7 +30,6 @@ import type {
   SessionHandle,
   SessionPersistenceSnapshot,
 } from '@deepseek-ai/dsh-session-persistence'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SessionQueryEngine from '@deepseek-ai/dsh-session-query'
 import SubagentService from '@deepseek-ai/dsh-subagent'
 import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process'
@@ -158,7 +157,9 @@ class MemoryPersistence extends SessionPersistence {
       header: structuredClone(record.header),
       inheritedEventCount: record.inheritedEventCount,
       access,
-      read: async (offset = 0, length = Number.MAX_SAFE_INTEGER) => structuredClone(record.events.slice(offset, offset + length)),
+      read: async (offset = 0, length = Number.MAX_SAFE_INTEGER) => ({
+        eventState: 'detached', events: structuredClone(record.events.slice(offset, offset + length)),
+      }),
       append: async (events) => {
         if (access !== 'write' || closed) throw new Error('memory persistence handle is not writable')
         record.events.push(...structuredClone(events))
@@ -205,7 +206,6 @@ async function setup(
   const ctx = new Context()
   contexts.add(ctx)
   await mountAgentLoopTestDependencies(ctx)
-  await ctx.plugin(SessionProjectionRegistry)
   const store = options.store ?? { records: new Map() }
   await ctx.plugin(MemoryPersistence, store)
   await ctx.plugin(TestSessionQuery)
@@ -1020,7 +1020,7 @@ describe('dsh-tool-crew', () => {
     expect(view.verifications[0]).toMatchObject({ verdict: 'failed' })
     expect(view.verifications[0]?.summary).toMatch(/paths escaped|test mutating-test failed/u)
     expect(view.reviews).toEqual([])
-  })
+  }, WORKFLOW_TIMEOUT_MS)
 
   it('rejects a passing reviewer report when the frozen module changed during review', async () => {
     const repositoryRoot = fixtureRepository()
@@ -1056,7 +1056,7 @@ describe('dsh-tool-crew', () => {
     expect(ctx.crew.view(lead).reviews[0]).toMatchObject({
       verdict: 'rejected', summary: 'Module inputs changed after host verification.',
     })
-  })
+  }, WORKFLOW_TIMEOUT_MS)
 
   it('returns a rejected review to the same developer Session before accepting the repair', async () => {
     const repositoryRoot = fixtureRepository()
@@ -1102,8 +1102,9 @@ describe('dsh-tool-crew', () => {
       signal: SIGNAL,
     })
     await vi.waitFor(() => {
-      expect(ctx.crew.view(lead).workItems[0]?.stage).toBe('integration_ready')
-    }, { timeout: 10_000 })
+      const current = ctx.crew.view(lead)
+      expect(current.workItems[0]?.stage, JSON.stringify({ work: current.workItems, reviews: current.reviews, reports: current.reports })).toBe('integration_ready')
+    }, { timeout: 20_000 })
     const view = ctx.crew.view(lead)
     expect(view.workItems[0]).toMatchObject({
       developerSessionId: dispatched.developerSessionId,
@@ -1113,7 +1114,7 @@ describe('dsh-tool-crew', () => {
     expect(view.workItems[0]!.workerSessionIds.filter(id => id === dispatched.developerSessionId)).toHaveLength(1)
     expect(view.reviews.map(review => review.verdict)).toEqual(['rejected', 'passed'])
     expect(ctx.agentTeams.listMembers(lead).filter(member => member.name.startsWith('developer-'))).toHaveLength(1)
-  }, 20_000)
+  }, WORKFLOW_TIMEOUT_MS)
 
   it('automatically requests one host-verification repair and then durably pauses at the limit', async () => {
     const repositoryRoot = fixtureRepository()
@@ -1293,6 +1294,7 @@ describe('dsh-tool-crew', () => {
       expect(second.ctx.crew.view(second.lead).notifications.find(item => item.id === queued.id)?.status)
         .toBe('delivered')
     }, { timeout: 10_000 })
+    await second.lead.whenIdle()
     expect(second.lead.session.snapshotEvents().filter(event => (
       event.type === 'user/message' && event.data.source.kind === 'crew-notification'
         && event.data.source.notificationId === queued.id

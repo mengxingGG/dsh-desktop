@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { healProfilesModuleFallback, loadProfile } from '@deepseek-ai/dsh-app-boot'
 import { DSH_HOME_ENV } from '@deepseek-ai/dsh-home-paths'
+import type { DshConfigTreeDeclaration } from '@deepseek-ai/dsh-package-manifest'
 import type { ConfigTree, ImageTree, PackResult } from './pack.ts'
 
 /**
@@ -112,13 +113,6 @@ export async function withComposedProfile<T>(
   }
 }
 
-/** One `dsh.configTrees` declaration entry, validated field by field. */
-interface ConfigTreeDeclaration {
-  mount: string
-  path: string
-  scanRoster?: boolean
-}
-
 /**
  * Config trees the CLI package declares for deployment images
  * (`dsh.configTrees` in its package.json): `path` is relative to the CLI
@@ -141,7 +135,7 @@ export function configTrees(repoRoot: string): ConfigTree[] {
   }
   const mounts = new Set<string>()
   return declared.map((entry, index) => {
-    const tree = entry as Partial<ConfigTreeDeclaration> | null
+    const tree = entry as Partial<DshConfigTreeDeclaration> | null
     const at = `${CLI_PACKAGE} dsh.configTrees[${String(index)}]`
     if (tree === null || typeof tree !== 'object'
       || typeof tree.mount !== 'string' || tree.mount === ''

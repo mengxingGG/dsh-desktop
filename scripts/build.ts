@@ -15,11 +15,8 @@ import {
 import { pnpmInvocation } from './pnpm-invocation.ts'
 
 /** Run one package script through the package manager that invoked this build. */
-function runScript(script: string, environment: NodeJS.ProcessEnv, workspace?: string): void {
-  const invocation = pnpmInvocation([
-    ...workspace === undefined ? [] : ['--filter', workspace],
-    'run', script,
-  ], environment)
+function runScript(script: string, environment: NodeJS.ProcessEnv): void {
+  const invocation = pnpmInvocation(['run', script], environment)
   const result = spawnSync(invocation.command, invocation.args, {
     cwd: resolve(import.meta.dirname, '..'),
     env: environment,
@@ -29,15 +26,6 @@ function runScript(script: string, environment: NodeJS.ProcessEnv, workspace?: s
   if (result.status !== 0) {
     throw new Error(`build: ${script} exited with ${String(result.status ?? result.signal)}`)
   }
-}
-
-/**
- * Report whether the root build produces a direct desktop artifact on a host platform.
- * @param platform - Node.js host platform.
- * @returns Whether the desktop artifact builder supports the platform.
- */
-export function supportsDirectDesktopArtifact(platform: NodeJS.Platform): boolean {
-  return platform === 'win32' || platform === 'linux'
 }
 
 /** Run the full build selected by `--profile` or `DSH_BUILD_CLIENT_PROFILE`. */
@@ -54,10 +42,7 @@ function main(): void {
 
   rmSync(resolve(root, CLIENT_BUILD_RECORD_PATH), { force: true })
   runScript('build:lib', buildEnvironment)
-  runScript('build', buildEnvironment, '@deepseek-ai/dsh-web-frontend')
-  if (supportsDirectDesktopArtifact(process.platform)) {
-    runScript('build:app', buildEnvironment, '@deepseek-ai/dsh-desktop')
-  }
+  runScript('build:web', buildEnvironment)
   const record = writeClientBuildRecord(root, clientEnvironment)
   console.log(
     `build: recorded ${String(record.artifacts.fileCount)} client artifact(s) with ${String(Object.keys(record.environment).length)} public value(s)`,

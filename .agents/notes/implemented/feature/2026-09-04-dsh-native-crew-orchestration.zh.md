@@ -40,13 +40,13 @@ Git 状态字母与工作文件哈希不能标识暂存内容。Crew 把[索引�
 
 工人到达需要处理的终态边缘时，记录并合并 Crew 厂长通知批次，在活动厂长回合结束后通过正常 Session 输入队列提交。进度变化只更新投影。这样无需常驻厂长进程或 MCP 自桥，也能保持“模型可见即记录”的规则。
 
-Crew Web profile 复用现有 Web 详情栏。带类型的详情视图选择让当前工具详情与 Crew 视图共享唯一拥有者。Crew 视图提供实时、只读工人状态与证据；绝不挂载普通可编辑子输入框。审批仍是厂长对话中的工具操作。
+Crew Web profile 在共享右侧栏注册属于 Session 的标签页。带类型的标签页导航保留任务与工人选择，并与现有工具详情标签页共存。Crew 视图提供实时、只读工人状态与证据；绝不挂载普通可编辑子输入框。审批仍是厂长对话中的工具操作。
 
 命令退出码不能替代其他进程事实：超时进程仍可能以零退出。因此 Web 证据视图分别呈现退出码、信号与超时状态，将宿主保留的每条输出流作为纯文本显示，并各自提供截断提示。可折叠日志和有界滚动区域让后续证据仍可访问，而不新增工人交互入口。
 
 一个结论不能标识它接受的规格、审查轮次或验证。只读视图保留这些已记录引用，以及每个审查或整合问题的预期修正。提交请求即使在暂存前被拒绝，仍会保留目标路径；UI 将其标为请求路径，另外显示已记录的提交哈希或拒绝原因，不从路径列表推断 Git 效果。
 
-该能力在公共约定评估期间保持实验状态。交付 profile 录制快照、重启矩阵、浏览器证据、硬策略测试、TypeScript/Python SDK 投影与真实 DeepSeek provider 冒烟测试共同固定当前行为。已实现的顺序与门禁见[核心开发步骤](../../../../docs/developer/discussion/agent-orchestration-core-development-plan.zh.md)。外部提供方结论与后续顺序见 [CLI 调查](../../../../docs/developer/discussion/agent-orchestration-cli-integration-research.zh.md)。
+[交付决策](2026-09-06-native-crew-default-delivery.zh.md)将 Crew 与 Team 领域晋升到默认 Web profile；通用 Team 工具和 UI 仍是私有实验消费方。交付 profile 录制快照、重启矩阵、浏览器证据、硬策略测试、TypeScript/Python SDK 投影与真实 DeepSeek provider 冒烟测试共同固定当前行为。已实现的顺序与门禁见[核心开发步骤](../../../../docs/developer/discussion/agent-orchestration-core-development-plan.zh.md)。外部提供方结论与后续顺序见 [CLI 调查](../../../../docs/developer/discussion/agent-orchestration-cli-integration-research.zh.md)。
 
 ## 考虑过的替代方案
 
@@ -73,12 +73,12 @@ Crew Web profile 复用现有 Web 详情栏。带类型的详情视图选择让�
 
 ## 后果
 
-厂长、Team、Crew 投影与子 Session 现在共享同一个事件溯源运行时，因此恢复与 UI 状态不需要第二个进程、MCP 自桥或工作流数据库。代价是一组私有实验包，以及一个工具范围刻意窄于普通 DSH Session 的 profile。
+厂长、Team、Crew 投影与子 Session 现在共享同一个事件溯源运行时，因此恢复与 UI 状态不需要第二个进程、MCP 自桥或工作流数据库。代价是独立 Crew 投影，以及一个工具范围刻意窄于普通 DSH Session 的 profile。
 
-共享 checkout 可能让测试看到另一个模块的半成品。因此派工要求真实路径互斥、独立聚焦测试、预先准备共享接口、重叠拒绝和静止整合。如果这些控制不能继续产生确定结果，晋升前必须通过新决定引入 worktree 隔离。
+共享 checkout 可能让测试看到另一个模块的半成品。因此派工要求真实路径互斥、独立聚焦测试、预先准备共享接口、重叠拒绝和静止整合。如果这些控制不能继续产生确定结果，必须通过新决定引入 worktree 隔离。
 
 工具筛选可能看似安全，但不受限 shell 或文件系统别名能绕过。实现必须在执行时验证已解析操作与真实路径，并在终止和提交时再次检查 Git 事实；建议性 Team 写入范围不够。
 
 厂长通知入队、交付标识与确认已持久化并与 Session 队列串行化。这增加了整值通知记录，但无需常驻厂长进程也能在每个已测试崩溃边缘保留交付。
 
-实验 Crew 包可能成为平行架构。晋升需要在取得交付 profile 证据后显式评审；后续决定必须合并、稳定化或删除它们，不能静默保留重复实现。
+Crew 必须继续消费共享 Team 与 Subagent 服务。重复实现其生命周期或持久化的变更需要新的架构决策。

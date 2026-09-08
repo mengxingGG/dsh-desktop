@@ -1,348 +1,496 @@
-/** Electron host for the existing dsh Web application. */
+/** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
-import { app, BrowserWindow, dialog, Menu, session, shell, Tray } from 'electron'
-import { existsSync, readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { dirname, resolve } from 'node:path'
+import { readFile, writeFile } from 'node:fs/promises'
+import { extname, join, normalize, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { BackendStartupError, startBackend, type BackendHandle, type BackendStartOptions } from './backend.ts'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  Tray,
+  protocol,
+  type IpcMainInvokeEvent,
+} from 'electron'
+import { resolveDesktopPaths } from './paths.ts'
+import { DesktopProjectManager, type DesktopProjectHooks } from './project-manager.ts'
+import { DesktopHostProcess } from './host-process.ts'
+import { DESKTOP_IPC, type DesktopUpdateState } from './ipc.ts'
+import { formatDesktopMessage, resolveDesktopLocale } from './locale.ts'
+import { claimDesktopSingleInstance } from './single-instance.ts'
+import { DesktopUpdateCoordinator } from './update-coordinator.ts'
 import { desktopText } from './locales.ts'
 
-const rendererFile = (name: string): string => fileURLToPath(new URL(`../renderer/${name}`, import.meta.url))
-const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url))
+const SCHEME = 'dsh-app'
+let focusPrimaryWindow = (): void => {}
 
-let backend: BackendHandle | undefined
-let mainWindow: BrowserWindow | undefined
-let quitting = false
-let bootGeneration = 0
-let bootAbort: AbortController | undefined
-let bootTask: Promise<void> | undefined
-let tray: Tray | undefined
-let closeChoicePending = false
-let exitTask: Promise<void> | undefined
-
-function safeErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+function errorOf(reason: unknown, fallback: string): Error {
+  return reason instanceof Error ? reason : new Error(fallback)
 }
 
-function resolveCheckoutRoot(): string {
-  const appImage = process.env.APPIMAGE
-  const candidates = [
-    process.env.DSH_DESKTOP_PROJECT_ROOT,
-    process.env.PORTABLE_EXECUTABLE_DIR,
-    appImage === undefined ? undefined : dirname(appImage),
-    process.cwd(),
-    repositoryRoot,
-    app.isPackaged ? resolve(app.getAppPath(), '..', '..', '..', '..') : undefined,
-  ]
-  const tried: string[] = []
-  for (const candidate of candidates) {
-    if (candidate === undefined || candidate === '') continue
-    const root = resolve(candidate)
-    if (tried.includes(root)) continue
-    tried.push(root)
-    if (existsSync(resolve(root, 'package.json')) && existsSync(resolve(root, 'apps', 'cli', 'lib', 'bin.js'))) {
-      return root
-    }
+protocol.registerSchemesAsPrivileged([{
+  scheme: SCHEME,
+  privileges: {
+    standard: true,
+    secure: true,
+    supportFetchAPI: true,
+    corsEnabled: false,
+    stream: true,
+    codeCache: true,
+  },
+}])
+
+const MIME: Readonly<Record<string, string>> = {
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.svg': 'image/svg+xml',
+}
+
+interface RuntimeResources {
+  readonly node: string
+  readonly pnpm: string
+  readonly seed: string
+}
+
+function runtimeResources(): RuntimeResources {
+  const development = !app.isPackaged
+  const node = (development ? process.env.DSH_DESKTOP_NODE_BINARY : undefined)
+    ?? join(process.resourcesPath, 'runtime', 'node', process.platform === 'win32' ? 'node.exe' : 'node')
+  const pnpm = (development ? process.env.DSH_DESKTOP_PNPM_ENTRY : undefined)
+    ?? join(process.resourcesPath, 'runtime', 'pnpm', 'bin', 'pnpm.mjs')
+  const seed = (development ? process.env.DSH_DESKTOP_SEED_DIR : undefined) ?? join(process.resourcesPath, 'seed')
+  return { node, pnpm, seed }
+}
+
+function developmentProject(): string | undefined {
+  const configured = process.env.DSH_DESKTOP_DEV_PROJECT_DIR
+  if (configured === undefined || configured === '') return undefined
+  if (app.isPackaged) throw new Error('dsh desktop: development project override is unavailable in packaged applications')
+  return resolve(configured)
+}
+
+function developmentHostInspectPort(enabled: boolean): number | undefined {
+  const configured = process.env.DSH_DESKTOP_HOST_INSPECT_PORT
+  if (!enabled || configured === undefined || configured === '') return undefined
+  const port = Number(configured)
+  if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
+    throw new Error('dsh desktop: DSH_DESKTOP_HOST_INSPECT_PORT must be an integer from 1 through 65535')
   }
-  throw new Error(`desktop shell cannot find a built DeepSeek Harness checkout; searched: ${tried.join(', ')}`)
+  return port
 }
 
-function resolveNodeExecutable(): string {
-  const configured = process.env.DSH_DESKTOP_NODE
-  if (configured !== undefined && configured !== '') return configured
-  const packageManagerNode = process.env.npm_node_execpath
-  if (packageManagerNode !== undefined && packageManagerNode !== '' && existsSync(packageManagerNode)) {
-    return packageManagerNode
-  }
-  return process.platform === 'win32' ? 'node.exe' : 'node'
-}
-
-function bundledRuntime(): BackendStartOptions & { readonly argsPrefix: readonly string[]; readonly cwd: string } | undefined {
-  if (!app.isPackaged) return undefined
-  const backend = resolve(process.resourcesPath, 'backend')
-  const executable = resolve(backend, process.platform === 'win32' ? 'node.exe' : 'node')
-  const cli = resolve(backend, 'app', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
-  const pnpmManifest = resolve(backend, 'app', 'node_modules', 'pnpm', 'package.json')
-  if (!existsSync(executable) || !existsSync(cli) || !existsSync(pnpmManifest)) return undefined
-  const manifest = JSON.parse(readFileSync(pnpmManifest, 'utf8')) as { bin?: string | Record<string, string> }
-  const pnpmEntry = typeof manifest.bin === 'string' ? manifest.bin : manifest.bin?.pnpm
-  if (pnpmEntry === undefined) throw new Error('bundled pnpm package declares no pnpm executable')
-  return {
-    executable,
-    argsPrefix: ['--expose-internals', cli],
-    controlPatch: createRequire(cli).resolve('@deepseek-ai/dsh-web-app/desktop.patch.yml'),
-    cwd: app.getPath('home'),
-    environment: {
-      ...process.env,
-      npm_execpath: resolve(backend, 'app', 'node_modules', 'pnpm', pnpmEntry),
-      npm_node_execpath: executable,
-    },
-  }
-}
-
-function dshRuntime(): BackendStartOptions & { readonly argsPrefix: readonly string[]; readonly cwd: string } {
-  const bundled = bundledRuntime()
-  if (bundled !== undefined) return bundled
-  const root = resolveCheckoutRoot()
-  const cli = resolve(root, 'apps', 'cli', 'lib', 'bin.js')
-  return {
-    argsPrefix: ['--expose-internals', cli],
-    controlPatch: createRequire(cli).resolve('@deepseek-ai/dsh-web-app/desktop.patch.yml'),
-    cwd: root,
-    environment: process.env,
-    executable: resolveNodeExecutable(),
-  }
-}
-
-function createMainWindow(): BrowserWindow {
+function createWindow(preload: string): BrowserWindow {
   const window = new BrowserWindow({
-    width: 1360,
-    height: 900,
-    minWidth: 900,
-    minHeight: 640,
-    backgroundColor: '#f5f5f3',
-    show: true,
-    title: 'DeepSeek Harness',
+    width: 1280,
+    height: 840,
+    minWidth: 880,
+    minHeight: 600,
+    show: false,
     webPreferences: {
-      contextIsolation: true,
+      preload,
       nodeIntegration: false,
+      contextIsolation: true,
       sandbox: true,
+      webSecurity: true,
     },
   })
-  window.webContents.setWindowOpenHandler(({ url }) => {
-    void confirmExternalUrl(window, url)
-    return { action: 'deny' }
-  })
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event, url) => {
-    if (backend !== undefined && new URL(url).origin === backend.url.origin) return
-    event.preventDefault()
-    void confirmExternalUrl(window, url)
-  })
-  window.on('closed', () => {
-    if (mainWindow === window) mainWindow = undefined
-  })
-  window.on('close', (event) => {
-    if (quitting || process.platform !== 'win32') return
-    event.preventDefault()
-    if (exitTask !== undefined || closeChoicePending) return
-    closeChoicePending = true
-    void chooseWindowClose(window).catch((error: unknown) => {
-      console.error('desktop close dialog failed:', safeErrorMessage(error))
-    }).finally(() => { closeChoicePending = false })
+    if (new URL(url).protocol !== `${SCHEME}:`) event.preventDefault()
   })
   return window
 }
 
-async function chooseWindowClose(window: BrowserWindow): Promise<void> {
-  const text = desktopText(app.getLocale())
-  const choice = await dialog.showMessageBox(window, {
-    type: 'question', title: text.closeTitle, message: text.closeMessage, detail: text.closeDetail,
-    buttons: [text.hide, text.exit, text.cancel], defaultId: 0, cancelId: 2, noLink: true,
-  })
-  if (window.isDestroyed() || quitting || exitTask !== undefined) return
-  if (choice.response === 0) window.hide()
-  else if (choice.response === 1) requestExit()
-}
-
-async function confirmActiveStop(): Promise<boolean> {
-  const text = desktopText(app.getLocale())
-  const options = {
-    type: 'warning' as const, title: text.activeTitle, message: text.activeMessage, detail: text.activeDetail,
-    buttons: [text.no, text.yes], defaultId: 0, cancelId: 0, noLink: true,
-  }
-  const choice = mainWindow === undefined ? await dialog.showMessageBox(options) : await dialog.showMessageBox(mainWindow, options)
-  return choice.response === 1
-}
-
-function finishExit(): void {
-  quitting = true
-  tray?.destroy()
-  tray = undefined
-  app.quit()
-}
-
-async function exitApplication(): Promise<void> {
-  const text = desktopText(app.getLocale())
-  tray?.setToolTip(text.checking)
-  try {
-    // A boot can publish a backend after the window's close request.
-    await bootTask
-    const running = backend
-    if (running !== undefined) {
-      let confirmed = false
-      if (await running.activity()) {
-        if (!await confirmActiveStop()) return
-        confirmed = true
-      }
-      // The backend checks again atomically with starting shutdown, so work
-      // admitted after the first inspection cannot skip confirmation.
-      if (!await running.shutdown(confirmed)) {
-        if (!await confirmActiveStop()) return
-        if (!await running.shutdown(true)) throw new Error('desktop shutdown confirmation was rejected')
-      }
-      backend = undefined
-    }
-    finishExit()
-  } catch (error) {
-    restoreMainWindow()
-    const options = {
-      type: 'error' as const, title: text.failureTitle, message: text.failureMessage,
-      detail: `${text.failureDetail}\n\n${safeErrorMessage(error)}`,
-      buttons: [text.cancel, text.force], defaultId: 0, cancelId: 0, noLink: true,
-    }
-    const choice = mainWindow === undefined ? await dialog.showMessageBox(options) : await dialog.showMessageBox(mainWindow, options)
-    if (choice.response === 1) {
-      bootAbort?.abort()
-      await bootTask
-      await backend?.stop()
-      backend = undefined
-      finishExit()
-    }
-  } finally {
-    tray?.setToolTip('DeepSeek Harness')
+function assertDesktopSender(event: IpcMainInvokeEvent, hostnames: readonly string[]): void {
+  const senderFrame = event.senderFrame
+  if (senderFrame === null) throw new Error('dsh desktop: rejected IPC without a sender frame')
+  const url = new URL(senderFrame.url)
+  if (url.protocol !== `${SCHEME}:` || !hostnames.includes(url.hostname)) {
+    throw new Error('dsh desktop: rejected IPC from an unowned renderer')
   }
 }
 
-function requestExit(): void {
-  if (quitting || exitTask !== undefined) return
-  const task = exitApplication()
-  exitTask = task
-  void task.catch((error: unknown) => {
-    dialog.showErrorBox(desktopText(app.getLocale()).failureTitle, safeErrorMessage(error))
-  }).finally(() => { if (exitTask === task) exitTask = undefined })
-}
-
-async function createTray(): Promise<void> {
-  if (process.platform !== 'win32') return
-  const icon = await app.getFileIcon(process.execPath, { size: 'small' })
-  const text = desktopText(app.getLocale())
-  tray = new Tray(icon)
-  tray.setToolTip('DeepSeek Harness')
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: text.open, click: restoreMainWindow },
-    { type: 'separator' },
-    { label: text.exit, click: requestExit },
-  ]))
-  tray.on('click', restoreMainWindow)
-  tray.on('double-click', restoreMainWindow)
-}
-
-async function confirmExternalUrl(parent: BrowserWindow, raw: string): Promise<void> {
-  let url: URL
+async function serveShellAsset(request: Request): Promise<Response> {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405 })
+  const root = resolve(app.getAppPath(), 'renderer')
+  const url = new URL(request.url)
+  let pathname: string
   try {
-    url = new URL(raw)
+    pathname = decodeURIComponent(url.pathname)
   } catch {
-    return
+    return new Response(null, { status: 400 })
   }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') return
-  const choice = await dialog.showMessageBox(parent, {
-    type: 'question',
-    buttons: ['取消', '在浏览器中打开'],
-    defaultId: 0,
-    cancelId: 0,
-    title: '打开外部链接',
-    message: '是否在系统浏览器中打开此链接？',
-    detail: url.href,
-  })
-  if (choice.response === 1) await shell.openExternal(url.href)
-}
-
-
-async function showBackendFailure(error: unknown, logs = ''): Promise<void> {
-  const window = mainWindow
-  if (window === undefined || window.isDestroyed()) return
-  await window.loadFile(rendererFile('backend-error.html'), {
-    query: {
-      message: safeErrorMessage(error),
-      logs,
-    },
-  })
-}
-
-async function bootWebBackend(): Promise<void> {
-  const generation = ++bootGeneration
-  bootAbort?.abort()
-  const abort = new AbortController()
-  bootAbort = abort
-  const window = mainWindow
-  if (window !== undefined && !window.isDestroyed()) await window.loadFile(rendererFile('loading.html'))
-  const previous = backend
-  backend = undefined
-  if (previous !== undefined) await previous.stop()
+  const target = resolve(normalize(join(root, pathname)))
+  if (target !== root && !target.startsWith(root + sep)) return new Response(null, { status: 403 })
   try {
-    const running = await startBackend({ ...dshRuntime(), signal: abort.signal })
-    if (generation !== bootGeneration || quitting) {
-      await running.stop()
+    const body = request.method === 'HEAD' ? null : await readFile(target)
+    return new Response(body, { headers: { 'content-type': MIME[extname(target)] ?? 'application/octet-stream' } })
+  } catch {
+    return new Response(null, { status: 404 })
+  }
+}
+
+async function main(): Promise<void> {
+  const resources = runtimeResources()
+  const paths = resolveDesktopPaths()
+  const development = developmentProject()
+  const activeProject = development ?? paths.profile
+  const hostInspectPort = developmentHostInspectPort(development !== undefined)
+  const manager = new DesktopProjectManager(paths, resources)
+  if (development === undefined) manager.recover()
+  let host: DesktopHostProcess | undefined
+  let mainWindow: BrowserWindow | undefined
+  let pluginWindow: BrowserWindow | undefined
+  let shellInstallerOwnsQuit = false
+  let updateState: DesktopUpdateState = { phase: 'idle' }
+  const locale = resolveDesktopLocale(app.getLocale())
+  const messages = locale.messages
+  const exitText = desktopText(app.getLocale())
+  let tray: Tray | undefined
+  let quitting = false
+  let exitTask: Promise<void> | undefined
+  let closeChoicePending = false
+
+  const confirmActiveStop = async (): Promise<boolean> => {
+    const result = await dialog.showMessageBox({
+      type: 'warning', title: exitText.activeTitle, message: exitText.activeMessage,
+      detail: exitText.activeDetail, buttons: [exitText.no, exitText.yes],
+      defaultId: 0, cancelId: 0, noLink: true,
+    })
+    return result.response === 1
+  }
+  const finishExit = (): void => {
+    quitting = true
+    clearTimeout(updateTimer)
+    tray?.destroy()
+    tray = undefined
+    app.quit()
+  }
+  const exitApplication = async (): Promise<void> => {
+    tray?.setToolTip(exitText.checking)
+    try {
+      const active = host
+      if (active !== undefined) {
+        const busy = await active.activity()
+        if (busy && !await confirmActiveStop()) return
+        if (!await active.shutdown(busy)) {
+          if (!await confirmActiveStop()) return
+          if (!await active.shutdown(true)) throw new Error('desktop shutdown confirmation was rejected')
+        }
+        if (host === active) host = undefined
+      }
+      finishExit()
+    } catch (error) {
+      focusPrimaryWindow()
+      const result = await dialog.showMessageBox({
+        type: 'error', title: exitText.failureTitle, message: exitText.failureMessage,
+        detail: `${exitText.failureDetail}\n\n${errorOf(error, messages.unknownError).message}`,
+        buttons: [exitText.cancel, exitText.force], defaultId: 0, cancelId: 0, noLink: true,
+      })
+      if (result.response === 1) {
+        await host?.stop()
+        host = undefined
+        finishExit()
+      }
+    } finally {
+      tray?.setToolTip('DeepSeek Harness')
+    }
+  }
+  const requestExit = (): void => {
+    if (quitting || exitTask !== undefined) return
+    const task = exitApplication()
+    exitTask = task
+    void task.catch((error: unknown) => {
+      dialog.showErrorBox(exitText.failureTitle, errorOf(error, messages.unknownError).message)
+    }).finally(() => { if (exitTask === task) exitTask = undefined })
+  }
+  const appPreload = fileURLToPath(new URL('./preload-app.cjs', import.meta.url))
+  const managementPreload = fileURLToPath(new URL('./preload.cjs', import.meta.url))
+
+  const publishUpdate = (state: DesktopUpdateState): DesktopUpdateState => {
+    updateState = state
+    for (const window of BrowserWindow.getAllWindows()) {
+      window.webContents.send(DESKTOP_IPC.updatesState, state)
+    }
+    return state
+  }
+
+  const startHost = async (projectDir = activeProject): Promise<DesktopHostProcess> => {
+    const next = new DesktopHostProcess(resources.node, projectDir, hostInspectPort, process.env, development !== undefined)
+    try {
+      await next.start()
+    } catch (error) {
+      await next.stop()
+      throw error
+    }
+    return next
+  }
+  const stopIdleHost = async (): Promise<DesktopHostProcess | undefined> => {
+    const active = host
+    if (active === undefined) return undefined
+    if (!await active.shutdown(false)) throw new Error(exitText.activeMessage)
+    if (host === active) host = undefined
+    return active
+  }
+  const hooks: DesktopProjectHooks = {
+    healthCheck: async (projectDir) => {
+      const active = await stopIdleHost()
+      let healthFailure: unknown
+      let probe: DesktopHostProcess | undefined
+      try {
+        probe = await startHost(projectDir)
+        await probe.stop()
+      } catch (error) {
+        healthFailure = error
+        await probe?.stop().catch(() => undefined)
+      }
+      let restartFailure: unknown
+      if (active !== undefined) {
+        try {
+          host = await startHost()
+        } catch (error) {
+          restartFailure = error
+        }
+      }
+      if (healthFailure !== undefined && restartFailure !== undefined) {
+        throw new AggregateError([
+          errorOf(healthFailure, 'desktop project: staged health check failed'),
+          errorOf(restartFailure, 'desktop project: active backend restart failed'),
+        ], 'desktop project: staged health check and active backend restart failed')
+      }
+      if (healthFailure !== undefined) throw errorOf(healthFailure, 'desktop project: staged health check failed')
+      if (restartFailure !== undefined) throw errorOf(restartFailure, 'desktop project: active backend restart failed')
+    },
+    beforeActivate: async () => {
+      await stopIdleHost()
+    },
+    afterActivate: async () => {
+      host = await startHost()
+    },
+  }
+
+  if (development === undefined) {
+    await manager.applyRelease(resources.seed, app.getVersion(), {
+      ...hooks,
+      beforeActivate: async () => {},
+      afterActivate: async () => {},
+    })
+  }
+  host = await startHost()
+
+  const updates = new DesktopUpdateCoordinator(
+    publishUpdate,
+    async () => {
+      await stopIdleHost()
+      shellInstallerOwnsQuit = true
+      clearTimeout(updateTimer)
+    },
+  )
+
+  protocol.handle(SCHEME, (request) => {
+    const url = new URL(request.url)
+    if (url.hostname === 'shell') return serveShellAsset(request)
+    if (url.hostname !== 'app') return Promise.resolve(new Response(null, { status: 404 }))
+    const active = host
+    if (active === undefined) return Promise.resolve(new Response('backend unavailable', { status: 503 }))
+    return active.fetch(request)
+  })
+
+  const mutate = async (event: IpcMainInvokeEvent, mutation: Parameters<DesktopProjectManager['mutate']>[0]): Promise<void> => {
+    assertDesktopSender(event, ['shell'])
+    if (development !== undefined) {
+      throw new Error('dsh desktop: plugin package changes require a packaged application')
+    }
+    await manager.mutate(mutation, hooks)
+    if (mainWindow !== undefined && !mainWindow.isDestroyed()) mainWindow.webContents.reload()
+  }
+  ipcMain.handle(DESKTOP_IPC.localeGet, (event) => {
+    assertDesktopSender(event, ['shell'])
+    return locale
+  })
+  ipcMain.handle(DESKTOP_IPC.pluginsList, (event) => {
+    assertDesktopSender(event, ['shell'])
+    if (development !== undefined) return []
+    return manager.listPlugins()
+  })
+  ipcMain.handle(DESKTOP_IPC.pluginsAdd, (event, spec: unknown) => {
+    if (typeof spec !== 'string') throw new Error('dsh desktop: plugin spec must be a string')
+    return mutate(event, { type: 'plugin-add', spec })
+  })
+  ipcMain.handle(DESKTOP_IPC.pluginsRemove, (event, name: unknown) => {
+    if (typeof name !== 'string') throw new Error('dsh desktop: plugin name must be a string')
+    return mutate(event, { type: 'plugin-remove', name })
+  })
+  ipcMain.handle(DESKTOP_IPC.pluginsUpdate, (event, name: unknown, version: unknown) => {
+    if (typeof name !== 'string' || typeof version !== 'string') {
+      throw new Error('dsh desktop: plugin name and version must be strings')
+    }
+    return mutate(event, { type: 'plugin-update', name, version })
+  })
+  ipcMain.handle(DESKTOP_IPC.updatesCheck, async (event) => {
+    assertDesktopSender(event, ['shell'])
+    return updates.check()
+  })
+  ipcMain.handle(DESKTOP_IPC.updatesInstall, async (event) => {
+    assertDesktopSender(event, ['shell'])
+    await updates.install()
+  })
+
+  const checkAndPrompt = async (manual: boolean): Promise<void> => {
+    const state = await updates.check()
+    if (state.phase === 'error') {
+      if (manual) {
+        await dialog.showMessageBox({
+          type: 'error',
+          title: messages.updateCheckFailedTitle,
+          message: state.message ?? messages.unknownError,
+        })
+      }
       return
     }
-    backend = running
-    const current = mainWindow
-    if (current !== undefined && !current.isDestroyed()) await current.loadURL(running.url.href)
-    void running.exited.then((exit) => {
-      if (backend !== running || quitting || exitTask !== undefined) return
-      backend = undefined
-      void showBackendFailure(
-        exit.error ?? new Error(`dsh web 已停止（${String(exit.exitCode ?? exit.signal)}）`),
-        running.logs(),
-      )
-    })
-  } catch (error) {
-    if (generation === bootGeneration && !quitting) {
-      await showBackendFailure(error, error instanceof BackendStartupError ? error.logs : '')
+    if (state.phase !== 'available') {
+      if (manual) {
+        await dialog.showMessageBox({
+          type: 'info',
+          title: messages.updateCheckTitle,
+          message: state.message ?? messages.updateCurrent,
+        })
+      }
+      return
     }
-  } finally {
-    if (bootAbort === abort) bootAbort = undefined
+    const result = await dialog.showMessageBox({
+      type: 'info',
+      title: messages.updateTitle,
+      message: messages.updateAvailable,
+      detail: formatDesktopMessage(messages.updateDetail, { version: state.version ?? '' }),
+      buttons: [messages.installAndRestart, messages.later],
+      defaultId: 0,
+      cancelId: 1,
+    })
+    if (result.response !== 0) return
+    const installed = await updates.install()
+    if (installed.phase === 'error') {
+      await dialog.showMessageBox({
+        type: 'error',
+        title: messages.updateFailedTitle,
+        message: installed.message ?? messages.unknownError,
+      })
+    }
   }
-}
 
-function startWebBackend(): Promise<void> {
-  const task = bootWebBackend()
-  bootTask = task
-  return task.finally(() => {
-    if (bootTask === task) bootTask = undefined
+  const openPluginWindow = (): void => {
+    if (pluginWindow !== undefined && !pluginWindow.isDestroyed()) {
+      pluginWindow.focus()
+      return
+    }
+    pluginWindow = createWindow(managementPreload)
+    pluginWindow.setSize(900, 620)
+    pluginWindow.setTitle(messages.pluginWindowTitle)
+    pluginWindow.once('ready-to-show', () => { pluginWindow?.show() })
+    pluginWindow.once('closed', () => { pluginWindow = undefined })
+    void pluginWindow.loadURL(`${SCHEME}://shell/plugin-manager.html`)
+  }
+
+  ipcMain.handle(DESKTOP_IPC.pluginsOpen, (event) => {
+    assertDesktopSender(event, ['app'])
+    if (development !== undefined) throw new Error(messages.pluginsMenuPackagedOnly)
+    openPluginWindow()
   })
-}
 
-function restoreMainWindow(): void {
-  if (quitting) return
-  if (mainWindow === undefined) {
-    mainWindow = createMainWindow()
-    if (backend === undefined) void startWebBackend()
-    else void mainWindow.loadURL(backend.url.href)
+  Menu.setApplicationMenu(Menu.buildFromTemplate([{
+    label: process.platform === 'darwin' ? app.name : messages.application,
+    submenu: [
+      {
+        label: development === undefined ? messages.pluginsMenu : messages.pluginsMenuPackagedOnly,
+        accelerator: 'CmdOrCtrl+,',
+        enabled: development === undefined,
+        click: openPluginWindow,
+      },
+      { label: messages.checkUpdatesMenu, click: () => { void checkAndPrompt(true) } },
+      { type: 'separator' },
+      { role: 'quit' },
+    ],
+  }]))
+
+  const createMainWindow = (): BrowserWindow => {
+    const window = createWindow(appPreload)
+    mainWindow = window
+    window.once('ready-to-show', () => { if (!window.isDestroyed()) window.show() })
+    window.on('closed', () => { if (mainWindow === window) mainWindow = undefined })
+    window.on('close', (event) => {
+      if (process.platform !== 'win32' || quitting || shellInstallerOwnsQuit) return
+      event.preventDefault()
+      if (closeChoicePending || exitTask !== undefined) return
+      closeChoicePending = true
+      void dialog.showMessageBox(window, {
+        type: 'question', title: exitText.closeTitle, message: exitText.closeMessage,
+        detail: exitText.closeDetail, buttons: [exitText.hide, exitText.exit, exitText.cancel],
+        defaultId: 0, cancelId: 2, noLink: true,
+      }).then((result) => {
+        if (result.response === 0) window.hide()
+        else if (result.response === 1) requestExit()
+      }).catch((error: unknown) => {
+        dialog.showErrorBox(exitText.failureTitle, errorOf(error, messages.unknownError).message)
+      }).finally(() => { closeChoicePending = false })
+    })
+    return window
   }
-  if (mainWindow.isMinimized()) mainWindow.restore()
-  mainWindow.show()
-  mainWindow.focus()
-}
+  focusPrimaryWindow = () => {
+    const window = mainWindow
+    if (window === undefined || window.isDestroyed()) {
+      const replacement = createMainWindow()
+      void replacement.loadURL(`${SCHEME}://app/index.html`)
+      return
+    }
+    if (window.isMinimized()) window.restore()
+    window.show()
+    window.focus()
+  }
 
-async function prepareApplication(): Promise<void> {
-  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => { callback(false) })
-  session.defaultSession.setPermissionCheckHandler(() => false)
-  await createTray()
   mainWindow = createMainWindow()
-  await startWebBackend()
-}
+  await mainWindow.loadURL(`${SCHEME}://app/index.html`)
+  if (process.platform === 'win32') {
+    tray = new Tray(await app.getFileIcon(process.execPath, { size: 'small' }))
+    tray.setToolTip('DeepSeek Harness')
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: exitText.open, click: () => { focusPrimaryWindow() } },
+      { type: 'separator' },
+      { label: exitText.exit, click: requestExit },
+    ]))
+    tray.on('click', () => { focusPrimaryWindow() })
+    tray.on('double-click', () => { focusPrimaryWindow() })
+  }
+  if (development !== undefined && process.env.DSH_DESKTOP_OPEN_DEVTOOLS !== '0') {
+    mainWindow.webContents.openDevTools({ mode: 'detach' })
+  }
+  publishUpdate(updateState)
+  const updateTimer = setTimeout(() => { if (!quitting) void checkAndPrompt(false) }, 10_000)
+  updateTimer.unref()
 
-if (!app.requestSingleInstanceLock()) {
-  app.quit()
-} else {
-  app.on('second-instance', () => {
-    restoreMainWindow()
-  })
-  app.whenReady().then(prepareApplication).catch((error: unknown) => {
-    dialog.showErrorBox('DeepSeek Harness 启动失败', safeErrorMessage(error))
-    app.quit()
-  })
   app.on('activate', () => {
-    restoreMainWindow()
+    if (BrowserWindow.getAllWindows().length === 0) focusPrimaryWindow()
   })
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin' && tray === undefined) requestExit()
   })
   app.on('before-quit', (event) => {
-    if (quitting) return
+    if (shellInstallerOwnsQuit || quitting) return
     event.preventDefault()
     requestExit()
   })
 }
+
+const ownsDesktopInstance = claimDesktopSingleInstance(app, () => { focusPrimaryWindow() })
+
+if (ownsDesktopInstance) void app.whenReady().then(main).catch(async (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error)
+  console.error(error)
+  const diagnosticFile = process.env.DSH_DESKTOP_DIAGNOSTIC_FILE
+  if (diagnosticFile !== undefined) {
+    await writeFile(diagnosticFile, `${error instanceof Error ? error.stack ?? message : message}\n`).catch(() => undefined)
+  }
+  dialog.showErrorBox(resolveDesktopLocale(app.getLocale()).messages.startupFailed, message)
+  app.exit(1)
+})

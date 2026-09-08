@@ -1,8 +1,8 @@
-/** Crew projection, locale, header trigger, and typed details registrations. */
+/** Crew projection, locale, header trigger, and Sidebar tab registrations. */
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
@@ -11,7 +11,7 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-crew/client'
 import type { CrewPreferencesValue } from '@deepseek-ai/dsh-crew/client'
 import { CrewAction, type CrewActionInjected } from './CrewAction.tsx'
-import { CrewDetailsView } from './CrewDetailsView.tsx'
+import { CrewSidebarView } from './CrewDetailsView.tsx'
 import { CrewActivityController } from './activity.ts'
 import { CrewSettings } from './CrewSettings.tsx'
 import { CrewSettingsController, PREFERENCES_NAMESPACE } from './preferences.ts'
@@ -25,10 +25,10 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-/** Required browser services for locale, slots, and typed details selection. */
-export const inject = ['slots', 'locale', 'chatDetails', 'settingsScope', 'remote', 'remote.session', 'sessions', 'uiConversation']
+/** Required browser services for locale, slots, Sidebar navigation, and Session observations. */
+export const inject = ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs', 'settingsScope', 'remote', 'remote.session', 'sessions', 'uiConversation']
 
-/** Register the manager Crew trigger and details-chain branch. */
+/** Register the manager Crew trigger and its Sidebar tab. */
 export function apply(ctx: ClientContext): void {
   const activities = new Map<import('@deepseek-ai/dsh-session/types').SessionId, CrewActivityController>()
   ctx.effect(() => () => {
@@ -36,6 +36,10 @@ export function apply(ctx: ClientContext): void {
     activities.clear()
   }, 'client-ui-crew: worker observations')
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'client-ui-crew: dictionaries')
+  ctx.effect(() => ctx.sidebarRightTabs.register({
+    id: '@deepseek-ai/dsh-client-ui-crew', kind: 'crew', priority: 'builtin',
+    title: () => ctx.locale.bind(NS)('title'),
+  }), 'client-ui-crew: tab type')
   const preferences = new CrewSettingsController(
     ctx.settingsScope.bind<CrewPreferencesValue>({ namespace: PREFERENCES_NAMESPACE }),
     async () => {
@@ -68,13 +72,13 @@ export function apply(ctx: ClientContext): void {
     id: 'crew',
     order: 15,
     locale: NS,
-    inject: (sessionId): CrewActionInjected => ({
-      openCrew: (selection: CrewDetailsSelection) => { ctx.chatDetails.open(sessionId, selection) },
+    inject: (): CrewActionInjected => ({
+      openCrew: (selection: CrewDetailsSelection) => { ctx.sidebarRight.openTab('crew', { params: selection }) },
     }),
   }, CrewAction))
-  ctx.slots.inject('conversation.details.view', () => ctx.slots.register({
-    name: 'conversation.details.view',
-    select: owner => owner.selection.kind === 'crew' ? owner.selection : null,
+  ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+    name: 'sidebar.right.pane.tab',
+    key: '@deepseek-ai/dsh-client-ui-crew',
     locale: NS,
     inject: (sessionId) => {
       let controller = activities.get(sessionId)
@@ -91,5 +95,5 @@ export function apply(ctx: ClientContext): void {
       }
       return controller.inject()
     },
-  }, CrewDetailsView))
+  }, CrewSidebarView))
 }

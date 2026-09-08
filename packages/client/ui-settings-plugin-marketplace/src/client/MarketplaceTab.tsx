@@ -16,6 +16,8 @@ export interface MarketplaceInjected {
   search: (query: string) => Promise<MarketplaceSearchResult>
   install: (entry: MarketplaceEntry) => Promise<MarketplaceInstallReceipt>
   confirm: (entry: MarketplaceEntry) => boolean
+  /** Opens the desktop-owned installer instead of mutating a Web profile. */
+  openDesktopManager?: (() => Promise<void>) | undefined
 }
 
 /** Full component props assembled by the Settings slot renderer. */
@@ -38,7 +40,7 @@ interface Notice {
 const EXAMPLES = ['balance', 'memory', 'tools'] as const
 
 /** Render discovery guidance, cards, expandable details, and explicit installation actions. */
-export function MarketplaceTab({ search, install, confirm, t }: MarketplaceProps): ReactNode {
+export function MarketplaceTab({ search, install, confirm, openDesktopManager, t }: MarketplaceProps): ReactNode {
   const detailsPrefix = useId()
   const [query, setQuery] = useState('')
   const [state, setState] = useState<SearchState>({ status: 'idle' })
@@ -63,6 +65,15 @@ export function MarketplaceTab({ search, install, confirm, t }: MarketplaceProps
   }
 
   const installEntry = async (entry: MarketplaceEntry): Promise<void> => {
+    if (openDesktopManager !== undefined) {
+      try {
+        await openDesktopManager()
+        setNotice({ kind: 'success', message: t('desktopOpened') })
+      } catch (error) {
+        setNotice({ kind: 'error', message: t('installError', { message: error instanceof Error ? error.message : String(error) }) })
+      }
+      return
+    }
     if (!confirm(entry)) return
     setInstalling(entry.repository)
     setNotice(undefined)
@@ -160,7 +171,7 @@ export function MarketplaceTab({ search, install, confirm, t }: MarketplaceProps
                     disabled={installing !== undefined}
                     onClick={() => { void installEntry(entry) }}
                   >
-                    {busy ? t('installing') : t('install')}
+                    {busy ? t('installing') : openDesktopManager === undefined ? t('install') : t('desktopManage')}
                   </button>
                 </div>
                 <button

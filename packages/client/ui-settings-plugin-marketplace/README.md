@@ -15,6 +15,8 @@ The tab explains useful searches and offers `balance`, `memory`, and `tools` sho
 
 Installation is a separate card action. Before calling `ctx.remote.pluginMarketplace.add()`, the browser names the package and repository and requires confirmation that third-party package scripts run with the local account's permissions. The successful state tells the user to restart the current dsh profile; the UI does not present an unactivated bundle as active.
 
+In Desktop, the card action opens the dedicated plugin manager. That window owns installation into the isolated desktop profile; the marketplace does not call the Web profile installer or display an installation receipt for opening the window. Source-checkout Desktop development rejects package mutations.
+
 Expanded cards use the [shared Web theme's panel elevation](../../../docs/web-styling.md) without a layout border.
 
 ## Table of Contents
