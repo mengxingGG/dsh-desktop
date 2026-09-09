@@ -8,7 +8,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { resolve } from 'node:path'
 import { brandString } from '@deepseek-ai/dsh-brand'
-import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
+import { resolveExecutionConfig, type Agent, type AgentHandle } from '@deepseek-ai/dsh-agent'
 import { admitEncodedImages, type EncodedImageAttachment, type ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { createUserMessage, ReasoningEffortId, type ContentBlock, type LlmRuntime } from '@deepseek-ai/dsh-llm'
 import { carrierKeyOf, type Scoped } from '@deepseek-ai/dsh-scope'
@@ -147,18 +147,22 @@ export class HarnessSdkJsonRpcServer {
     const reasoningEffort = params.reasoningEffort === undefined
       ? undefined
       : ReasoningEffortId(params.reasoningEffort)
-    if (!this.hasAdapterFor(provider)) {
+    const executor = this.ctx.get('agents')?.executor(provider)
+    if (executor !== undefined && this.hasAdapterFor(provider)) throw new Error(`provider "${provider}" has both an LLM adapter and an Agent executor`)
+    if (executor === undefined && !this.hasAdapterFor(provider)) {
       if (provider !== 'deepseek-official') throw new Error(`no adapter registered for provider "${provider}"`)
       this.llmFiber = await this.ctx.plugin(LlmDeepSeek, {})
     }
     // Adapter presence was read from this service above; a successful fallback mount also requires it.
     const llm = this.ctx.get('llm') as LlmRuntime
-    await llm.resolveCallConfig({
+    const config = {
       provider,
       model,
       ...reasoningEffort === undefined ? {} : { reasoningEffort },
       ...params.maxTokens === undefined ? {} : { maxTokens: params.maxTokens },
-    })
+    }
+    if (executor === undefined) await llm.resolveCallConfig(config)
+    else await resolveExecutionConfig(executor, config)
     this.cwd = cwd
     this.provider = provider
     this.model = model

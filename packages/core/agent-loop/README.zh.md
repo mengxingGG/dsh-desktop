@@ -25,6 +25,8 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
+已注册的外部执行器可以负责获准步骤内的模型迭代。循环提交其冻结输入，应用请求重建不变量，对 assistant 消息进行流式输出与落盘，并通过普通 DSH 权限和调度路径分发工具。提供方完成前必须等待工具及进程清理；取消时保留已经可见的中断前缀。
+
 在任何应运行 agent 的组合中挂载 `dsh-agent-loop`。它提供 `ctx.agents` 背后的驱动器，并启动你在配置中声明的 agent；[`dsh-base`](../../bundle/base/README.zh.md) 与 [`dsh-sdk-minimal`](../../bundle/sdk-minimal/README.zh.md) 都将它作为显式配置行挂载。
 
 ### 配置声明式 agent

@@ -1,0 +1,11 @@
+.root { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 8px; padding: 6px 4px; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.6; }
+.details { flex: 1; min-width: 0; }
+.summary { display: flex; flex-wrap: wrap; gap: 4px 14px; cursor: pointer; list-style: none; }
+.summary::-webkit-details-marker { display: none; }
+.summary:focus-visible, .refresh:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 4px; }
+.panel { margin-top: 8px; padding: 10px 12px; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 10px; overflow-wrap: anywhere; }
+.panel p { margin: 3px 0; }
+.explanation { color: var(--dsw-alias-label-tertiary); }
+.refresh { border: 0; background: transparent; color: inherit; font: inherit; padding: 0 4px; cursor: pointer; white-space: nowrap; }
+.refresh:hover { color: var(--dsw-alias-label-primary); }
+.refresh:disabled { opacity: 0.6; cursor: default; }

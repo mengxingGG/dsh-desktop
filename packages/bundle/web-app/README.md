@@ -13,6 +13,8 @@ Run `dsh --profile web` and the interface opens in your default browser, ready f
 
 This checkout pins a compatibility patch for the bundled usage plugin. It reads official Session snapshots and persistence handles; Desktop uses the private Fetch carrier, while browser HTTP requests retain the plugin's loopback checks. The [integration decision](../../../.agents/notes/implemented/architecture/2026-09-08-upstream-desktop-crew-integration.md) owns patch maintenance and desktop profile isolation.
 
+The bundled [Claude Code settings](../../client/ui-claude-code/README.md) provide native login and quota refresh. Main and Crew model selectors discover the executor when it is mounted.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

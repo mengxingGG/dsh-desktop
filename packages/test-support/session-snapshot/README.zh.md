@@ -11,6 +11,8 @@ kind: "package-library"
 
 `dsh-session-snapshot` 提供无密钥已记录会话测试（`pnpm run test:snapshot`）背后的共享支持：封闭 manifest、类型化身份脱敏、规范化、workspace 比较、fixture 保护，以及 headless、SDK、ACP 与 Web owner 使用的协议适配器。ACP 适配器以真实子进程启动被测 profile，驱动确定性输入脚本，并注册完整的录制、回放与刷新套件。每个场景都提交足够证据来证明模型可见输出与文件系统效果，不依赖 agent 自述。包入口会导入 vitest，因此只能在 vitest 运行中使用。
 
+补丁物化先从编写补丁的位置解析裸插件名，再从本包已安装的依赖解析。因此，位于 npm 包之外的语料补丁也能使用回放适配器，无需向生产配置添加测试插件。
+
 ## 目录
 
 - [使用本包](#use-this-package)
@@ -153,7 +155,6 @@ defineAcpSnapshotSuite({
 ## 已知限制与延期工作
 
 <a id="known-limitations-and-deferred-work"></a>
-
 
 这些限制说明何时需要对该工具包特别小心。它们是当前包约束，不是任务积压。
 

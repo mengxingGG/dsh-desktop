@@ -99,6 +99,14 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'claudeCode',
+    pkg: 'subagent-claude-code',
+    title: 'Claude Code execution and account access',
+    mode: 'core',
+    consumers: ['client-ui-claude-code'],
+    note: 'Registers an Agent executor and owns native login, account observations and quota refresh without inference.',
+  },
+  {
     key: 'attachments',
     pkg: 'attachment',
     title: 'Durable binary attachment storage',

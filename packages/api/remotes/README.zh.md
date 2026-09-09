@@ -11,6 +11,8 @@ kind: "package-reference"
 
 为本应用选定的 Host Remote 能力提供双侧 BFF。Host 入口拥有转发事件名单并向 API Gateway 注册应用事件 source；Client 入口以运行时值形式导入生成的 `/remote` 产物，通过 `ctx.remote.$mount()` 挂载每项贡献，并重新导出对应的声明合并。Client 业务包依赖该外观，而不依赖 Gateway 实现或单独的 Remote 运行时入口。
 
+Claude 账号操作通过生成的 Remote 客户端公开账号状态、登录进度和额度刷新。执行器目录失效事件会刷新模型选择器。
+
 ## 目录
 
 - [使用本包](#use-this-package)

@@ -11,6 +11,17 @@ import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 
 export type { AgentOptions } from './options.ts'
 
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * External execution routes or their account-backed model directories changed.
+     * Consumers re-read the model catalog after the registry commit.
+     * @mode emit
+     */
+    'agents/executors-updated'(): void
+  }
+}
+
 /** Public live-agent handle; the runtime face augments its live capabilities. */
 export interface Agent {
   /** Session-backed Agent identity. */

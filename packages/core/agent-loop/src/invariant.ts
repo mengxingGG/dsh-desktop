@@ -7,6 +7,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { isAgentLoopRequest, type GenerateOptions } from '@deepseek-ai/dsh-llm'
 import type { InvariantFailure, InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 import { foldRequestHeader } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-agent'
 
 const PACKAGE_NAME = '@deepseek-ai/dsh-agent-loop'
 
@@ -17,9 +18,7 @@ export const inject = ['invariants']
 
 /** Install the request-reconstruction contribution into its child registration fiber. */
 const install: InvariantInstaller = Object.assign((ctx: Context, fail: InvariantFailure) => {
-  // Prepend prevents a short-circuiting replay listener from silencing the check.
-  ctx.on('llm/stream', (options: GenerateOptions, next) => {
-    if (!isAgentLoopRequest(options)) return next()
+  const check = (options: GenerateOptions): void => {
     if (!Object.isFrozen(options)) fail('a loop-built request must be frozen')
     if (options.sessionId === undefined) fail('a loop-built request must carry a session id')
     const session = ctx.sessions.get(options.sessionId)
@@ -50,8 +49,13 @@ const install: InvariantInstaller = Object.assign((ctx: Context, fail: Invariant
     if (!headerMatches) {
       fail(`llm request for session "${String(session.id)}" diverges from the folded request header`)
     }
+  }
+  // Prepend prevents a short-circuiting replay listener from silencing the check.
+  ctx.on('llm/stream', (options: GenerateOptions, next) => {
+    if (isAgentLoopRequest(options)) check(options)
     return next()
   }, { global: true, prepend: true })
+  ctx.on('agents/execution-request', check, { global: true, prepend: true })
 }, { inject: ['sessions'] })
 
 /**

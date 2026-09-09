@@ -10,6 +10,9 @@
   ],
   "references": [
     {
+      "path": "../../core/agent"
+    },
+    {
       "path": "../../../vendor/cordis"
     },
     {
@@ -29,6 +32,15 @@
     },
     {
       "path": "../../util/timeout"
+    },
+    {
+      "path": "../../attachment/attachment"
+    },
+    {
+      "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../session/session-projection"
     }
   ]
 }

@@ -25,6 +25,8 @@ With `dsh-agent` you can create or resume an agent, send a follow-up prompt, ste
 <a id="use-this-package"></a>
 ## Use this package
 
+External Agent runtimes register an executor under a distinct provider route. Main and Crew model selectors use the same route, while the driver retains DSH lifecycle, tools and Session output. Model discovery and reasoning validation happen before execution; [Claude Code](../../subagent/subagent-claude-code/README.md) supplies the native CLI implementation.
+
 Mount `dsh-agent` wherever live agents exist: it provides `ctx.agents` and the `Agent` handle that plugins, UI, hooks, and orchestrators work against. The service is inert until a driver registers a factory — the shipped driver is `dsh-agent-loop`, so the smallest useful composition loads both.
 
 ### Create or resume an agent

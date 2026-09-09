@@ -1,0 +1,8 @@
+version: 1
+scenario: claude-code
+profile: sdk
+composition: sdk-claude-code
+recording: authored
+header:
+  class: sdk-claude-code
+  pin: true

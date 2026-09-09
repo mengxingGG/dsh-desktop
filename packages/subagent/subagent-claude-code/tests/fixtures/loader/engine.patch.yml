@@ -1,0 +1,29 @@
+# Exercise the public executor on the shipped profile with isolated account data.
+- id: headless-startup
+  disabled: true
+- id: headless-runner
+  disabled: true
+- id: agent-loop
+  config:
+    agents: []
+- id: agent-default-model
+  config:
+    provider: claude-code
+    model: claude-sonnet-5
+- insert:
+    - id: claude-code-engine
+      name: '@deepseek-ai/dsh-subagent-claude-code/engine'
+      config:
+        configDir: !!js process.env.DSH_CLAUDE_FIXTURE_HOME
+        maxTurns: 4
+        env:
+          ANTHROPIC_API_KEY: dsh-local-fixture-key
+          ANTHROPIC_BASE_URL: !!js process.env.DSH_CLAUDE_FIXTURE_URL
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL: '1'
+          DISABLE_TELEMETRY: '1'
+          DISABLE_ERROR_REPORTING: '1'
+          HTTP_PROXY: ''
+          HTTPS_PROXY: ''
+          ALL_PROXY: ''
+          NO_PROXY: 127.0.0.1,localhost

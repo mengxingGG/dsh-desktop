@@ -15,7 +15,7 @@ import type {
   PreStepDecision,
   RequestErrorAction,
 } from '@deepseek-ai/dsh-agent'
-import { agentEvents, assembleContextFor } from '@deepseek-ai/dsh-agent'
+import { agentEvents, assembleContextFor, resolveExecutionConfig } from '@deepseek-ai/dsh-agent'
 import type { GenerateOptions, LlmCallConfig, Message, PreparedLlmCall } from '@deepseek-ai/dsh-llm'
 import {
   LlmError,
@@ -36,6 +36,7 @@ import { ReactLoopInbox } from './inbox.ts'
 import { RuntimeContextProjection } from './runtime-context.ts'
 import { AssistantStreamAttempt } from './assistant-stream.ts'
 import { executeToolCalls } from './tool-calls.ts'
+import { executeExternalStep } from './execution.ts'
 
 type Phase =
   | { kind: 'idle'; lastTurn: number }
@@ -365,6 +366,15 @@ export class ReactLoopAgent implements Agent {
         signal,
       )
       startsRequestSeries = false
+      const executor = this.loopCtx.agents.executor(request.provider)
+      if (executor !== undefined) {
+        return executeExternalStep(this.loopCtx, executor, { agent: this, turn, step, request },
+          () => new AssistantStreamAttempt(
+            this.session.id, ++this.assistantAttemptCounter,
+            () => ++this.assistantStreamRevision, turn, step,
+            (frame) => { this.dispatch.emit('agent/assistant-stream', { frame }) },
+          ))
+      }
       const live = new AssistantStreamAttempt(
         this.session.id,
         ++this.assistantAttemptCounter,
@@ -541,6 +551,11 @@ export class ReactLoopAgent implements Agent {
       // Middleware may serve an unregistered route; terminal dispatch still requires an adapter.
       if (!(error instanceof LlmError) || error.code !== 'NO_ADAPTER') throw error
       config = proposedConfig
+    }
+    const executor = this.loopCtx.agents.executor(proposedConfig.provider)
+    if (executor !== undefined) {
+      if (preparedCall !== undefined) throw new Error(`provider "${proposedConfig.provider}" has both an LLM adapter and an Agent executor`)
+      config = await resolveExecutionConfig(executor, proposedConfig)
     }
     signal.throwIfAborted()
 

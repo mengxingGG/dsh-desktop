@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 `dsh-app-boot` is the shared Loader boot library behind `dsh` profiles, including the CLI packaged by the Python runtime wheel. It loads environment layers, composes profile bundles and patches, boots every plugin, and returns the running app or identifies the failed plugin and cause. Product applications use the `dsh` launcher instead of publishing separate bins; direct-config helpers remain only for lower-level embedders and tests. You can preview the effective configuration before booting, select live or startup-only patch application per profile, and let a terminal-owning app restore its terminal before a fatal exit.
 
+Dependency discovery resolves each visited package manifest to its real filesystem location before walking its dependencies. Linked workspace packages therefore retain their private dependencies in the profile fallback.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

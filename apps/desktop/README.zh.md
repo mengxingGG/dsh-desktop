@@ -71,6 +71,12 @@ pnpm run start:desktop
 
 Workspace 开发使用调用命令的 Node.js 运行当前 CLI 与私有 Desktop Host 包，并禁用桌面包修改；只有该模式明确链接的一次性 profile 可以从自身目录外解析 bundle。需要验证内置 Node.js、内置 pnpm、发布 seed、插件安装、staging 和 rollback 时，应运行未封装安装器的应用目录。
 
+### Windows 本地启动器
+
+在仓库根目录运行 `./scripts/build-desktop-launcher.ps1 -CreateDesktopShortcut`，编译小型启动器并创建桌面快捷方式。双击根目录的 `DeepSeek-Harness.exe` 或桌面上的 **DeepSeek Harness（本地开发）** 快捷方式，即可通过现有 `start:desktop` 路径启动，并保持独立 DevTools 窗口关闭。启动器需要保留当前工作目录、已安装的依赖、受支持的 Node.js，以及完成 `pnpm run build` 和 `pnpm run build:desktop` 后的产物。它沿用上述开发数据位置，启动时不会构建；源码变更后需重新构建。此 EXE 无法脱离工作目录独立运行。
+
+启动输出写入 `.run/desktop-launcher.log`；进程失败时会提示日志位置。启动器构建脚本在替换根目录 EXE 前，将已有文件备份到 `apps/desktop/.desktop-build/launcher/previous-<timestamp>.exe`。
+
 ## 打包
 
 正常打包只需执行一条完整命令。该命令会先准备发布资源，再生成宿主平台的安装包与更新元数据。所有目标都要求通过 `DSH_DESKTOP_APP_ID` 提供反向域名形式的应用 ID。macOS 目标还要求通过 `DSH_DESKTOP_MACOS_SIGNING_IDENTITY` 提供 electron-builder 证书限定名，通过 `DSH_DESKTOP_MACOS_TEAM_ID` 提供对应的 10 字符 Apple Team ID，并提供一套完整的 notarytool 凭据。App Store Connect API Key 方式使用以下变量：

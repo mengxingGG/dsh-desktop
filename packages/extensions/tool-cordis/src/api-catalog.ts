@@ -296,6 +296,29 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the disposer that clears the factory slot. The exact Cordis effect disposer (single-shot): composite (generator) effects may yield it directly — exact identity nests the teardown in order.',
       },
       {
+        signature: 'registerExecutor(executor: AgentExecutor): () => void',
+        description: 'Register an external runtime for one provider route, scoped to the caller\'s plugin.',
+        parameters: [{ name: 'executor', description: 'runtime that owns model and tool iteration for the route.' }],
+        returns: 'disposer removing this registration; duplicate routes throw.',
+      },
+      {
+        signature: 'executor(provider: string): AgentExecutor | undefined',
+        description: 'Find the external runtime serving a selected route.',
+        parameters: [{ name: 'provider', description: 'selected provider route.' }],
+        returns: 'the registered runtime, or undefined for an ordinary LLM route.',
+      },
+      {
+        signature: 'listExecutors(): readonly AgentExecutor[]',
+        description: 'List available external runtimes for account and model selectors.',
+        parameters: [],
+        returns: 'a detached array of currently registered providers.',
+      },
+      {
+        signature: 'notifyExecutors(): void',
+        description: 'Notify model catalogs after an external executor\'s directory changes.',
+        parameters: [],
+      },
+      {
         signature: 'async create(options: CreateAgentOptions): Promise<AgentHandle>',
         description: 'Create and publish a new agent through the registered factory. Distinct from register (which records an already-constructed agent): this constructs the agent and its session. Rejects if no factory is registered or creation/setup fails. The resolved AgentHandle lets the owner tear down exactly this agent.',
         parameters: [{ name: 'options', description: 'shared identity, session seed/metadata, and agent options.' }],
@@ -597,6 +620,67 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'request', description: 'the key, the method, the surface, and the cancel signal.' }],
         returns: '`authorized` once the flow\'s record is committed during this attempt and observed, or `cancelled` when the human declined or the caller withdrew.',
         throws: ['{AuthorizationError} code `NO_FLOW` when nothing claims the key, `UNKNOWN_METHOD` when the named method is not one the flow offers, `ALREADY_IN_FLIGHT` when an attempt is already running for the key, or `NOT_COMMITTED` when the flow resolved without committing a record during the attempt.'],
+      },
+    ],
+  },
+  {
+    key: 'claudeCode',
+    summary: 'Owns CLI account observations and persistent execution for main and Crew Agents.',
+    description: 'Owns CLI account observations and persistent execution for main and Crew Agents.',
+    methods: [
+      {
+        signature: 'async models(): Promise<readonly LlmResolvedModelInfo[]>',
+        description: 'Read model choices from the installed native CLI without inference.',
+        parameters: [],
+        returns: 'canonical model ids and native reasoning choices.',
+      },
+      {
+        signature: 'async account(): Promise<ClaudeAccountStatus>',
+        description: 'Query native authentication without reading or returning credentials.',
+        parameters: [],
+        returns: 'public account status; command and parse failures reject.',
+      },
+      {
+        signature: 'quota(): ClaudeQuotaSnapshot | null',
+        description: 'Read the most recent observed quota without spending an inference request.',
+        parameters: [],
+        returns: 'account windows with their observation times, or null before an observation.',
+      },
+      {
+        signature: '@Remote(\'refreshQuota\') async refreshQuota(signal: AbortSignal): Promise<ClaudeQuotaSnapshot | null>',
+        description: 'Read plan quota through the pinned native usage command without an inference prompt.',
+        parameters: [{ name: 'signal', description: 'Remote caller cancellation.' }],
+        returns: 'current plan windows, or null when the native account cannot provide them.',
+      },
+      {
+        signature: '@Remote(\'status\') async status(): Promise<{ account: ClaudeAccountStatus; quota: ClaudeQuotaSnapshot | null; login: ClaudeLoginSnapshot | null }>',
+        description: 'Refresh public account status and read the latest quota observation.',
+        parameters: [],
+        returns: 'account facts, cached quota, and any native login attempt.',
+      },
+      {
+        signature: '@Remote(\'startLogin\') async startLogin(): Promise<ClaudeLoginSnapshot>',
+        description: 'Begin the official browser authorization process.',
+        parameters: [],
+        returns: 'bounded native output and the login identity for subsequent input.',
+      },
+      {
+        signature: '@Remote(\'loginStatus\') loginStatus(): ClaudeLoginSnapshot | null',
+        description: 'Read the most recent native authorization attempt.',
+        parameters: [],
+        returns: 'bounded progress for the current native login, without starting a process.',
+      },
+      {
+        signature: '@Remote(\'loginInput\') async loginInput(id: ClaudeLoginId, code: string): Promise<void>',
+        description: 'Submit the native login response without retaining its contents.',
+        parameters: [{ name: 'id', description: 'attempt displayed by the settings view.' }, { name: 'code', description: 'user-entered authorization response.' }],
+        returns: 'fulfillment after input delivery.',
+      },
+      {
+        signature: '@Remote(\'cancelLogin\') async cancelLogin(id: ClaudeLoginId): Promise<void>',
+        description: 'Cancel the displayed native login and drain its process range.',
+        parameters: [{ name: 'id', description: 'exact attempt displayed by the settings view.' }],
+        returns: 'fulfillment after native process cleanup.',
       },
     ],
   },
@@ -3326,6 +3410,22 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'payload', description: '.signal - the current turn\'s explicit abort signal. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.' }],
   },
   {
+    name: 'agents/execution-request',
+    mode: 'emit',
+    signature: '\'agents/execution-request\'(request: GenerateOptions): void',
+    summary: 'A frozen, recorded request is entering an external Agent executor.',
+    description: 'A frozen, recorded request is entering an external Agent executor.',
+    parameters: [{ name: 'request', description: 'exact request whose header and messages are committed in its Session.' }],
+  },
+  {
+    name: 'agents/executors-updated',
+    mode: 'emit',
+    signature: '\'agents/executors-updated\'(): void',
+    summary: 'External execution routes or their account-backed model directories changed.',
+    description: 'External execution routes or their account-backed model directories changed. Consumers re-read the model catalog after the registry commit.',
+    parameters: [],
+  },
+  {
     name: 'api-session/activity',
     mode: 'emit',
     signature: '\'api-session/activity\'(sessionId: SessionId, updatedAt: number): void',
@@ -3786,6 +3886,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type AgentCancelCause = {\n    readonly kind: \'user\';\n} | {\n    readonly kind: \'parent\';\n} | {\n    readonly kind: \'hook\';\n    readonly reason: string;\n} | {\n    readonly kind: \'disposed\';\n};',
   },
   {
+    name: 'AgentExecutionRequest',
+    declaration: 'export interface AgentExecutionRequest {\n    readonly agent: Agent;\n    readonly turn: number;\n    readonly step: number;\n    readonly request: GenerateOptions;\n    startMessage(): AgentExecutionStream;\n    executeTools(calls: ToolCallBlock[]): Promise<{\n        results: ToolResultMessage[];\n        concluded: boolean;\n    }>;\n}',
+  },
+  {
+    name: 'AgentExecutionResult',
+    declaration: 'export type AgentExecutionResult = Extract<TurnEndReason, {\n    kind: \'completed\' | \'max-tokens\';\n}> | null;',
+  },
+  {
+    name: 'AgentExecutionStream',
+    declaration: 'export interface AgentExecutionStream {\n    push(chunk: StreamChunk): void;\n    complete(): AssistantMessage;\n}',
+  },
+  {
+    name: 'AgentExecutor',
+    declaration: 'export interface AgentExecutor {\n    readonly id: string;\n    readonly name: string;\n    models(): Promise<readonly LlmResolvedModelInfo[]>;\n    execute(input: AgentExecutionRequest): Promise<AgentExecutionResult>;\n}',
+  },
+  {
     name: 'AgentFactory',
     declaration: 'export interface AgentFactory {\n    createAgent(ownerCtx: Context, options: CreateAgentOptions): Promise<AgentHandle>;\n    resume(ownerCtx: Context, options: ResumeAgentOptions): Promise<AgentHandle>;\n}',
   },
@@ -4016,6 +4132,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'BrandedNumber',
     declaration: 'export type BrandedNumber<B extends string> = number & {\n    readonly [BRAND]: B;\n};',
+  },
+  {
+    name: 'ClaudeAccountStatus',
+    declaration: 'export interface ClaudeAccountStatus {\n    readonly loggedIn: boolean;\n    readonly method: string | null;\n    readonly provider: string | null;\n    readonly email: string | null;\n}',
+  },
+  {
+    name: 'ClaudeLoginId',
+    declaration: 'export type ClaudeLoginId = Branded<\'ClaudeLoginId\'>;',
+  },
+  {
+    name: 'ClaudeLoginSnapshot',
+    declaration: 'export interface ClaudeLoginSnapshot {\n    readonly id: ClaudeLoginId;\n    readonly status: \'running\' | \'completed\' | \'cancelled\' | \'failed\';\n    readonly output: string;\n    readonly truncated: boolean;\n    readonly error: string | null;\n}',
+  },
+  {
+    name: 'ClaudeQuotaSnapshot',
+    declaration: 'export interface ClaudeQuotaSnapshot {\n    readonly status: \'allowed\' | \'allowed_warning\' | \'rejected\';\n    readonly windows: Readonly<Record<string, ClaudeQuotaWindow>>;\n    readonly usingOverage: boolean | null;\n    readonly updatedAt: number;\n}',
+  },
+  {
+    name: 'ClaudeQuotaWindow',
+    declaration: 'export interface ClaudeQuotaWindow {\n    readonly usedPercent: number | null;\n    readonly resetsAt: number | null;\n    readonly updatedAt: number;\n}',
   },
   {
     name: 'ClientArtifactBaseline',

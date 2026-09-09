@@ -25,6 +25,8 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
+外部 Agent 运行时以独立的提供方路由注册执行器。主智能体和 Crew 模型选择器使用同一路由，驱动器保留 DSH 生命周期、工具和 Session 输出。模型发现和推理档位校验在执行前完成；[Claude Code](../../subagent/subagent-claude-code/README.zh.md) 提供原生 CLI 实现。
+
 在存在实时 agent 的任何地方挂载 `dsh-agent`：它提供 `ctx.agents` 以及插件、UI、钩子和编排器所面向编程的 `Agent` 句柄。在没有驱动器注册工厂之前，该服务保持惰性——随附驱动器是 `dsh-agent-loop`，因此最小的可用组合需要同时加载两者。
 
 ### 创建或恢复 agent

@@ -11,6 +11,8 @@ kind: "package-reference"
 
 `dsh-sdk-jsonrpc-server` 通过 stdio 服务 SDK 协议格式，使进程外客户端能够驱动 harness agent（智能体）：它为每个 `sessionId` 打开一个会话、把用户提示词排入队列，并把每个会话事件与 agent 状态转换实时流回客户端。把它作为 `jsonrpc` 插件挂载到 Loader 组合中；外围插件树提供其余一切——agent、模型适配器、持久化与工具。Stdout 只承载 JSON-RPC 帧，因此部署不得组合 stdout logger。它通过 dispose（资源释放）根运行时并以 0 退出应答 `shutdown`；EOF 与信号退出归 app bin 负责。
 
+SDK 初始化同时接受已注册的 Agent 执行器和 LLM 适配器。执行器验证自身的模型与推理强度选择；只有尚无实现的 DeepSeek 路由才挂载内置 DeepSeek 适配器。
+
 ## 目录
 
 - [使用本包](#use-this-package)
@@ -118,7 +120,6 @@ Stdout 只承载 JSON-RPC 帧，客户端可以逐字节解析；诊断信息应
 ## 已知限制与延期工作
 
 <a id="known-limitations-and-deferred-work"></a>
-
 
 这些限制说明本插件何时需要特别的运维注意。它们是当前包约束，不是与其他服务方式的对比或任务积压。
 

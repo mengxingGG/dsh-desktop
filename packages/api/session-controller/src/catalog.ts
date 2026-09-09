@@ -17,12 +17,21 @@ export async function buildModelCatalog(
   ctx: Context,
   defaultSelection: ModelSelection = ctx.agentDefaultModel.currentSelection(),
 ): Promise<ModelCatalog> {
-  const providers = ctx.llm.listProviders()
+  const providers = [
+    ...ctx.llm.listProviders().map(provider => ({ ...provider, models: async () => {
+      const models = await ctx.llm.listModels(provider.id)
+      return Promise.all(models.map(async model => ({ ...await ctx.llm.resolveModelInfo(provider.id, model.id), ...model })))
+    } })),
+    ...ctx.agents.listExecutors(),
+  ]
+  if (new Set(providers.map(provider => provider.id)).size !== providers.length) {
+    throw new Error('LLM adapters and Agent executors must have distinct provider routes')
+  }
   const catalog = await Promise.all(providers.map(async (provider) => {
     try {
-      const models = await ctx.llm.listModels(provider.id)
-      const entries = await Promise.all(models.map(async (model) => {
-        const resolved = await ctx.llm.resolveModelInfo(provider.id, model.id)
+      const models = await provider.models()
+      const entries = models.map((model) => {
+        const resolved = model
         const reasoning: ModelReasoning | undefined = resolved.reasoning === undefined
           ? undefined
           : {
@@ -41,7 +50,7 @@ export async function buildModelCatalog(
           ...(model.description === undefined ? {} : { description: model.description }),
           ...(reasoning === undefined ? {} : { reasoning }),
         }
-      }))
+      })
       return {
         kind: 'group' as const,
         group: { id: provider.id, name: provider.name, models: entries },

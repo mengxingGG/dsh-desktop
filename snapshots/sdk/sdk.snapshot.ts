@@ -10,6 +10,8 @@
  */
 
 import { existsSync } from 'node:fs'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, delimiter, join } from 'node:path'
@@ -59,6 +61,8 @@ import {
   type SdkPromptContentBlock,
 } from '@deepseek-ai/dsh-sdk-client'
 import { prepareSessionEventNotificationsForComparison } from '@deepseek-ai/dsh-llm-replay'
+import { startMessagesFixture } from '../../packages/subagent/subagent-claude-code/tests/messages-fixture.ts'
+import { resolveDshLaunch } from '../../packages/sdk/client/src/launch.ts'
 
 const corpusRoot = fileURLToPath(new URL('../', import.meta.url))
 
@@ -98,6 +102,8 @@ function dirOf(url: string): string {
 }
 
 interface SdkAssertions {
+  /** Run the pinned native Claude CLI against answers from the canonical Session. */
+  claudeCode?: true
   /** Environment overrides passed to the runtime subprocess. */
   environment?: Readonly<Record<string, string>>
   /** A separate DSH SDK child whose persisted session joins the evidence. */
@@ -118,6 +124,7 @@ interface SdkAssertions {
 }
 
 const SDK_ASSERTIONS: Readonly<Record<string, SdkAssertions>> = {
+  'claude-code': { claudeCode: true },
   'subagent-continuable': {
     environment: { DSH_SNAPSHOT_HUMAN_STEER: '1' },
   },
@@ -147,6 +154,23 @@ const SDK_ASSERTIONS: Readonly<Record<string, SdkAssertions>> = {
     },
   },
 }
+
+it.skipIf(process.env.DSH_PYTHON === undefined)('projects the Claude Session through the Python SDK', async () => {
+  const scenario = (await collectCorpus()).find(value => value.key === 'sdk/claude-code')
+  if (scenario === undefined) throw new Error('missing Claude SDK snapshot')
+  const result = await runScenario(scenario, true)
+  const ordered = orderLogs(result.logs, 1, false)
+  const actualContext = contextOf(ordered, result.cwd)
+  const expectedContents = await Promise.all((await fixtureFiles(scenario)).map(file => readFile(file, 'utf8')))
+  expect(normalizeSessionSnapshots(ordered.map(log => log.content), actualContext).map(records))
+    .toEqual(normalizeSessionSnapshots(expectedContents, contextOfContents(expectedContents)).map(records))
+  await verifyHeaders(scenario, ordered, actualContext)
+  expect(normalizeResult(result.results[0] as RunResult, actualContext))
+    .toBe(await readFile(join(scenario.dir, 'result.expected.json'), 'utf8'))
+  expect(records(prepareSessionEventNotificationsForComparison(normalizeNotifications(result.notifications, actualContext))))
+    .toEqual(records(prepareSessionEventNotificationsForComparison(await readFile(join(scenario.dir, 'notifications.expected.jsonl'), 'utf8'))))
+  expect(result.finalWorkspace).toEqual(result.initialWorkspace)
+})
 
 interface CorpusScenario {
   readonly key: string
@@ -502,7 +526,7 @@ function authoredPatches(scenario: CorpusScenario, replaying: boolean): string[]
 }
 
 /** One SDK-controlled recorded scenario against a fresh `dsh --profile sdk` subprocess. */
-async function runScenario(scenario: CorpusScenario): Promise<{
+async function runScenario(scenario: CorpusScenario, python = false): Promise<{
   results: RunResult[]
   notifications: HarnessNotification[]
   observedMethods: ReadonlySet<string>
@@ -546,6 +570,13 @@ async function runScenario(scenario: CorpusScenario): Promise<{
     ignoredRootEntries: RUNTIME_WORKSPACE_ENTRIES,
   })
   const [parentFixture, ...childFixtures] = replayFixtures
+  const claudeFixture = assertions.claudeCode === true
+    ? await startMessagesFixture({ kind: 'complete', text: records(primaryFixture).flatMap(record => {
+      if (record.type !== 'assistant/message') return []
+      const message = (record.data as JsonObject).message as JsonObject
+      return (message.content as JsonObject[]).flatMap(block => block.type === 'text' ? [String(block.text)] : [])
+    })[0] ?? '' })
+    : undefined
   const env: Record<string, string> = {
     ...Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== undefined)) as Record<string, string>,
     DSH_SNAPSHOT: mode,
@@ -564,6 +595,10 @@ async function runScenario(scenario: CorpusScenario): Promise<{
     ...scenario.manifest.environment,
     ...assertions.environment,
     ...childEnvironment,
+    ...claudeFixture === undefined ? {} : {
+      DSH_CLAUDE_FIXTURE_URL: claudeFixture.baseUrl,
+      DSH_CLAUDE_FIXTURE_HOME: join(dshHome, 'claude'),
+    },
   }
 
   const harness = new DeepSeekHarness({
@@ -578,6 +613,22 @@ async function runScenario(scenario: CorpusScenario): Promise<{
     model: route.model,
   })
   try {
+    if (python) {
+      const launch = resolveDshLaunch({ profile: 'sdk', patches, dshHome, processCwd: cwd, env })
+      const driver = fileURLToPath(new URL('./claude-code/python-driver.py', import.meta.url))
+      const input = turnActions(primaryFixture).flatMap(action => action.content === undefined ? [] : [
+        materializeInput(action.content, scenario, cwd, ['fixture-root-session']),
+      ])
+      const { stdout } = await promisify(execFile)(process.env.DSH_PYTHON ?? 'python', [driver, JSON.stringify({
+        launch: [launch.command, ...launch.args], cwd, route, input,
+      })], { env: { ...launch.environment(), PYTHONPATH: fileURLToPath(new URL('../../python/sdk/src', import.meta.url)) },
+        timeout: 110_000, maxBuffer: 8 * 1024 * 1024, windowsHide: true })
+      const results = JSON.parse(stdout) as RunResult[]
+      const notifications = results.flatMap(result => result.notifications)
+      return { results, notifications, observedMethods: new Set(notifications.map(value => value.method)),
+        logs: await persistedLogs(sessionsRoot), initialWorkspace,
+        finalWorkspace: await captureWorkspaceSnapshot(cwd, { ignoredRootEntries: RUNTIME_WORKSPACE_ENTRIES }), cwd }
+    }
     const notifications: HarnessNotification[] = []
     const observedMethods = new Set<string>()
     const results: RunResult[] = []
@@ -641,6 +692,7 @@ async function runScenario(scenario: CorpusScenario): Promise<{
     return { results, notifications, observedMethods, logs, initialWorkspace, finalWorkspace, cwd }
   } finally {
     await harness.close()
+    await claudeFixture?.close()
     await rm(cwd, { recursive: true, force: true })
   }
 }
@@ -799,8 +851,9 @@ describe('TypeScript SDK snapshots over the jsonrpc runtime', () => {
         const refreshed = ordered.map((log, index) => {
           const existing = expectedContents[index]
           if (existing === undefined) throw new Error(`no fixture for persisted log ${index}`)
-          return scrubSessionSnapshot(tokenizeSessionFixtureCwd(
-            stabilizeRefreshLog(log.content, existing, replacements, actualContext),
+          // Stabilization replaces the header cwd; tokenize generated paths while it is still available.
+          return scrubSessionSnapshot(stabilizeRefreshLog(
+            tokenizeSessionFixtureCwd(log.content), existing, replacements, actualContext,
           ))
         })
         expectedContents = redactSessionSnapshotIds(stabilizeFixtureMessageIds(refreshed, expectedContents))

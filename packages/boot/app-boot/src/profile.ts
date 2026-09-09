@@ -493,7 +493,7 @@ function resolveModuleFallbackEntries(
       // plugin; skip it rather than fail the whole boot.
       if (dir === undefined) continue
       links.set(dep, dir)
-      const manifestPath = join(dir, 'package.json')
+      const manifestPath = realpathSync.native(join(dir, 'package.json'))
       queue.push({ anchor: manifestPath, manifest: readModuleFallbackManifest(manifestPath) })
     }
   }
@@ -608,7 +608,7 @@ function dependencyClosure(
         if (dir === undefined) continue
         visited.add(dep)
         links.set(dep, dir)
-        const manifestPath = join(dir, 'package.json')
+        const manifestPath = realpathSync.native(join(dir, 'package.json'))
         queue.push({ anchor: manifestPath, manifest: readModuleFallbackManifest(manifestPath) })
       }
     }

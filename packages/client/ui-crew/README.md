@@ -100,7 +100,7 @@ None.
 - **Read-only evidence** — remediation, reassignment, integration, and commit remain manager conversation tool actions.
 - **Retained output only** — the panel displays the host-retained output, marks each truncated stream, and cannot recover discarded bytes.
 - **Root Session only** — child Sessions do not show the trigger and cannot use this panel as a conversation switcher.
-- **No external-provider presentation** — provider authentication, quota, or CLI process details are outside the native Crew phase.
+- **Provider account controls** — Claude login and quota belong to the [Claude Code settings panel](../ui-claude-code/README.md); Crew members share its executor catalog.
 - **One worker view** — selecting another worker releases the previous live observation.
 
 <a id="dev-note"></a>

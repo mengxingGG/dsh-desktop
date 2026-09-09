@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import { ReasoningEffortId, ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -38,6 +38,26 @@ function parentWithRoute(
 }
 
 describe('dsh-tool-subagent model selection', () => {
+  it('discovers and validates an allowed external executor before creating a child', async () => {
+    const requests: SubagentStartRequest[] = []
+    const ctx = await setup({ provider: 'mock', withModelSelection: true }, { onStart: (request) => { requests.push(request) } })
+    ctx.agents.registerExecutor({ id: 'alpha', name: 'External',
+      models: async () => [{ provider: 'alpha', id: 'allowed-model', name: 'Allowed', reasoning: REASONING }],
+      execute: async () => ({ kind: 'completed' }),
+    })
+    const parent = modelSelectionSetupAgent(ctx)
+    const list = await ctx.tools.execute({ name: 'list_subagent_models', callId: ToolCallId('list-external'),
+      arguments: { provider: 'alpha', model: 'allowed-model' }, agent: parent, signal: new AbortController().signal })
+    expect(text(list)).toContain('alpha/allowed-model')
+    expect(text(list)).toContain('high (default)')
+    const result = await callSubagent(ctx, { description: 'external work', prompt: 'do it', provider: 'alpha', model: 'allowed-model' })
+    expect(result.isError).toBe(false)
+    expect(requests).toHaveLength(1)
+    const invalid = await callSubagent(ctx, { description: 'missing model', prompt: 'do it', provider: 'alpha', model: 'other-model' })
+    expect(invalid.isError).toBe(true)
+    expect(requests).toHaveLength(1)
+  })
+
   it('rejects empty route ids at the configuration boundary', () => {
     expect(() => { assertAllowedModelRoutes([{ provider: '', model: 'model' }]) })
       .toThrow('requires non-empty provider and model ids')
@@ -291,7 +311,7 @@ describe('dsh-tool-subagent model selection', () => {
 
   it('rejects preflight without an effective provider and model', async () => {
     const ctx = await setup({ provider: 'mock' })
-    await expect(preflightChildLlmRoute(ctx.llm, {}, undefined, AbortSignal.abort()))
+    await expect(preflightChildLlmRoute(ctx, {}, undefined, AbortSignal.abort()))
       .rejects.toThrow('without an effective provider and model')
   })
 

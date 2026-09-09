@@ -114,6 +114,8 @@ turn/end
 
 详情见[时序图](agent-lifecycle.zh.md)、[工具流水线](tool-execution-pipeline.zh.md)和[取消与错误恢复](subsystems/core.zh.md#the-agent-handle)。
 
+外部智能体运行时为其提供方路由在 `ctx.agents` 上注册执行器。循环接纳输入并记录请求头之后，由执行器负责该步骤内的模型与工具迭代。循环仍负责回合边界、取消、按智能体作用域调度工具，以及助手流的持久化；外部运行时通过这些操作复用原生执行的持久会话记录和界面。
+
 ## 会话日志
 
 会话日志是模型所见上下文的来源。`deriveMessages()` 从中投影出模型历史。每个 `assistant/message` 都嵌入产生其组装内容的精确紧凑带时间 stream；`assistant/attempt` 保留已到达 settlement 的失败、重试、取消与 stream error attempt，且不添加模型历史。fork、恢复、transcript（文本记录）、遥测与持久化都从这些持久 settlement 派生，实时 UI 增量则来自 `agent/assistant-stream`；如果进程在 settlement 前硬中断，则不会留下持久 attempt stream（见[决策](../.agents/notes/implemented/architecture/2026-09-01-v2-embedded-assistant-streams.zh.md)）。

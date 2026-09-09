@@ -10,6 +10,8 @@ kind: "package-reference"
 
 `@deepseek-ai/dsh-api-session-controller` 拥有 Host 的 `ctx.sessionController` 服务，以及生成的 Client `session`、`skills` 和 `fileReferences` Remote namespace。它提供 Session 生命周期与历史、Host generation 模型目录、工作区路径打开、用户可调用 skill 发现和面向 Agent 的文件引用。当 Client 需要按 Session 寻址的操作时，请通过 API Gateway 使用它。
 
+模型目录与选择同时支持已注册的 Agent 执行器和 LLM 适配器。提交前会根据执行器模型校验推理选项与图像支持。
+
 ## 目录
 
 - [使用本包](#use-this-package)

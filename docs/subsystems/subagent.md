@@ -483,6 +483,76 @@ The spawn and fork backends create an ordinary one-shot agent through `parent.ct
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
+<a id="ctxclaudecode--claudecodeengine"></a>
+
+### `ctx.claudeCode` — `ClaudeCodeEngine`
+
+Owns CLI account observations and persistent execution for main and Crew Agents.
+
+```ts cordis-catalog
+/**
+ * Read model choices from the installed native CLI without inference.
+ * @returns canonical model ids and native reasoning choices.
+ */
+async models(): Promise<readonly LlmResolvedModelInfo[]>
+
+/**
+ * Query native authentication without reading or returning credentials.
+ * @returns public account status; command and parse failures reject.
+ */
+async account(): Promise<ClaudeAccountStatus>
+
+/**
+ * Read the most recent observed quota without spending an inference request.
+ * @returns account windows with their observation times, or null before an observation.
+ */
+quota(): ClaudeQuotaSnapshot | null
+
+/**
+ * Read plan quota through the pinned native usage command without an inference prompt.
+ * @param signal - Remote caller cancellation.
+ * @returns current plan windows, or null when the native account cannot provide them.
+ */
+@Remote('refreshQuota') async refreshQuota(signal: AbortSignal): Promise<ClaudeQuotaSnapshot | null>
+
+/**
+ * Refresh public account status and read the latest quota observation.
+ * @returns account facts, cached quota, and any native login attempt.
+ */
+@Remote('status') async status(): Promise<{ account: ClaudeAccountStatus; quota: ClaudeQuotaSnapshot | null; login: ClaudeLoginSnapshot | null }>
+
+/**
+ * Begin the official browser authorization process.
+ * @returns bounded native output and the login identity for subsequent input.
+ */
+@Remote('startLogin') async startLogin(): Promise<ClaudeLoginSnapshot>
+
+/**
+ * Read the most recent native authorization attempt.
+ * @returns bounded progress for the current native login, without starting a process.
+ */
+@Remote('loginStatus') loginStatus(): ClaudeLoginSnapshot | null
+
+/**
+ * Submit the native login response without retaining its contents.
+ * @param id - attempt displayed by the settings view.
+ * @param code - user-entered authorization response.
+ * @returns fulfillment after input delivery.
+ */
+@Remote('loginInput') async loginInput(id: ClaudeLoginId, code: string): Promise<void>
+
+/**
+ * Cancel the displayed native login and drain its process range.
+ * @param id - exact attempt displayed by the settings view.
+ * @returns fulfillment after native process cleanup.
+ */
+@Remote('cancelLogin') async cancelLogin(id: ClaudeLoginId): Promise<void>
+```
+
+Types: [LlmResolvedModelInfo](llm-streaming.md)
+
+Source: [`packages/subagent/subagent-claude-code/src/engine.ts`](../../packages/subagent/subagent-claude-code/src/engine.ts)
+
 <a id="ctxsubagentmodelselection--subagentmodelselectionconfig"></a>
 
 ### `ctx.subagentModelSelection` — `SubagentModelSelectionConfig`

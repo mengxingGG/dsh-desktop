@@ -9,6 +9,8 @@ English | [中文](README.zh.md)
 
 ## Summary
 
+The `/engine` entry runs main and Crew Agents through Claude Code while preserving their DSH tools, approvals, live transcript and persistent Session identity. The Web settings integration provides native login and account-wide quota refresh. The package's root entry provides the separate one-shot delegation described below.
+
 `dsh-subagent-claude-code` registers a Profile-named Claude Code subagent provider (default `claude-code`) that runs a real Claude Code CLI child in the delegating session's workspace through the official Agent SDK. Each accepted run submits one self-contained text task and returns the strict final answer — or a separate safe failure diagnostic — through the shared subagent result contract. The provider ships as an optional Profile Bundle: installing it brings the pinned Agent SDK and one compatible platform CLI payload, while the registered provider stays dormant until a bound tool calls it. Native Claude settings and authentication remain authoritative, and the Profile-selected `permissionMode` decides how the unattended query handles permission checks. Choose it when the child should be a genuine Claude Code product session, fully isolated from the parent harness.
 
 ## Table of Contents
@@ -27,7 +29,17 @@ English | [中文](README.zh.md)
 
 Mount this provider when a delegation should run as a real Claude Code session in the parent's workspace. The common path is explicit: install the Bundle into a Profile, optionally configure the provider row, and expose it to the model through a delegation tool row.
 
-### Installing the Bundle
+### Persistent main and Crew execution
+
+The Web bundle mounts `/engine`. Select the Claude Code provider and a discovered model in the main model selector or the Crew role settings. Each Agent retains its own DSH Session and native Claude conversation; a completed history resumes after Host restart. Forked or interrupted histories start a fresh native conversation containing their recorded DSH context. Local development requires no Git repository.
+
+Open Settings → Claude Code to reuse or establish native authentication and refresh quota without inference. Credentials remain CLI-owned. The default executable is the pinned SDK payload; an explicit `executable` selects another native installation, and `configDir` selects its account directory. `maxTurns` bounds native iterations within one DSH step. Unsupported temperature and stop-sequence overrides fail explicitly.
+
+The executor disables native tools, skills and project settings. Only the Agent's DSH tools enter the MCP bridge, so role restrictions and user approvals apply equally to main and Crew Agents. CLI-owned conversation storage must remain available for native resume; DSH Session logs retain displayed assistant and tool observations independently.
+
+The remaining installation, permission-mode and standalone task sections describe the root one-shot entry.
+
+### Installing the one-shot Bundle
 
 Install the package into the target Profile, then restart that Profile. The installation brings the pinned Agent SDK and one compatible platform CLI payload into the Profile; the declared patch layer registers only the dormant provider and starts no Claude process.
 
@@ -169,7 +181,7 @@ Append-only: foreground adds one result after the reusable parent prefix, while 
 <a id="known-limitations-and-deferred-work"></a>
 
 
-These limits define when this provider is a poor fit or needs special operational care. They are current package constraints, not a general Claude Code comparison or a task backlog.
+The following list applies to the root one-shot provider. The `/engine` entry supports persistent main and Crew execution; its remaining limits are native storage availability, experimental quota control and unavailable cumulative billing aggregation. The `claudeUsage` projection retains the latest native request's counters from `claude-code/usage` events. Repeated SDK blocks replace observations instead of adding their counters; native model results supply context capacity, and compaction invalidates the preceding request size. DSH records the input it supplies and public CLI observations; native internal prompts and compaction are CLI-owned.
 
 - **One fresh query and process per run** — there is no continuation, resume, pooling, progress stream, or product-session persistence.
 - **Static instance selection** — Profile rows fix provider names, optional models, and tool bindings; calls cannot choose or change either a provider or model dynamically, and every exposed tool needs a unique `toolName`.

@@ -95,8 +95,6 @@
     "@deepseek-ai/dsh-client-ui-session": "workspace:^",
     "@deepseek-ai/dsh-client-ui-settings": "workspace:^",
     "@deepseek-ai/dsh-client-ui-settings-general": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-settings-models": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-settings-plugin-inventory": "workspace:^",
     "@deepseek-ai/dsh-client-ui-settings-plugins": "workspace:^",
     "@deepseek-ai/dsh-client-ui-sidebar": "workspace:^",
     "@deepseek-ai/dsh-client-ui-sidebar-files": "workspace:^",
@@ -137,7 +135,9 @@
     "@deepseek-ai/schemastery": "workspace:^",
     "@ychris12138/dsh-usage-stats": "0.2.9",
     "commander": "^15.0.0",
-    "open": "^11.0.0"
+    "open": "^11.0.0",
+    "@deepseek-ai/dsh-client-ui-claude-code": "workspace:^",
+    "@deepseek-ai/dsh-subagent-claude-code": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",

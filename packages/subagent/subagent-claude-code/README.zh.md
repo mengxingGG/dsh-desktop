@@ -9,6 +9,8 @@ kind: "package-bundle"
 
 ## 概述
 
+`/engine` 入口通过 Claude Code 运行主智能体和 Crew 智能体，并保留其 DSH 工具、审批、实时对话和持久化 Session 标识。Web 设置集成提供原生登录和账号共享额度刷新。包的根入口提供下文所述的独立一次性委派。
+
 `dsh-subagent-claude-code` 注册由 Profile 命名、默认名称为 `claude-code` 的 Claude Code subagent 提供方，它在发起委派的会话工作区中通过官方 Agent SDK 运行真实的 Claude Code CLI 子 agent（智能体）。每次接受的运行提交一个自包含文本任务，并通过共享的 subagent 结果约定返回严格的最终答案——或独立的安全失败诊断。该提供方作为可选的 Profile Bundle 发布：安装会带入锁定的 Agent SDK 与一个兼容的平台 CLI 载荷，而注册的提供方在绑定工具调用前保持休眠。原生 Claude 设置与身份验证继续是权威来源，Profile 选择的 `permissionMode` 决定这个无人值守 query 如何处理权限检查。当子 agent 应该是与父 harness 完全隔离的真实 Claude Code 产品会话时，选择它。
 
 ## 目录
@@ -27,7 +29,17 @@ kind: "package-bundle"
 
 当委派应以父级工作区中的真实 Claude Code 会话运行时，挂载本提供方。常用路径是显式的：把 Bundle 安装进 Profile，可选地配置提供方行，并通过委派工具行把它暴露给模型。
 
-### 安装 Bundle
+### 持久化的主智能体与 Crew 执行
+
+Web bundle 挂载 `/engine`。在主模型选择器或 Crew 角色设置中选择 Claude Code 提供方及发现的模型。每个 Agent 保留自己的 DSH Session 和原生 Claude 对话；完整历史可在 Host 重启后恢复。分叉或被中断的历史会启动包含已记录 DSH 上下文的新原生对话。本地开发不要求 Git 仓库。
+
+打开设置 → Claude Code，复用或建立原生认证，并在不发起推理的情况下刷新额度。凭证归 CLI 所有。默认可执行文件为固定版本的 SDK 载荷；明确的 `executable` 选择其他原生安装，`configDir` 选择其账号目录。`maxTurns` 限制一个 DSH 步骤内的原生迭代次数。不支持的温度和停止序列覆盖会明确失败。
+
+执行器禁用原生工具、技能和项目设置。只有 Agent 的 DSH 工具进入 MCP 桥接，因此主智能体和 Crew 智能体都遵守角色限制及用户审批。原生恢复需要 CLI 所有的对话存储保持可用；DSH Session 日志独立保留已展示的 assistant 和工具观测。
+
+下文的安装、权限模式和独立任务章节描述根入口的一次性委派。
+
+### 安装一次性 Bundle
 
 把包安装进目标 Profile，然后重启该 Profile。安装会把锁定的 Agent SDK 与一个兼容的平台 CLI 载荷带入 Profile；声明的 patch 层只注册休眠的提供方，不启动任何 Claude 进程。
 
@@ -169,7 +181,7 @@ Claude Code 子级会在一个全新的 SDK query 中接收独立文本任务。
 <a id="known-limitations-and-deferred-work"></a>
 
 
-这些限制说明本提供方何时不合适，或何时需要特别的运维注意。它们是当前包约束，不是通用 Claude Code 对比或任务积压。
+下列限制适用于根入口的一次性提供方。`/engine` 入口支持持久主智能体和 Crew 执行；其剩余限制是原生存储可用性、实验性额度控制和暂不提供累计计费汇总。`claudeUsage` 投影通过 `claude-code/usage` 事件保留最近原生请求的计数。重复的 SDK 块会替换观测，不累加计数；原生模型结果提供上下文容量，压缩会使前一次请求大小失效。DSH 记录它提供的输入与公开 CLI 观测；原生内部提示词和压缩由 CLI 拥有。
 
 - **每次运行均新建一个 query 和一个进程**——不支持续接、恢复、池化、进度流或产品会话持久化。
 - **静态选择实例**——Profile 配置项固定提供方名称、可选模型与工具绑定；调用无法动态选择或修改提供方与模型，而且每个公开工具都需要唯一的 `toolName`。

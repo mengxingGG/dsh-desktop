@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk'
 import { runScenario, snapshotSpillRoot, type AgentUnderTest, type InputStep } from '../src/harness.ts'
-import { launchAcpTestAgent } from '../src/launcher.ts'
+import { launchAcpTestAgent, materializeProfilePatch } from '../src/launcher.ts'
 
 const fsControl = vi.hoisted(() => ({ cleanupFailure: undefined as Error | undefined }))
 
@@ -36,6 +36,18 @@ vi.mock('node:fs/promises', async (importOriginal) => {
  */
 
 const fakeAgent = fileURLToPath(new URL('./fixtures/fake-acp-agent.ts', import.meta.url))
+
+it('links the replay dependency for patches outside a package installation', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'snapshot-replay-link-'))
+  try {
+    const source = join(cwd, 'replay.yml')
+    await writeFile(source, "- insert:\n    - id: replay\n      name: '@deepseek-ai/dsh-llm-replay'\n")
+    materializeProfilePatch(source, cwd, cwd, 0)
+    const link = join(cwd, '.dsh', 'profiles', 'node_modules', '@deepseek-ai', 'dsh-llm-replay')
+    const manifest = JSON.parse(await readFile(join(link, 'package.json'), 'utf8')) as { name: string }
+    expect(manifest.name).toBe('@deepseek-ai/dsh-llm-replay')
+  } finally { await rm(cwd, { recursive: true, force: true }) }
+})
 const AGENT: AgentUnderTest = {
   binScript: fakeAgent,
   libBinScript: fakeAgent,

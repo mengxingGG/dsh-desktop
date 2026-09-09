@@ -354,6 +354,22 @@ describe('composeEntries', () => {
 })
 
 describe('healProfilesModuleFallback', () => {
+  it('finds private dependencies beside a symlinked installation package', async () => {
+    const root = tmp()
+    const app = join(root, 'app')
+    const bundle = join(root, 'workspace', 'bundle')
+    const leaf = join(bundle, 'node_modules', 'private-leaf')
+    mkdirSync(join(app, 'node_modules'), { recursive: true })
+    mkdirSync(leaf, { recursive: true })
+    writeFileSync(join(app, 'package.json'), JSON.stringify({ name: 'test-app', dependencies: { 'linked-bundle': '*' } }))
+    writeFileSync(join(bundle, 'package.json'), JSON.stringify({ name: 'linked-bundle', dependencies: { 'private-leaf': '*' } }))
+    writeFileSync(join(leaf, 'package.json'), JSON.stringify({ name: 'private-leaf' }))
+    symlinkSync(bundle, join(app, 'node_modules', 'linked-bundle'), process.platform === 'win32' ? 'junction' : 'dir')
+    const home = join(root, 'home')
+    await healProfilesModuleFallback({ installAnchor: join(app, 'package.json'), home })
+    expect(realpathSync.native(join(home, 'profiles', 'node_modules', 'private-leaf'))).toBe(realpathSync.native(leaf))
+  })
+
   it('links the app and bundle dependency surface flat under profiles/node_modules', async () => {
     const anchor = stageInstallation({
       'bundle-a': { patch: '[]\n', deps: { 'dep-of-a': '0.0.0', 'ghost-dep': '0.0.0' } },

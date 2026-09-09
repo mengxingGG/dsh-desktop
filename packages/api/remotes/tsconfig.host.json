@@ -64,6 +64,9 @@
     },
     {
       "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../core/agent"
     }
   ]
 }

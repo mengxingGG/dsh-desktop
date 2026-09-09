@@ -167,6 +167,8 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   // it has in common with the package entry through a hashed chunk, which the
   // tarball must carry or both entries fail to import at runtime.
   '@deepseek-ai/dsh-crew': ['lib/preferences.js', 'lib/preferences-*.js'],
+  // Persistent execution and the one-shot provider share native process helpers.
+  '@deepseek-ai/dsh-subagent-claude-code': ['lib/engine.js', 'lib/run-*.js'],
   '@deepseek-ai/dsh-web-app': ['desktop.patch.yml'],
   // The Web Host mounts the default-off settings owner independently of each
   // Agent-scoped delegation-tool instance.

@@ -14,8 +14,10 @@ import type { Scoped } from '@deepseek-ai/dsh-scope'
 import type { SessionEvent, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import type { Agent } from './types.ts'
 import type { AgentOptions } from './runtime-types.ts'
+import type { AgentExecutor } from './execution.ts'
 
 export * from './runtime-types.ts'
+export * from './execution.ts'
 export * from './types.ts'
 export type * from './projection.ts'
 export * from './consumed-work.ts'
@@ -248,6 +250,7 @@ interface FactorySlot {
  */
 export class AgentRegistry extends Service {
   private store = new Map<SessionId, AgentEntry>()
+  private readonly executors = new Map<string, AgentExecutor>()
   private factory: FactorySlot | undefined
   private readonly initiators = new AsyncLocalStorage<Agent | undefined>()
   private readonly initiatorRuns = new AsyncLocalStorage<InitiatorRun>()
@@ -385,6 +388,53 @@ export class AgentRegistry extends Service {
   private requireFactory(): FactorySlot {
     if (this.factory === undefined) throw new Error(NO_FACTORY_MESSAGE)
     return this.factory
+  }
+
+  /**
+   * Register an external runtime for one provider route, scoped to the caller's plugin.
+   * @param executor - runtime that owns model and tool iteration for the route.
+   * @returns disposer removing this registration; duplicate routes throw.
+   */
+  registerExecutor(executor: AgentExecutor): () => void {
+    const dispose = this.ctx.effect(() => {
+      if (this.executors.has(executor.id)) throw new Error(`agent executor already registered: ${executor.id}`)
+      this.executors.set(executor.id, executor)
+      try { this.notifyExecutors() }
+      catch (error) { this.executors.delete(executor.id); throw error }
+      return () => { this.executors.delete(executor.id); this.notifyExecutors() }
+    }, 'agents.registerExecutor()')
+    // oxlint-disable-next-line typescript/no-misused-promises -- effect cleanup is synchronous.
+    return dispose
+  }
+
+  /**
+   * Find the external runtime serving a selected route.
+   * @param provider - selected provider route.
+   * @returns the registered runtime, or undefined for an ordinary LLM route.
+   */
+  executor(provider: string): AgentExecutor | undefined {
+    return this.executors.get(provider)
+  }
+
+  /**
+   * List available external runtimes for account and model selectors.
+   * @returns a detached array of currently registered providers.
+   */
+  listExecutors(): readonly AgentExecutor[] {
+    return [...this.executors.values()]
+  }
+
+  /** Notify model catalogs after an external executor's directory changes. */
+  notifyExecutors(): void {
+    for (const listener of this.ctx.events.dispatch('emit', ['agents/executors-updated']) as Array<() => unknown>) {
+      try {
+        const result = listener()
+        if (isPromise(result)) void result.catch((error: unknown) => { this.ctx.logger.warn(error) })
+      } catch (error) {
+        if ((error as { code?: unknown } | null)?.code === 'INVARIANT') throw error
+        this.ctx.logger.warn(error)
+      }
+    }
   }
 
   /**

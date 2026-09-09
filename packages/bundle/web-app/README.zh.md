@@ -13,6 +13,8 @@ kind: "package-bundle"
 
 此 checkout 为内置用量插件固定了兼容补丁。插件读取官方 Session 快照和持久化句柄；桌面版使用私有 Fetch 通道，浏览器 HTTP 请求则保留插件的回环检查。[整合决策](../../../.agents/notes/implemented/architecture/2026-09-08-upstream-desktop-crew-integration.zh.md)负责补丁维护和桌面 profile 隔离。
 
+内置 [Claude Code 设置](../../client/ui-claude-code/README.zh.md)提供原生登录和额度刷新。执行器挂载后，主智能体与 Crew 模型选择器会发现它。
+
 ## 目录
 
 - [使用本包](#use-this-package)

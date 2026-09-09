@@ -66,6 +66,8 @@ it.skipIf(process.platform !== 'win32')('loads sandboxed bridges and selects the
       throw new Error(`${String(error)}\n${await page.locator('body').innerText()}\n${errors.join('\n')}`)
     })
     const settings = page.getByRole('dialog', { name: /^(Settings|设置)$/ })
+    await settings.getByRole('button', { name: 'Claude Code', exact: true }).click()
+    await settings.getByRole('button', { name: /^(Refresh quota|刷新额度)$/ }).waitFor()
     await settings.getByRole('button', { name: /^(Agent presets|Agent 预设)$/ }).click()
     await settings.getByRole('button', { name: /^(View: Orchestration mode|查看: 编排模式)$/ }).waitFor()
     expect(errors).toEqual([])

@@ -36,6 +36,13 @@ async function requestSetup() {
 }
 
 describe('request-reconstruction invariant', () => {
+  it('checks external executor requests against the same durable history', async () => {
+    const { ctx, session, boundary } = await requestSetup()
+    const options = loopRequest({ provider: 'external', model: 'm', messages: Object.freeze(boundary), sessionId: session.id })
+    expect(() => { ctx.emit('agents/execution-request', options as GenerateOptions) }).not.toThrow()
+    expect(() => { ctx.emit('agents/execution-request', { ...options, model: 'other' } as GenerateOptions) }).toThrow('must be frozen')
+    expect(() => { ctx.emit('agents/execution-request', Object.freeze({ ...options, model: 'other' }) as GenerateOptions) }).toThrow('folded request header')
+  })
   it('accepts a frozen request equal to the boundary derivation and folded header', async () => {
     const { ctx, session, boundary } = await requestSetup()
     const options = loopRequest({ model: 'm', messages: Object.freeze(boundary), sessionId: session.id })

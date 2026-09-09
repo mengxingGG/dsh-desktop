@@ -71,6 +71,12 @@ pnpm run start:desktop
 
 Workspace development runs the current CLI and private Desktop Host packages under the invoking Node.js and disables desktop package mutations. Its explicitly linked disposable profile is the only mode allowed to resolve bundles outside its own directory. Use an unpacked application to exercise the bundled Node.js, bundled pnpm, release seed, plugin installation, staging, and rollback paths.
 
+### Windows local launcher
+
+From the repository root, compile a small launcher and create a Desktop shortcut with `./scripts/build-desktop-launcher.ps1 -CreateDesktopShortcut`. Double-click `DeepSeek-Harness.exe` in that root or the **DeepSeek Harness（本地开发）** Desktop shortcut to run the existing `start:desktop` path with detached DevTools closed. The launcher requires this workspace, installed dependencies, a supported Node.js and completed `pnpm run build` plus `pnpm run build:desktop` artifacts. It keeps the development data locations above and does not build on launch; rebuild after source changes. The EXE cannot run independently of the workspace.
+
+Startup output goes to `.run/desktop-launcher.log`; a failed process displays that log's location. The launcher builder backs up an existing root EXE under `apps/desktop/.desktop-build/launcher/previous-<timestamp>.exe` before replacing it.
+
 ## Package
 
 The normal packaging path is one complete command. It performs release preparation before creating the host platform's installers and update metadata. Every target requires a reverse-DNS `DSH_DESKTOP_APP_ID`. macOS targets additionally require the electron-builder certificate qualifier in `DSH_DESKTOP_MACOS_SIGNING_IDENTITY`, its 10-character Apple Team ID in `DSH_DESKTOP_MACOS_TEAM_ID`, and one complete notarytool credential strategy. The App Store Connect API-key strategy uses these variables:

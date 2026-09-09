@@ -100,7 +100,7 @@ Client mount 注册 locale 字典、对话标题栏操作、`sidebarRightTabs` �
 - **证据只读**——修复、换人、整合和提交仍由厂长对话中的工具操作完成。
 - **只展示保留输出**——面板显示宿主保留的输出，逐条标注被截断的流，不能恢复已丢弃的字节。
 - **仅根 Session**——子 Session 不显示触发器，也不能把此面板用作对话切换器。
-- **没有外部 provider 展示**——provider 认证、额度或 CLI 进程详情不属于原生 Crew 阶段。
+- **Provider 账号控制**——Claude 登录和额度属于 [Claude Code 设置面板](../ui-claude-code/README.zh.md)；Crew 成员使用相同的执行器目录。
 - **单工人视图**——选择另一名工人会释放上一个实时观察。
 
 <a id="dev-note"></a>

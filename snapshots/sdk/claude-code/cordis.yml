@@ -1,0 +1,27 @@
+# Persistent Claude execution over the public SDK profile with isolated native storage.
+- id: skill-filesystem
+  config:
+    includeDefaultRoots: false
+- id: llm-deepseek
+  disabled: true
+- id: session-persistence-jsonl
+  config:
+    root: !!js dshHomePath('sessions')
+    compression: none
+- insert:
+    - id: claude-code-engine
+      name: '@deepseek-ai/dsh-subagent-claude-code/engine'
+      config:
+        configDir: !!js process.env.DSH_CLAUDE_FIXTURE_HOME
+        maxTurns: 4
+        env:
+          ANTHROPIC_API_KEY: dsh-local-fixture-key
+          ANTHROPIC_BASE_URL: !!js process.env.DSH_CLAUDE_FIXTURE_URL
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL: '1'
+          DISABLE_TELEMETRY: '1'
+          DISABLE_ERROR_REPORTING: '1'
+          HTTP_PROXY: ''
+          HTTPS_PROXY: ''
+          ALL_PROXY: ''
+          NO_PROXY: 127.0.0.1,localhost

@@ -158,6 +158,20 @@ function currentSelection(ctx: Context, sessionId: SessionId) {
 }
 
 describe('Web session model selection', () => {
+  it('lists an external executor and validates its model and reasoning selections', async () => {
+    const { ctx, sessionId } = await harness()
+    ctx.agents.registerExecutor({ id: 'claude-code', name: 'Claude Code',
+      models: async () => [{ provider: 'claude-code', id: 'claude-sonnet-5', name: 'Sonnet', reasoning: REASONING }],
+      execute: async () => { throw new Error('catalog must not start inference') } })
+    const remote = createSessionTestRemote(ctx, { defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }), cwd: '/tmp' })
+    const catalog = await buildModelCatalog(ctx)
+    expect(catalog.groups.find(group => group.id === 'claude-code')?.models[0]?.id).toBe('claude-sonnet-5')
+    expect(catalog.routableProviders).toContain('claude-code')
+    expectValue(await remote.selectModel({ sessionId, provider: 'claude-code', model: 'claude-sonnet-5', reasoningEffort: 'high' }))
+    expect(currentSelection(ctx, sessionId)).toMatchObject({ provider: 'claude-code', model: 'claude-sonnet-5', reasoningEffort: 'high' })
+    expect((await remote.selectModel({ sessionId, provider: 'claude-code', model: 'unknown' })).ok).toBe(false)
+    expect((await remote.selectModel({ sessionId, provider: 'claude-code', model: 'claude-sonnet-5', reasoningEffort: 'invalid' })).ok).toBe(false)
+  })
   it('validates an ordered image batch before persisting any member', async () => {
     const { ctx, agent, sessionId } = await harness()
     const validateImage = vi.fn((_input: { data: Uint8Array }) => Promise.resolve())

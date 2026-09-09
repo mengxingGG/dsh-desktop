@@ -115,7 +115,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }
 ```
 
-来源：[`packages/core/agent/src/types.ts:89`](../packages/core/agent/src/types.ts)
+来源：[`packages/core/agent/src/types.ts:100`](../packages/core/agent/src/types.ts)
 
 ### `agent-preset/*`
 
@@ -248,6 +248,89 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 类型：[TokenUsage](subsystems/llm-streaming.zh.md)
 
 来源：[`packages/core/session/src/types.ts:305`](../packages/core/session/src/types.ts)
+
+### `claude-code/*`
+
+<a id="claude-codebinding--log-only"></a>
+
+#### `claude-code/binding` — log-only
+
+```ts persistence-catalog
+/** CLI initialization confirmed this persistent conversation for the owning DSH Session. */
+'claude-code/binding': {
+  readonly sessionId: ClaudeSessionId
+  readonly ownerSessionId: DshSessionId
+  readonly cliVersion: string
+  readonly configDir: string | null
+}
+```
+
+来源： [`packages/subagent/subagent-claude-code/src/engine-events.ts:15`](../packages/subagent/subagent-claude-code/src/engine-events.ts)
+
+<a id="claude-codecheckpoint--log-only"></a>
+
+#### `claude-code/checkpoint` — log-only
+
+```ts persistence-catalog
+/** Completed DSH history known to match the native conversation before another input. */
+'claude-code/checkpoint': {
+  readonly sessionId: ClaudeSessionId
+  readonly messageIds: readonly MessageId[]
+}
+```
+
+来源： [`packages/subagent/subagent-claude-code/src/engine-events.ts:33`](../packages/subagent/subagent-claude-code/src/engine-events.ts)
+
+<a id="claude-codeinput--log-only"></a>
+
+#### `claude-code/input` — log-only
+
+```ts persistence-catalog
+/** Inputs admitted by the initialized CLI, preventing resends during subsequent turns. */
+'claude-code/input': {
+  readonly sessionId: ClaudeSessionId
+  readonly messageIds: readonly MessageId[]
+}
+```
+
+来源： [`packages/subagent/subagent-claude-code/src/engine-events.ts:28`](../packages/subagent/subagent-claude-code/src/engine-events.ts)
+
+<a id="claude-codeprompt--log-only"></a>
+
+#### `claude-code/prompt` — log-only
+
+```ts persistence-catalog
+/** Exact DSH messages serialized for one CLI input; image bytes remain in immutable attachments. */
+'claude-code/prompt': {
+  readonly sessionId: ClaudeSessionId
+  readonly messages: readonly Message[]
+  readonly bootstrap: boolean
+}
+```
+
+来源： [`packages/subagent/subagent-claude-code/src/engine-events.ts:22`](../packages/subagent/subagent-claude-code/src/engine-events.ts)
+
+<a id="claude-codequota--log-only"></a>
+
+#### `claude-code/quota` — log-only
+
+```ts persistence-catalog
+/** Latest observed account windows, independent of conversation token counts. */
+'claude-code/quota': ClaudeQuotaSnapshot
+```
+
+来源： [`packages/subagent/subagent-claude-code/src/engine-events.ts:38`](../packages/subagent/subagent-claude-code/src/engine-events.ts)
+
+<a id="claude-codeusage--log-only"></a>
+
+#### `claude-code/usage` — log-only
+
+```ts persistence-catalog
+/** Latest native prompt counters and model capacity; repeated samples replace rather than add. */
+'claude-code/usage': ClaudeUsageSnapshot
+```
+
+来源： [`packages/subagent/subagent-claude-code/src/engine-events.ts:40`](../packages/subagent/subagent-claude-code/src/engine-events.ts)
 
 ### `command/*`
 

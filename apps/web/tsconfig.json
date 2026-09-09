@@ -88,6 +88,7 @@
     "tests/feedback-release.e2e.ts",
     "tests/agent-team-panel.e2e.ts",
     "tests/crew-panel.e2e.ts",
+    "tests/claude-code.e2e.ts",
     "tests/crew-settings.e2e.ts",
     "tests/sidebar-right.e2e.ts",
     "tests/startup-auto-selection.e2e.ts",

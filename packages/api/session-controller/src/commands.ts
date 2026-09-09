@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { Agent, ModelSelection as AgentModelSelection } from '@deepseek-ai/dsh-agent'
+import { resolveExecutionConfig } from '@deepseek-ai/dsh-agent'
 import { AttachmentError } from '@deepseek-ai/dsh-attachment'
 import type {
   AttachmentAdmissionPart, FileAttachmentRef, ImageAttachmentRef,
@@ -126,13 +127,17 @@ export class SessionCommandController {
     const agent = await this.resolveAgent(request.sessionId)
     return this.agents.serializeImageAdmission(agent, async () => {
       try {
-        const resolved = await this.ctx.llm.resolveCallConfig({
+        const proposed = {
           provider: request.provider,
           model: request.model,
           ...(request.reasoningEffort === undefined
             ? {}
             : { reasoningEffort: ReasoningEffortId(request.reasoningEffort) }),
-        })
+        }
+        const executor = this.ctx.agents.executor(request.provider)
+        const resolved = executor === undefined
+          ? await this.ctx.llm.resolveCallConfig(proposed)
+          : await resolveExecutionConfig(executor, proposed)
         const selected: AgentModelSelection = {
           provider: resolved.provider,
           model: resolved.model,
@@ -322,7 +327,11 @@ export class SessionCommandController {
       try {
         if (hasImage) {
           const current = this.agents.selectionFor(agent).current
-          const model = await this.ctx.llm.resolveModelInfo(current.provider, current.model)
+          const executor = this.ctx.agents.executor(current.provider)
+          const model = executor === undefined
+            ? await this.ctx.llm.resolveModelInfo(current.provider, current.model)
+            : (await executor.models()).find(model => model.id === current.model)
+          if (model === undefined) throw new Error(`Model "${current.model}" is unavailable`)
           if (model.inputModalities !== undefined && !model.inputModalities.includes('image')) {
             throw new RemoteError(
               'session/attachment-invalid',
@@ -628,5 +637,5 @@ function referencedImage(
 }
 
 function routeServed(ctx: Context, provider: string): boolean {
-  return ctx.llm.listProviders().some(entry => entry.id === provider)
+  return ctx.agents.executor(provider) !== undefined || ctx.llm.listProviders().some(entry => entry.id === provider)
 }

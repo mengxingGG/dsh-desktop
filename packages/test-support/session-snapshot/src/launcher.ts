@@ -12,7 +12,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlink
 import { createRequire } from 'node:module'
 import { basename, dirname, join, resolve } from 'node:path'
 import { Readable, Writable } from 'node:stream'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import * as yaml from 'js-yaml'
 import {
   client as createAcpClientApp,
@@ -391,6 +391,7 @@ function packageDirFromPatch(source: string, packageName: string): string | unde
  */
 function linkProfilePackage(source: string, cwd: string, packageName: string): void {
   const packageDir = packageDirFromPatch(source, packageName)
+    ?? packageDirFromPatch(fileURLToPath(import.meta.url), packageName)
   // The package may instead belong to the dsh installation; profile boot heals those links.
   if (packageDir === undefined) return
   const link = join(cwd, '.dsh', 'profiles', 'node_modules', packageName)

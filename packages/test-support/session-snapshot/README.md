@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 `dsh-session-snapshot` provides the shared support behind keyless recorded-session tests (`pnpm run test:snapshot`): closed manifests, typed identity redaction, normalization, workspace comparison, fixture guards, and protocol adapters for headless, SDK, ACP, and Web owners. The ACP adapter launches the tested profile as a real subprocess, drives a deterministic input script, and registers the complete record, replay, and refresh suite. Every scenario owns enough committed evidence to prove model-visible output and filesystem effects without trusting the agent's report. The package entry imports vitest and is therefore available only inside a vitest run.
 
+Patch materialization resolves bare plugins from the authored patch first, then from this package’s installed dependencies. This makes its replay adapter available to corpus patches outside an npm package without adding test plugins to production profiles.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)
@@ -153,7 +155,6 @@ None; this package neither assembles nor sends a provider request.
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
-
 
 These limits define when the kit needs special care. They are current package constraints, not a task backlog.
 

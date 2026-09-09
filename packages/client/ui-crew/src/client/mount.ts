@@ -55,6 +55,7 @@ export function apply(ctx: ClientContext): void {
       ctx.remote.$on('settings/document-updated', refresh),
       ctx.remote.$on('credentials/reference-updated', refresh),
       ctx.remote.$on('llm/adapters-updated', refresh),
+      ctx.remote.$on('agents/executors-updated', refresh),
       ctx.on('connection/reset', refresh),
     ]
     return () => { preferences.dispose(); for (const stop of stops) stop() }

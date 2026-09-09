@@ -493,7 +493,7 @@ export function apply(ctx: Context, config: Config): void {
               throw new Error('cannot resolve the selected child LLM route because the `llm` service is unavailable')
             }
             await preflightChildLlmRoute(
-              llm,
+              runtimeCtx,
               parentOptions,
               requestedChildAgentOptions,
               exec.signal,

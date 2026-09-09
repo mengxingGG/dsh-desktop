@@ -199,9 +199,9 @@ type AssistantStreamFrame =
 ```ts type-equiv
 /** Merge-extensible agent creation options. Persona belongs to system-prompt sections. */
 interface AgentOptions {
-  /** Provider route (must have a registered adapter at call time). */
+  /** Provider route served by a registered LLM adapter or Agent executor at call time. */
   provider?: string
-  /** Model id interpreted by the selected provider adapter. */
+  /** Model id interpreted by the selected provider. */
   model?: string
   /** Adapter-owned reasoning effort for the selected provider/model route. */
   reasoningEffort?: ReasoningEffortId
@@ -816,6 +816,29 @@ withoutInitiator<T>(operation: () => T): T
 setFactory(factory: AgentFactory): () => void
 
 /**
+ * Register an external runtime for one provider route, scoped to the caller's plugin.
+ * @param executor - runtime that owns model and tool iteration for the route.
+ * @returns disposer removing this registration; duplicate routes throw.
+ */
+registerExecutor(executor: AgentExecutor): () => void
+
+/**
+ * Find the external runtime serving a selected route.
+ * @param provider - selected provider route.
+ * @returns the registered runtime, or undefined for an ordinary LLM route.
+ */
+executor(provider: string): AgentExecutor | undefined
+
+/**
+ * List available external runtimes for account and model selectors.
+ * @returns a detached array of currently registered providers.
+ */
+listExecutors(): readonly AgentExecutor[]
+
+/** Notify model catalogs after an external executor's directory changes. */
+notifyExecutors(): void
+
+/**
  * Create and publish a new agent through the registered factory.
  * Distinct from {@link register} (which records an already-constructed
  * agent): this constructs the agent and its session. Rejects if no factory is
@@ -1283,6 +1306,46 @@ One session committed a different agent preset to its durable log. Consumers inv
 ```
 
 Source: [`packages/preset/agent-presets/src/types.ts`](../../packages/preset/agent-presets/src/types.ts)
+
+<a id="agents-events"></a>
+
+### `agents/*` events
+
+<a id="agentsexecution-request--emit"></a>
+
+#### `agents/execution-request` — emit
+
+A frozen, recorded request is entering an external Agent executor.
+
+```ts cordis-catalog
+/**
+ * A frozen, recorded request is entering an external Agent executor.
+ * @mode emit
+ * @param request - exact request whose header and messages are committed in its Session.
+ */
+'agents/execution-request'(request: GenerateOptions): void
+```
+
+Types: [GenerateOptions](llm-streaming.zh.md)
+
+Source: [`packages/core/agent/src/execution.ts`](../../packages/core/agent/src/execution.ts)
+
+<a id="agentsexecutors-updated--emit"></a>
+
+#### `agents/executors-updated` — emit
+
+External execution routes or their account-backed model directories changed. Consumers re-read the model catalog after the registry commit.
+
+```ts cordis-catalog
+/**
+ * External execution routes or their account-backed model directories changed.
+ * Consumers re-read the model catalog after the registry commit.
+ * @mode emit
+ */
+'agents/executors-updated'(): void
+```
+
+Source: [`packages/core/agent/src/types.ts`](../../packages/core/agent/src/types.ts)
 
 <a id="app-events"></a>
 

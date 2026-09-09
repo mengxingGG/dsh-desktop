@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 `dsh-client-ui-settings-plugins` is the **Plugins** settings section of the dsh web client: users edit host-plane plugin configuration on its **Plugin configuration** tab, and feature plugins contribute their own pages through `settings.plugins.tab`. This package's own tab shows one expandable card per Host plugin whose configuration a user owns: a card shows the plugin's name and what it governs, and expanding it reveals hand-written controls bound to that plugin's settings namespace, each field marking whether the user overrode it and offering a reset back to the value the deployment composed. Cards stage edits locally and write only on save, with every write fenced by the namespace revision the form read.
 
+Subagent model preferences use the shared provider directory, including registered Agent executors, and refresh after executor directory changes.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)
