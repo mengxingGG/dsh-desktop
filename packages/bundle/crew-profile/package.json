@@ -37,7 +37,7 @@
     "@deepseek-ai/dsh-crew": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-tool-crew": "workspace:^",
-    "js-yaml": "^4.2.0"
+    "js-yaml": "^5.2.3"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^"
