@@ -6,13 +6,13 @@ const TRANSITIONS = {
   planned: ['queued', 'cancelled'],
   queued: ['running', 'paused', 'failed', 'cancelled'],
   running: ['verifying', 'paused', 'failed', 'cancelled'],
-  verifying: ['reviewing', 'revision_required', 'paused', 'failed', 'cancelled'],
+  verifying: ['reviewing', 'integration_ready', 'revision_required', 'paused', 'failed', 'cancelled'],
   reviewing: ['integration_ready', 'revision_required', 'paused', 'failed', 'cancelled'],
-  revision_required: ['running', 'paused', 'failed', 'cancelled'],
-  integration_ready: ['accepted', 'revision_required', 'paused', 'failed', 'cancelled'],
+  revision_required: ['running', 'verifying', 'paused', 'failed', 'cancelled'],
+  integration_ready: ['accepted', 'verifying', 'revision_required', 'paused', 'failed', 'cancelled'],
   accepted: [],
-  paused: ['queued', 'running', 'cancelled'],
-  failed: ['queued', 'cancelled'],
+  paused: ['queued', 'running', 'verifying', 'cancelled'],
+  failed: ['queued', 'verifying', 'cancelled'],
   cancelled: [],
 } as const satisfies Record<CrewStage, readonly CrewStage[]>
 

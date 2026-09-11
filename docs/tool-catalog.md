@@ -2087,7 +2087,7 @@ Source: [`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-c
 
 ### `crew_dispatch`
 
-Create one versioned Crew work item, freeze its checkout baseline, and start a DSH-native developer.
+Delegate one substantial module to a persistent developer. Prefer broad responsibilities and reuse crew_append for revisions; do not split individual files into workers.
 
 ```json
 {
@@ -2096,6 +2096,14 @@ Create one versioned Crew work item, freeze its checkout baseline, and start a D
     "module_key": {
       "type": "string",
       "description": "Stable lower-kebab-case module key."
+    },
+    "review_mode": {
+      "type": "string",
+      "description": "Defaults to manager review without a separate reviewer. Use independent for work that needs a dedicated review.",
+      "enum": [
+        "manager",
+        "independent"
+      ]
     },
     "subject": {
       "type": "string",
@@ -2227,12 +2235,31 @@ Source: [`packages/subagent/tool-crew/src/index.ts`](../packages/subagent/tool-c
 
 ### `crew_integrate`
 
-Start a native integrator to connect reviewed modules, make necessary project edits, and run combined tests.
+Verify and accept the current manager-reviewed files without creating another Agent. Repair small issues yourself after stopping affected workers, preserve existing files, and provide corrected combined commands. Use worker execution only when a dedicated integrator is needed for independently reviewed inputs.
 
 ```json
 {
   "type": "object",
   "properties": {
+    "execution": {
+      "type": "string",
+      "description": "Defaults to manager; worker starts a dedicated integrator.",
+      "enum": [
+        "manager",
+        "worker"
+      ]
+    },
+    "review_summary": {
+      "type": "string",
+      "description": "Required for manager execution: what you reviewed, repaired, and concluded."
+    },
+    "changed_paths": {
+      "type": "array",
+      "description": "Additional project-relative files changed by your repairs or integration.",
+      "items": {
+        "type": "string"
+      }
+    },
     "task_ids": {
       "type": "array",
       "description": "Reviewed task ids; omit to select every integration-ready task.",

@@ -76,6 +76,7 @@ const configurationSchema = z.object({
   allowedTestPrograms: z.array(nonEmpty),
   sharedDirectories: z.array(nonEmpty).default(['docs', 'test', 'tests']),
   execution: z.object({
+    ignoredDirectories: z.array(nonEmpty).optional(),
     maxInputBytes: positiveSafeInteger.optional(),
     maxInputEntries: positiveSafeInteger.optional(),
     maxOutputBytes: positiveSafeInteger,
@@ -114,6 +115,7 @@ const workItemSchema = z.object({
   taskId: taskIdSchema,
   revision: positiveSafeInteger,
   moduleKey: nonEmpty,
+  reviewMode: z.enum(['manager', 'independent']).optional(),
   specPath: nonEmpty,
   specRevision: positiveSafeInteger,
   readScopes: z.array(nonEmpty),
@@ -220,6 +222,7 @@ const integrationSchema = z.object({
   revision: positiveSafeInteger,
   status: z.enum(['running', 'passed', 'failed', 'cancelled']),
   integratorSessionId: sessionIdSchema,
+  execution: z.enum(['manager', 'worker']).optional(),
   inputCheckout: checkoutSchema,
   inputs: z.array(integrationInputSchema).min(1),
   testCommands: z.array(commandSpecSchema),
@@ -390,6 +393,7 @@ function applyCurrent(state: CrewProjectionState, event: CrewSessionEvent): void
         const immutablePrior = {
           taskId: prior.taskId,
           moduleKey: prior.moduleKey,
+          reviewMode: prior.reviewMode,
           specPath: prior.specPath,
           readScopes: prior.readScopes,
           writeScopes: prior.writeScopes,
@@ -400,6 +404,7 @@ function applyCurrent(state: CrewProjectionState, event: CrewSessionEvent): void
         const immutableNext = {
           taskId: next.taskId,
           moduleKey: next.moduleKey,
+          reviewMode: next.reviewMode,
           specPath: next.specPath,
           readScopes: next.readScopes,
           writeScopes: next.writeScopes,
@@ -503,6 +508,7 @@ function applyCurrent(state: CrewProjectionState, event: CrewSessionEvent): void
         if (next.revision !== prior.revision + 1) throw new Error(`Crew integration "${next.id}" revision is not contiguous`)
         if (prior.status !== 'running' || next.status === 'running') throw new Error(`Crew integration "${next.id}" has an invalid ${prior.status} -> ${next.status} transition`)
         if (next.integratorSessionId !== prior.integratorSessionId
+          || next.execution !== prior.execution
           || !sameJson(next.inputCheckout, prior.inputCheckout)
           || !sameJson(next.inputs, prior.inputs)
           || !sameJson(next.testCommands, prior.testCommands)) {

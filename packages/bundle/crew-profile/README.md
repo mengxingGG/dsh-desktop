@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-crew-profile` adds native software-team coordination to the selected DSH Agent. The default Web profile includes it; custom profiles can add it after their base and application bundles. Ordinary manager tools and Agent presets remain available, and the package additionally ships one Agent preset that mandates Crew orchestration for the sessions selecting it. Developers, reviewers, and integrators receive independently configured models and assignment-specific tools.
+`dsh-crew-profile` adds native software-team coordination to the selected DSH Agent. The default Web profile includes it; custom profiles can add it after their base and application bundles. Ordinary manager tools and Agent presets remain available, and the package additionally ships one Agent preset that supports manager-led development. Developers, reviewers, and integrators receive independently configured models and assignment-specific tools.
 
 The manager Agent preset places its role text in the persona plugin's `prefix` and explicitly clears `suffix`. Profile validation requires the prefix to equal the manager role file so the same identity reaches both compositions.
 
@@ -35,14 +35,14 @@ pnpm dsh plugin --profile headless add ./packages/bundle/crew-profile
 pnpm dsh --profile headless "Plan two independent modules, dispatch the native Crew, and report verified results."
 ```
 
-The manager Session cwd is the repository root. The layer records that root on first Crew use, allows at most four concurrent workers, admits only `pnpm`, `npm`, and `node` as declared verification programs, and requires a named branch for local commit. Override deployment values through an additional profile patch; persisted Crew configuration remains immutable for that manager Session.
+The manager Session cwd is the repository root. The layer records that root on first Crew use, allows at most two concurrent workers, admits only `pnpm`, `npm`, and `node` as declared verification programs, and requires a named branch for local commit. Override deployment values through an additional profile patch; persisted Crew configuration remains immutable for that manager Session.
 
 <a id="role-presets"></a>
 ## Role presets
 
 The package owns four required YAML role presets. Manager tools supplement the selected Agent preset. Developers receive module-scoped file access plus shared `docs`, `test`, and `tests` directories, declared tests, and reporting. Reviewers can read the complete project and run declared tests; integrators can also write integration changes. Worker presets clear inherited tools before their exact role tools are installed and permit provider, model, and reasoning-effort overrides.
 
-The `crew-manager` Agent preset is the one that mandates Crew orchestration. Its composition is the enforcement: persona, repository instructions, and a coordination surface — ask-user, todos, skills, plan mode, and compaction — and nothing else, so a session running it has no shell, unscoped filesystem, subagent, or workflow tool with which to change project code outside the Crew workflow. The manager persona says the same thing, and the loader compares the two texts byte for byte. Adding a capability means editing the composition and the module allowlist in [`src/index.ts`](src/index.ts) together; a row naming anything outside that list fails activation, including one nested inside a group.
+The `crew-manager` preset retains shell, file editing, and search for direct repair and integration. It delegates broad modules and reuses developers; independent review and dedicated integration are optional. The loader compares role and Agent personas and validates the composition allowlist.
 
 Selecting the preset is the user's per-session choice. Any ordinary preset keeps its full tool set and the discretionary Crew policy, which is what the deployment default stays on. [`@deepseek-ai/dsh-crew-web-profile`](../crew-web-profile/README.md) is what publishes `presets/agents/` to the Web roster; this Host layer only exposes the directory as `ctx.crewProfilePresets.agentPresetRoots`. Missing or inconsistent role declarations fail activation.
 
@@ -57,7 +57,7 @@ Selecting the preset is the user's per-session choice. Any ordinary preset keeps
 | Path | Role |
 |---|---|
 | [`presets/roles/`](presets/roles/) | Exact persona, tool, route, filter, and depth declarations for all four roles |
-| [`presets/agents/crew-manager/`](presets/agents/crew-manager/) | The Agent preset mandating Crew orchestration |
+| [`presets/agents/crew-manager/`](presets/agents/crew-manager/) | The Agent preset for manager-led development |
 | [`src/index.ts`](src/index.ts) | Startup validation and `ctx.crewProfilePresets` provider |
 | [`cordis.patch.yml`](cordis.patch.yml) | Ordered Host composition over the selected application bundle |
 
@@ -82,7 +82,7 @@ Selecting the preset is the user's per-session choice. Any ordinary preset keeps
 
 #### What the model sees
 
-The root model keeps its selected persona and ordinary tools alongside Crew coordination policy, logged DSH-global memory, and `crew_*` manager schemas. The policy states Crew mechanics and names when to engage a Crew; the selected preset decides which case applies, so a session on `crew-manager` reads a persona mandating orchestration while an ordinary preset keeps the discretion. Each child receives its role persona, durable assignment, and role tools. Actionable Crew notifications enter the manager as durable user messages after its current turn ends.
+The root model keeps its selected persona and coding tools alongside Crew coordination policy, logged DSH-global memory, and `crew_*` manager schemas. It can handle small changes directly and delegate broad responsibilities, with independent review available when needed. Each child receives its role persona, durable assignment, and role tools. Actionable Crew notifications enter the manager as durable user messages after its current turn ends.
 
 #### Token effect
 

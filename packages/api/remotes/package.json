@@ -87,6 +87,7 @@
     "@deepseek-ai/dsh-api-workspace-files": "workspace:^",
     "zod": "^4.4.3",
     "@deepseek-ai/dsh-subagent-claude-code": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^"
+    "@deepseek-ai/dsh-agent": "workspace:^",
+    "@deepseek-ai/dsh-agent-cli": "workspace:^"
   }
 }

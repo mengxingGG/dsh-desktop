@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-06-native-crew-default-delivery.md
-2026-09-06-native-crew-default-delivery.md: 38e269a90fc5f9737b93d4a169e12fe9d9de8245
-2026-09-06-native-crew-default-delivery.zh.md: c96641841675c50ae74212c238ae3f4e4cf4f121
+2026-09-06-native-crew-default-delivery.md: 7a3cb7af4afc1d11c29dfa1767cd2c8aaf755675
+2026-09-06-native-crew-default-delivery.zh.md: f644645a90ac7323a0c3f52ac7cd884abd3a1aad

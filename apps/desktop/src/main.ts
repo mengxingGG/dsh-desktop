@@ -88,6 +88,7 @@ function createWindow(preload: string): BrowserWindow {
     minWidth: 880,
     minHeight: 600,
     show: false,
+    icon: fileURLToPath(new URL('../assets/icon.png', import.meta.url)),
     webPreferences: {
       preload,
       nodeIntegration: false,

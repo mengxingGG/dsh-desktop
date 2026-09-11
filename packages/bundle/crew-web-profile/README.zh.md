@@ -37,7 +37,7 @@ Host 层提供 Crew 状态、Remote 方法、角色预设和模型工具。本 W
 
 ### Crew 编排预设
 
-预设列表新增**编排模式**（`crew-manager`），一个由 Host 层随附的只读 `system` 预设。选中它的会话运行一个始终以 Crew 编排工作的厂长：它的组合里没有 Shell、无作用域文件系统、子代理和工作流行，因此项目源码与测试只能由派发出去的 worker 修改。它保留协作面——询问用户、todo、Skills、计划模式和 compaction——与 Host 层安装的 `crew_*` 厂长工具并存。
+预设列表包含**编排模式**（`crew-manager`），由 Host 层提供的只读 `system` 预设。主智能体保留开发工具，按大块职责派发子任务，并可接手修复、审查和集成。
 
 部署默认值仍为 `standard`，所以这是逐会话的选择：普通预设保留完整工具集，并自行判断何时值得使用 Crew 协作。`dsh-agent-presets` 内置的四个预设排在前面且保持可选；后续 profile patch 若重述本行的 `roots`，Crew 预设就会从选择器中消失。
 

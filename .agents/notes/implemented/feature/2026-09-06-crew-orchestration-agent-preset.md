@@ -2,6 +2,8 @@
 
 Status: implemented
 
+Manager tools and review flow follow [manager-led Crew delivery](2026-09-11-manager-led-crew-delivery.md); this record's preset publication and default profile decisions remain applicable.
+
 English | [中文](2026-09-06-crew-orchestration-agent-preset.zh.md)
 
 ## Problem

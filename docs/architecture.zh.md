@@ -2,6 +2,8 @@
 
 [English](architecture.md) | 中文
 
+外部运行时经由 `agents/execute` 执行，记录和工具回调由循环拥有。Crew 按提供商账号分组限制原生流和外部执行，在工具运行期间释放外部请求名额，避免等待中的主智能体占用子智能体请求容量。
+
 改动 `packages/` 下的任何内容之前，请先阅读本文。本文假定你已了解 Cordis；如果尚未了解，请先阅读[入门](cordis-primer.zh.md)或[教程](cordis-tutorial/index.zh.md)。
 
 建议使用 agent（智能体）探索代码库并理解其架构。

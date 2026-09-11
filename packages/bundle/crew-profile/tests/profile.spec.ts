@@ -27,7 +27,7 @@ describe('native Crew profile bundle', () => {
     expect(presets.workerRoles.integrator.toolFilter).toEqual({ allow: [] })
   })
 
-  it('composes the manager Agent preset from coordination modules only', () => {
+  it('composes coordination and direct coding tools for the manager', () => {
     const parsed = yaml.load(
       readFileSync(resolve(ROOT, 'presets', 'agents', 'crew-manager', 'agent.cordis.yml'), 'utf8'),
       { schema: entryListSchema },
@@ -49,24 +49,29 @@ describe('native Crew profile bundle', () => {
       '@deepseek-ai/dsh-compaction-basic',
       '@deepseek-ai/dsh-command-compact',
       '@deepseek-ai/dsh-compaction-tool-result-pruner',
+      '@deepseek-ai/dsh-tool-pwsh',
+      '@deepseek-ai/dsh-tool-bash',
+      '@deepseek-ai/dsh-tool-fs',
+      '@deepseek-ai/dsh-tool-fs-search',
+      '@deepseek-ai/dsh-tool-jobs',
     ])
   })
 
-  it('refuses a manager Agent preset that composes an implementation tool', async () => {
+  it('refuses a manager Agent preset that bypasses Crew delegation', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-crew-presets-capability-'))
     try {
       await cp(resolve(ROOT, 'presets'), root, { recursive: true })
       const path = join(root, 'agents', 'crew-manager', 'agent.cordis.yml')
       const source = await readFile(path, 'utf8')
-      await writeFile(path, `${source}\n- id: tool-bash\n  name: '@deepseek-ai/dsh-tool-bash'\n`)
+      await writeFile(path, `${source}\n- id: tool-subagent\n  name: '@deepseek-ai/dsh-tool-subagent'\n`)
       expect(() => loadCrewProfilePresets(root))
-        .toThrow('names @deepseek-ai/dsh-tool-bash, which is not a Crew coordination module')
+        .toThrow('names @deepseek-ai/dsh-tool-subagent, which is not a shipped Crew manager module')
     } finally {
       await rm(root, { recursive: true, force: true })
     }
   })
 
-  it('refuses an implementation tool hidden inside a group row', async () => {
+  it('refuses a delegation bypass hidden inside a group row', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-crew-presets-nested-'))
     try {
       await cp(resolve(ROOT, 'presets'), root, { recursive: true })
@@ -77,7 +82,7 @@ describe('native Crew profile bundle', () => {
         "    - id: tool-subagent\n      name: '@deepseek-ai/dsh-tool-subagent'",
       ))
       expect(() => loadCrewProfilePresets(root))
-        .toThrow('names @deepseek-ai/dsh-tool-subagent, which is not a Crew coordination module')
+        .toThrow('names @deepseek-ai/dsh-tool-subagent, which is not a shipped Crew manager module')
     } finally {
       await rm(root, { recursive: true, force: true })
     }
@@ -89,7 +94,7 @@ describe('native Crew profile bundle', () => {
       await cp(resolve(ROOT, 'presets'), root, { recursive: true })
       const path = join(root, 'roles', 'manager.yml')
       const source = await readFile(path, 'utf8')
-      await writeFile(path, source.replace('mandates Crew orchestration', 'suggests Crew orchestration'))
+      await writeFile(path, source.replace('You lead a DSH-native software Crew', 'You only coordinate a DSH-native software Crew'))
       expect(() => loadCrewProfilePresets(root))
         .toThrow('crew-manager Agent persona differs from manager role preset')
     } finally {

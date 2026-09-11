@@ -137,7 +137,9 @@
     "commander": "^15.0.0",
     "open": "^11.0.0",
     "@deepseek-ai/dsh-client-ui-claude-code": "workspace:^",
-    "@deepseek-ai/dsh-subagent-claude-code": "workspace:^"
+    "@deepseek-ai/dsh-subagent-claude-code": "workspace:^",
+    "@deepseek-ai/dsh-agent-cli": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-cli-agents": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",

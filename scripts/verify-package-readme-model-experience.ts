@@ -86,6 +86,7 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/bundle/crew-web-profile': { kind: 'indirect', reason: 'The private Web layer delegates model composition to the Host-side Crew profile.' },
   'packages/client/ui-crew': { kind: 'none', reason: 'The browser projection and evidence panel register no model-facing input.' },
   'packages/client/ui-claude-code': { kind: 'none', reason: 'Account settings own no model input; the Host executor owns conversation requests.' },
+  'packages/client/ui-cli-agents': { kind: 'none', reason: 'Native account settings add no model input; the Host CLI executor owns prompts.' },
   'packages/client/ui-layout': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
   'packages/client/ui-dockkit': { kind: 'none', reason: 'Browser-side docking layout engine and components; registers nothing model-facing.' },
   'packages/client/ui-sidebar-right': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },

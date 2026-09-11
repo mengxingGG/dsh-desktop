@@ -7,6 +7,8 @@ kind: "package-library"
 
 [English](README.md) | 中文
 
+`AnimatedIcon` 使用 Morphicons 表达复制成功和面板展开等状态变化。图标用于装饰，由包含它的控件提供本地化标签。动效遵循 `prefers-reduced-motion`，不持续循环。
+
 ## 概述
 
 `dsh-client-ui-primitives` 是 Web 客户端共享的 React 组件库：每个功能插件都用这些原子组件拼装自己的 UI，而这里没有任何内容依赖 Cordis 或 slot 系统。它提供控件集（按钮、胶囊、输入框、菜单、模态框、Toast 横幅、折叠行、悬浮卡片、连接指示器）、图标字形与品牌标记、锚定浮层用的定位钩子，以及 agent 输出的内容渲染器：带 TeX 公式的 markdown、终端输出、文件读取、差异、搜索结果、网页检索与 JSON 检查。这些渲染器为不受信任的模型输出而设计——原始 HTML 会被丢弃、链接会被失效或安全打开、ANSI 转义序列会被解析而非透传。面向用户的文案通过 label prop 提供；拼装某个原子组件的功能插件负责本地化。

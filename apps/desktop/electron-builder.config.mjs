@@ -55,6 +55,7 @@ export function createElectronBuilderConfig(
       'lib/*.js',
       'lib/*.cjs',
       'renderer/**/*',
+      'assets/icon.png',
       'patches/*.patch',
       'package.json',
     ],
@@ -87,6 +88,7 @@ export function createElectronBuilderConfig(
       )
     },
     win: {
+      icon: 'assets/icon.ico',
       forceCodeSigning: true,
       signtoolOptions: {
         sign: windowsSigner,
@@ -95,6 +97,7 @@ export function createElectronBuilderConfig(
       target: ['nsis'],
     },
     linux: {
+      icon: 'assets/icon.png',
       category: 'Development',
       target: ['AppImage'],
     },

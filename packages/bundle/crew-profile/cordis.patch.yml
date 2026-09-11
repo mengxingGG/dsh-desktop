@@ -32,10 +32,11 @@
       inject: [crewProfilePresets]
       config:
         nativeProvider: spawn
-        maxConcurrentWorkers: 4
+        maxConcurrentWorkers: 2
+        maxConcurrentRequests: 2
         notificationBatchWindowMs: 250
         workerTurnTimeoutMs: 900000
-        maxAutomaticRepairs: 1
+        maxAutomaticRepairs: 0
         maxReviewRounds: 2
         allowedTestPrograms: [pnpm, npm, node]
         commitPolicy:

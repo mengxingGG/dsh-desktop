@@ -15,6 +15,8 @@ This checkout pins a compatibility patch for the bundled usage plugin. It reads 
 
 The bundled [Claude Code settings](../../client/ui-claude-code/README.md) provide native login and quota refresh. Main and Crew model selectors discover the executor when it is mounted.
 
+[External CLI settings](../../client/ui-cli-agents/README.md) add Grok, Antigravity and Codex account controls and execution routes for the same main and Crew model selectors.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

@@ -35,6 +35,44 @@ export interface AcpConfig {
 
 来源：[`packages/acp/acp/src/index.ts:75`](../packages/acp/acp/src/index.ts)
 
+<a id="deepseek-aidsh-agent-cli"></a>
+
+## `@deepseek-ai/dsh-agent-cli`
+
+Requires: `agents` · `subprocess` · `sessionProjections`
+
+```ts config-catalog
+/** Deployment-owned native binary paths and resource limits. */
+export interface Config {
+  /** Optional absolute Grok executable override. */
+  grokExecutable?: string
+  /** Optional absolute Antigravity executable override. */
+  antigravityExecutable?: string
+  /** Optional absolute Codex executable override. */
+  codexExecutable?: string
+  /** Private generated-agent and native conversation working directories. */
+  runtimeRoot: string
+  /** Native global agent directory; only a DSH-namespaced definition is written. */
+  antigravityAgentRoot: string
+  /** Explicit child environment; native credentials remain CLI-owned. */
+  env: Record<string, string>
+  /** Timeout for account and model discovery without inference. */
+  accountTimeoutMs: number
+  /** Native request deadline, excluding subsequent DSH tool execution. */
+  requestTimeoutMs: number
+  /** Maximum captured stdout or stderr bytes per native invocation. */
+  outputBytes: number
+  /** Maximum serialized input bytes, including schemas and history. */
+  inputBytes: number
+  /** Process-range termination grace. */
+  disposeGraceMs: number
+  /** Maximum user-controlled login terminal lifetime. */
+  loginTimeoutMs: number
+}
+```
+
+来源： [`packages/subagent/agent-cli/src/index.ts:25`](../packages/subagent/agent-cli/src/index.ts)
+
 <a id="deepseek-aidsh-agent-default-model"></a>
 
 ## `@deepseek-ai/dsh-agent-default-model`
@@ -573,6 +611,12 @@ export interface Config {
 ```ts config-catalog
 /** Deployment-time native Crew configuration. */
 export interface Config {
+  /** Host-wide simultaneous native or external requests per provider group; defaults to two. */
+  readonly maxConcurrentRequests?: number
+  /** Per-provider or account-group request limits, including manager requests. */
+  readonly providerRequestLimits?: Readonly<Record<string, number>>
+  /** Routes using the same account can share one named request pool. */
+  readonly providerRequestGroups?: Readonly<Record<string, string>>
   /** Project-relative directories shared by developer file tools; defaults to docs, test, and tests. */
   readonly sharedDirectories?: readonly string[]
   /** Local process and output limit overrides, resolved at plugin load. */
@@ -669,7 +713,7 @@ export interface CrewAgentOptionsSnapshot {
 
 依赖：`ReasoningEffortId` (`@deepseek-ai/dsh-llm/brand`) · [`ToolRestriction`](subsystems/tools.zh.md)
 
-来源：[`packages/subagent/crew/src/types.ts:377`](../packages/subagent/crew/src/types.ts)
+来源：[`packages/subagent/crew/src/types.ts:381`](../packages/subagent/crew/src/types.ts)
 
 
 <a id="deepseek-aidsh-e2b"></a>
@@ -3587,6 +3631,7 @@ export interface Config {
 - `@deepseek-ai/dsh-client-ui-brand-official` ([`packages/client/ui-brand-official/src/index.ts`](../packages/client/ui-brand-official/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-chat` ([`packages/client/ui-chat/src/index.ts`](../packages/client/ui-chat/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-claude-code` ([`packages/client/ui-claude-code/src/index.ts`](../packages/client/ui-claude-code/src/index.ts))
+- `@deepseek-ai/dsh-client-ui-cli-agents` ([`packages/client/ui-cli-agents/src/index.ts`](../packages/client/ui-cli-agents/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-commands` ([`packages/client/ui-commands/src/index.ts`](../packages/client/ui-commands/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-conversation` ([`packages/client/ui-conversation/src/index.ts`](../packages/client/ui-conversation/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-cordis` ([`packages/extensions/ui-cordis/src/index.ts`](../packages/extensions/ui-cordis/src/index.ts))

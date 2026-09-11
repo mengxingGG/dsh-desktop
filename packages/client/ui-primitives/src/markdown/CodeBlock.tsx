@@ -2,6 +2,7 @@ import { Fragment, useCallback, useMemo, useRef, useState, useSyncExternalStore 
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import { writeClipboard } from '../clipboard.ts'
+import { AnimatedIcon } from '../AnimatedIcon.tsx'
 import {
   StreamingHighlightSession, grammarLoadCount, highlightToHtml, subscribeGrammarLoaded,
 } from './highlight.ts'
@@ -173,6 +174,7 @@ export function CodeBlock({ code, lang, streaming, className, copyLabel, copiedL
           <div className={css.infostring}>{lang ?? ''}</div>
           <div className={css.action}>
             <button type="button" className={css.copyButton} onClick={onCopy}>
+              <AnimatedIcon name={copied ? 'check' : 'copy'} size={14} />
               {copied ? copiedLabel : copyLabel}
             </button>
           </div>

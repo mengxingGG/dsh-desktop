@@ -26,6 +26,7 @@ The kernel packages boot and serve the page; the UI feature packages present it.
 
 | Package | Role | ctx key |
 |---|---|---|
+| [`ui-cli-agents/`](ui-cli-agents/README.md) | Native Grok, Antigravity and Codex account controls and conversation usage | — |
 | [`web/`](web/README.md) | Boots the browser shell | — |
 | [`modules/`](modules/README.md) | Loads browser-side client modules | `ctx.clientModules` / `ctx.modules` |
 | [`connection/`](connection/README.md) | Maintains browser-host RPC communication and event delivery | `ctx.connection` |

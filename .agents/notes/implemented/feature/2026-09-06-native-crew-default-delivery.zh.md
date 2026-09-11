@@ -2,6 +2,8 @@
 
 Status: implemented
 
+主智能体工具与审查流程以[主智能体主导的 Crew 交付](2026-09-11-manager-led-crew-delivery.zh.md)为准；本记录的预设发布与默认 profile 决定继续适用。
+
 [English](2026-09-06-native-crew-default-delivery.md) | 中文
 
 ## Problem

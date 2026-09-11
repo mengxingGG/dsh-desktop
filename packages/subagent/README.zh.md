@@ -24,6 +24,7 @@ subagent 组是委派能力家族：它让 agent（智能体）把任务交给�
 
 | 包 | 职责 | ctx 键 |
 |---|---|---|
+| [`agent-cli/`](agent-cli/README.zh.md) | 经原生 Grok、Antigravity 与 Codex 运行主智能体及 Crew 成员，工具由 DSH 执行 | `ctx.cliAgents` |
 | [`subagent/`](subagent/README.zh.md) | 定义委派服务：提供方注册表、一次性运行、可继续子级与发现 | `ctx.subagents` |
 | [`subagent-in-process-driver/`](subagent-in-process-driver/README.zh.md) | 提供共享的进程内运行驱动器 | 无 |
 | [`subagent-spawn-in-process/`](subagent-spawn-in-process/README.zh.md) | 运行全新的进程内子 agent | 注册到 `ctx.subagents` |

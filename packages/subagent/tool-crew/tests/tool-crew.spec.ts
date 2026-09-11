@@ -330,7 +330,7 @@ describe('dsh-tool-crew', () => {
     execFileSync('git', ['add', '--', 'project/staged.txt'], { cwd: repositoryRoot })
     const spawned = vi.spyOn(second.ctx.subprocess, 'spawn')
     onTestFinished(() => { spawned.mockRestore() })
-    await expect(second.ctx.crew.dispatch(second.lead, {
+    await expect(second.ctx.crew.dispatch(second.lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Module', description: 'Inspect the checkout before admission.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs'], writeScopes: ['project/src'],
       requiredArtifacts: [], testCommands: [], signal: SIGNAL,
@@ -347,7 +347,7 @@ describe('dsh-tool-crew', () => {
     writeFileSync(join(repositoryRoot, '.git', 'info', 'exclude'), '.env\n')
     writeFileSync(join(repositoryRoot, '.env'), 'CREW_TEST_CANARY=fixture-only\n')
     const { ctx, lead } = await setup(repositoryRoot, ['hang'])
-    const work = await ctx.crew.dispatch(lead, {
+    const work = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module',
       subject: 'Implement module',
       description: 'Run the declared module test in the actual project.',
@@ -407,7 +407,7 @@ describe('dsh-tool-crew', () => {
     const credentialRead = await execute(ctx, lead, 'crew_read_file', { path: '.env' })
     expect(credentialRead.isError).toBe(true)
 
-    const work = await ctx.crew.dispatch(lead, {
+    const work = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module',
       subject: 'Implement module',
       description: 'Create the declared JavaScript artifact.',
@@ -508,7 +508,7 @@ describe('dsh-tool-crew', () => {
   it('keeps one manager-action wait pending across worker edges until intervention is needed', async () => {
     const repositoryRoot = fixtureRepository()
     const { ctx, lead } = await setup(repositoryRoot, ['hang'])
-    const work = await ctx.crew.dispatch(lead, {
+    const work = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Implement module', description: 'Hold until stopped.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project/src'],
       writeScopes: ['project/src'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,
@@ -534,7 +534,7 @@ describe('dsh-tool-crew', () => {
   it('continues the same developer Session and supports two disjoint concurrent workers', async () => {
     const repositoryRoot = fixtureRepository()
     const { ctx, lead } = await setup(repositoryRoot, ['hang', 'hang'])
-    const first = await ctx.crew.dispatch(lead, {
+    const first = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module-a', subject: 'Module A', description: 'Hold Module A.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project/src/a'],
       writeScopes: ['project/src/a'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,
@@ -553,7 +553,7 @@ describe('dsh-tool-crew', () => {
       message.content.some(block => block.type === 'text' && block.text.includes('clarified requirement'))
     ))).toBe(true)
 
-    const second = await ctx.crew.dispatch(lead, {
+    const second = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module-b', subject: 'Module B', description: 'Hold Module B.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project/src/b'],
       writeScopes: ['project/src/b'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,
@@ -570,7 +570,7 @@ describe('dsh-tool-crew', () => {
   it('reassigns parked work to a fresh durable developer without deleting the original Session', async () => {
     const repositoryRoot = fixtureRepository()
     const { ctx, lead } = await setup(repositoryRoot, ['hang', 'hang'])
-    const first = await ctx.crew.dispatch(lead, {
+    const first = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Module', description: 'Hold the first assignment.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project/src'],
       writeScopes: ['project/src'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,
@@ -607,7 +607,7 @@ describe('dsh-tool-crew', () => {
       managerId: 'crew-active-recovery',
       store,
     })
-    const work = await first.ctx.crew.dispatch(first.lead, {
+    const work = await first.ctx.crew.dispatch(first.lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Module', description: 'Remain active across a simulated crash.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project/src'],
       writeScopes: ['project/src'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,
@@ -724,7 +724,7 @@ describe('dsh-tool-crew', () => {
     })
     expect(firstAgent.options.model).toBe('developer-first')
     await ctx.settings.mutate(CREW_PREFERENCES_NAMESPACE, [{ op: 'set', path: ['roles', 'developer'], value: { provider: 'mock', model: 'developer-next' } }])
-    const second = await ctx.crew.dispatch(lead, { ...request, moduleKey: 'second', writeScopes: ['project/second'] })
+    const second = await ctx.crew.dispatch(lead, { reviewMode: 'independent', ...request, moduleKey: 'second', writeScopes: ['project/second'] })
     const secondAgent = await vi.waitFor(() => {
       const child = ctx.agents.get(second.developerSessionId!)
       expect(child?.status).toBe('running')
@@ -732,6 +732,31 @@ describe('dsh-tool-crew', () => {
     })
     expect(secondAgent.options.model).toBe('developer-next')
     expect(firstAgent.options.model).toBe('developer-first')
+  }, WORKFLOW_TIMEOUT_MS)
+
+  it('lets the manager accept repaired local files without another reviewer or integrator', async () => {
+    const repositoryRoot = fixtureRepository(true)
+    const { ctx, lead } = await setup(repositoryRoot, [
+      toolCallResponse('module-write', 'crew_write_file', { path: 'project/src/index.js', content: 'export const value = 42\n' }),
+      toolCallResponse('module-report', 'crew_report', { verdict: 'ready', summary: 'Module ready.', changed_paths: ['project/src/index.js'], issues: [] }),
+      textResponse('Development complete.'),
+    ])
+    await ctx.crew.dispatch(lead, {
+      moduleKey: 'module', subject: 'Module', description: 'Implement one module.',
+      specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs'], writeScopes: ['project/src'],
+      requiredArtifacts: ['project/src/index.js'], testCommands: [], signal: SIGNAL,
+    })
+    await vi.waitFor(() => { expect(ctx.crew.view(lead).workItems[0]?.stage).toBe('integration_ready') }, { timeout: 15_000 })
+    expect(ctx.crew.view(lead).workItems[0]?.reviewerSessionId).toBeUndefined()
+    writeFileSync(join(repositoryRoot, 'project/src/index.js'), 'export const value = 43\n')
+    const integration = await ctx.crew.integrate(lead, {
+      reviewSummary: 'Checked the manager repair against the module requirements.',
+      changedPaths: ['project/src/index.js'], testCommands: [], signal: SIGNAL,
+    })
+    expect(integration).toMatchObject({ execution: 'manager', status: 'passed', integratorSessionId: lead.id })
+    expect(ctx.crew.view(lead).workItems[0]?.stage).toBe('accepted')
+    expect(readFileSync(join(repositoryRoot, 'project/src/index.js'), 'utf8')).toBe('export const value = 43\n')
+    expect(ctx.crew.view(lead).workItems[0]?.reviewerSessionId).toBeUndefined()
   }, WORKFLOW_TIMEOUT_MS)
 
   it('gives developers shared directories, reviewers complete reads, and integrators actual edit and test tools', async () => {
@@ -755,7 +780,7 @@ describe('dsh-tool-crew', () => {
       textResponse('Integration complete.'),
     ]
     const { ctx, lead, store } = Object.assign(runtime, await setup(repositoryRoot, script))
-    await ctx.crew.dispatch(lead, {
+    await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Module', description: 'Implement one module with shared notes.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs'], writeScopes: ['project/src'],
       requiredArtifacts: ['project/src/index.js'], testCommands: [], signal: SIGNAL,
@@ -767,7 +792,7 @@ describe('dsh-tool-crew', () => {
       && event.data.message.content[0].toolCallId === 'review-denied-write'
       && event.data.message.content[0].isError)).toBe(true)
     expect(readFileSync(join(repositoryRoot, 'project/README.md'), 'utf8')).toBe('# Project\n')
-    const integration = await ctx.crew.integrate(lead, {
+    const integration = await ctx.crew.integrate(lead, { execution: 'worker',
       testCommands: [{ id: 'combined', argv: ['node', '--check', 'glue.mjs'], cwd: 'project', timeoutMs: 10_000 }], signal: SIGNAL,
     })
     await vi.waitFor(() => { expect(ctx.crew.view(lead).integrations.find(item => item.id === integration.id)?.status).toBe('passed') }, { timeout: 15_000 })
@@ -816,7 +841,7 @@ describe('dsh-tool-crew', () => {
     const mounted = await setup(repositoryRoot, script, { approval: true })
     const { ctx, lead } = Object.assign(runtime, mounted)
 
-    const dispatched = await ctx.crew.dispatch(lead, {
+    const dispatched = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module',
       subject: 'Implement module',
       description: 'Create one syntax-valid ESM module.',
@@ -837,12 +862,12 @@ describe('dsh-tool-crew', () => {
     expect(ctx.crew.view(lead).reviews[0]).toMatchObject({ verdict: 'passed' })
 
     writeFileSync(join(repositoryRoot, 'project', 'src', 'index.js'), 'export const answer = 43\n')
-    await expect(ctx.crew.integrate(lead, { taskIds: [reviewed.taskId], testCommands: [], signal: SIGNAL }))
+    await expect(ctx.crew.integrate(lead, { execution: 'worker', taskIds: [reviewed.taskId], testCommands: [], signal: SIGNAL }))
       .rejects.toMatchObject({ code: 'CREW_STALE_REVISION' })
     expect(ctx.crew.view(lead).integrations).toEqual([])
     writeFileSync(join(repositoryRoot, 'project', 'src', 'index.js'), 'export const answer = 42\n')
 
-    const integration = await ctx.crew.integrate(lead, {
+    const integration = await ctx.crew.integrate(lead, { execution: 'worker',
       taskIds: [reviewed.taskId],
       testCommands: [{ id: 'combined-syntax', argv: ['node', '--check', 'src/index.js'], cwd: 'project', timeoutMs: 10_000 }],
       signal: SIGNAL,
@@ -875,7 +900,7 @@ describe('dsh-tool-crew', () => {
       expect(existsSync(join(repositoryRoot, '.git'))).toBe(false)
       return
     }
-    const active = await ctx.crew.dispatch(lead, {
+    const active = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'active-module',
       subject: 'Hold active work',
       description: 'Keep one disjoint developer active during the commit attempt.',
@@ -959,7 +984,7 @@ describe('dsh-tool-crew', () => {
       'hang',
       'hang',
     ], { maxAutomaticRepairs: 0 })
-    const first = await ctx.crew.dispatch(lead, {
+    const first = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'first', subject: 'First module', description: 'Verify while another module is dispatched.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project/src'],
       writeScopes: ['project/src'], requiredArtifacts: ['project/src/index.js'],
@@ -968,7 +993,7 @@ describe('dsh-tool-crew', () => {
     })
     await entered.promise
     try {
-      const second = await ctx.crew.dispatch(lead, {
+      const second = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
         moduleKey: 'second', subject: 'Second module', description: 'Write inside a newly assigned module.',
         specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project/second'],
         writeScopes: ['project/second'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,
@@ -1005,7 +1030,7 @@ describe('dsh-tool-crew', () => {
       textResponse('Handoff complete.'),
       'hang',
     ], { maxAutomaticRepairs: 0 })
-    await ctx.crew.dispatch(lead, {
+    await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Test verification', description: 'Verify the checkout after commands run.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project/src'],
       writeScopes: ['project/src'], requiredArtifacts: ['project/src/test.mjs'],
@@ -1045,7 +1070,7 @@ describe('dsh-tool-crew', () => {
       textResponse('Review complete.'),
     ], { maxReviewRounds: 1 })
     const { ctx, lead } = Object.assign(runtime, mounted)
-    await ctx.crew.dispatch(lead, {
+    await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Review input integrity', description: 'Reject stale reviewer evidence.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project/src'],
       writeScopes: ['project/src'], requiredArtifacts: ['project/src/index.js'], testCommands: [], signal: SIGNAL,
@@ -1094,7 +1119,7 @@ describe('dsh-tool-crew', () => {
     ]
     const mounted = await setup(repositoryRoot, script)
     const { ctx, lead } = Object.assign(runtime, mounted)
-    const dispatched = await ctx.crew.dispatch(lead, {
+    const dispatched = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Implement module', description: 'Export the accepted answer.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project'],
       writeScopes: ['project/src'], requiredArtifacts: ['project/src/index.js'],
@@ -1129,7 +1154,7 @@ describe('dsh-tool-crew', () => {
       textResponse('Second incomplete handoff.'),
     ]
     const { ctx, lead } = await setup(repositoryRoot, script, { maxAutomaticRepairs: 1 })
-    const dispatched = await ctx.crew.dispatch(lead, {
+    const dispatched = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Implement module', description: 'Create the required artifact.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project'],
       writeScopes: ['project/src'], requiredArtifacts: ['project/src/missing.js'],
@@ -1159,12 +1184,12 @@ describe('dsh-tool-crew', () => {
       'hang',
       textResponse('Manager acknowledged both parked workers.'),
     ], { notificationBatchWindowMs: 20 })
-    const first = await ctx.crew.dispatch(lead, {
+    const first = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module-a', subject: 'Module A', description: 'Hold Module A.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project/src/a'],
       writeScopes: ['project/src/a'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,
     })
-    const second = await ctx.crew.dispatch(lead, {
+    const second = await ctx.crew.dispatch(lead, { reviewMode: 'independent',
       moduleKey: 'module-b', subject: 'Module B', description: 'Hold Module B.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project/src/b'],
       writeScopes: ['project/src/b'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,
@@ -1197,7 +1222,7 @@ describe('dsh-tool-crew', () => {
       notificationBatchWindowMs: 10,
       store,
     })
-    const work = await first.ctx.crew.dispatch(first.lead, {
+    const work = await first.ctx.crew.dispatch(first.lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Pause module', description: 'Wait for a stop.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project'],
       writeScopes: ['project/src'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,
@@ -1238,7 +1263,7 @@ describe('dsh-tool-crew', () => {
       notificationBatchWindowMs: 1_000,
       store,
     })
-    const work = await first.ctx.crew.dispatch(first.lead, {
+    const work = await first.ctx.crew.dispatch(first.lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Pause module', description: 'Wait for a stop.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project'],
       writeScopes: ['project/src'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,
@@ -1271,7 +1296,7 @@ describe('dsh-tool-crew', () => {
       managerId: 'crew-notification-after-queue',
       store,
     })
-    const work = await first.ctx.crew.dispatch(first.lead, {
+    const work = await first.ctx.crew.dispatch(first.lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Pause module', description: 'Wait for a stop.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project'],
       writeScopes: ['project/src'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,
@@ -1308,7 +1333,7 @@ describe('dsh-tool-crew', () => {
       managerId: 'crew-notification-after-message',
       store,
     })
-    const work = await first.ctx.crew.dispatch(first.lead, {
+    const work = await first.ctx.crew.dispatch(first.lead, { reviewMode: 'independent',
       moduleKey: 'module', subject: 'Pause module', description: 'Wait for a stop.',
       specPath: 'specs/module.md', specRevision: 1, readScopes: ['specs', 'project'],
       writeScopes: ['project/src'], requiredArtifacts: [], testCommands: [], signal: SIGNAL,

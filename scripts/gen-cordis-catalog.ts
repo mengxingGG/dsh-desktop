@@ -55,6 +55,7 @@ export { REGION_BEGIN, REGION_END }
  */
 export const SERVICE_PAGE: Record<string, string> = {
   claudeCode: 'subagent.md',
+  cliAgents: 'subagent.md',
   agentLoop: 'core.md',
   agentDefaultModel: 'core.md',
   agentPresets: 'core.md',
@@ -251,6 +252,8 @@ export const EVENT_WALK_EXEMPTIONS: Record<string, string> = {
  */
 export const LINK_MAP: Readonly<Record<string, string>> = {
   Agent: 'core.md',
+  AgentExecutionRequest: '../../packages/core/agent/README.md',
+  AgentExecutionResult: '../../packages/core/agent/README.md',
   AgentCancelCause: 'core.md',
   AgentFactory: 'core.md',
   AgentHandle: 'core.md',
@@ -724,6 +727,11 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   AgentHandle: 'agent ownership handle is owned by packages/core/agent/README.md',
   AgentExecutor: 'external execution provider is owned by packages/core/agent/README.md',
   ClaudeAccountStatus: 'native account facts are owned by packages/subagent/subagent-claude-code/README.md',
+  CliAccountStatus: 'native account facts are owned by packages/subagent/agent-cli/README.md',
+  CliProvider: 'native provider routes are owned by packages/subagent/agent-cli/README.md',
+  CliLoginId: 'native login identity is owned by packages/subagent/agent-cli/README.md',
+  CliLoginSnapshot: 'native login progress is owned by packages/subagent/agent-cli/README.md',
+  CliQuotaWindow: 'native quota observations are owned by packages/subagent/agent-cli/README.md',
   ClaudeQuotaSnapshot: 'quota observations are owned by packages/subagent/subagent-claude-code/README.md',
   ClaudeLoginSnapshot: 'native login progress is owned by packages/subagent/subagent-claude-code/README.md',
   ClaudeLoginId: 'native login identity is owned by packages/subagent/subagent-claude-code/README.md',

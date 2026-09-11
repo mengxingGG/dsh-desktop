@@ -1311,6 +1311,26 @@ Source: [`packages/preset/agent-presets/src/types.ts`](../../packages/preset/age
 
 ### `agents/*` events
 
+<a id="agentsexecute--waterfall"></a>
+
+#### `agents/execute` — waterfall
+
+Wrap an external execution with host-owned admission and resource accounting.
+
+```ts cordis-catalog
+/**
+ * Wrap an external execution with host-owned admission and resource accounting.
+ * @mode waterfall
+ * @param input - Exact admitted input, including the scoped tool callback.
+ * @param next - Continue execution with the supplied input.
+ */
+'agents/execute'(input: AgentExecutionRequest, next: (input: AgentExecutionRequest) => Promise<AgentExecutionResult>): Promise<AgentExecutionResult>
+```
+
+Types: [AgentExecutionRequest](../../packages/core/agent/README.zh.md) · [AgentExecutionResult](../../packages/core/agent/README.zh.md)
+
+Source: [`packages/core/agent/src/execution.ts`](../../packages/core/agent/src/execution.ts)
+
 <a id="agentsexecution-request--emit"></a>
 
 #### `agents/execution-request` — emit

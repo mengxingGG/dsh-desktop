@@ -40,6 +40,7 @@ import {
   repositoryPath,
 } from './validation.ts'
 import { canTransitionCrewStage } from './transition.ts'
+import { installRequestLimits } from './request-limits.ts'
 import type {
   Config,
   CreateCrewWorkItemRequest,
@@ -130,10 +131,11 @@ const DEFAULT_REVIEWER_PERSONA = 'You are an independent DSH-native reviewer. Re
 const DEFAULT_INTEGRATOR_PERSONA = 'You are a DSH-native integrator. Read and modify project files to connect reviewed modules, run combined tests, and report every integration change. Preserve unrelated work and request manager guidance for changes beyond integration. Do not modify Git state.'
 
 const DEFAULT_NATIVE_PROVIDER = 'spawn'
-const DEFAULT_MAX_CONCURRENT_WORKERS = 4
+const DEFAULT_MAX_CONCURRENT_WORKERS = 2
+const DEFAULT_MAX_CONCURRENT_REQUESTS = 2
 const DEFAULT_NOTIFICATION_BATCH_WINDOW_MS = 250
 const DEFAULT_WORKER_TURN_TIMEOUT_MS = 900_000
-const DEFAULT_MAX_AUTOMATIC_REPAIRS = 1
+const DEFAULT_MAX_AUTOMATIC_REPAIRS = 0
 const DEFAULT_MAX_REVIEW_ROUNDS = 2
 const DEFAULT_ALLOWED_TEST_PROGRAMS = ['pnpm', 'npm', 'node']
 const DEFAULT_SHARED_DIRECTORIES = ['docs', 'test', 'tests']
@@ -142,6 +144,7 @@ const DEFAULT_EXECUTION_LIMITS = {
   maxOutputBytes: 64 * 1024,
   processGraceMs: 5_000,
   gitTimeoutMs: 30_000,
+  ignoredDirectories: ['node_modules', '.npm-cache', '.pnpm-store', 'dist', 'build', 'coverage', '.next'],
 }
 function rolePreset(
   role: CrewWorkerRole,
@@ -163,7 +166,7 @@ function rolePreset(
 }
 
 function workItemActive(stage: CrewStage): boolean {
-  return stage !== 'accepted' && stage !== 'failed' && stage !== 'cancelled' && stage !== 'paused'
+  return ['planned', 'queued', 'running', 'verifying', 'reviewing'].includes(stage)
 }
 
 /** Native Crew service and DSH provider for the first-phase software workflow. */
@@ -174,6 +177,9 @@ export class CrewService extends TypertRemoteService {
     repositoryRoot: z.string(),
     nativeProvider: z.string().default(DEFAULT_NATIVE_PROVIDER),
     maxConcurrentWorkers: z.number().step(1).min(1).default(DEFAULT_MAX_CONCURRENT_WORKERS),
+    maxConcurrentRequests: z.number().step(1).min(1).default(DEFAULT_MAX_CONCURRENT_REQUESTS),
+    providerRequestLimits: z.dict(z.number().step(1).min(1)),
+    providerRequestGroups: z.dict(z.string()),
     notificationBatchWindowMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_NOTIFICATION_BATCH_WINDOW_MS),
     workerTurnTimeoutMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_WORKER_TURN_TIMEOUT_MS),
     maxAutomaticRepairs: z.number().step(1).min(0).default(DEFAULT_MAX_AUTOMATIC_REPAIRS),
@@ -181,6 +187,7 @@ export class CrewService extends TypertRemoteService {
     allowedTestPrograms: z.array(z.string()).default(DEFAULT_ALLOWED_TEST_PROGRAMS),
     sharedDirectories: z.array(z.string()).default(DEFAULT_SHARED_DIRECTORIES),
     execution: z.object({
+      ignoredDirectories: z.array(z.string()),
       maxOutputBytes: z.number().step(1).min(1).default(DEFAULT_EXECUTION_LIMITS.maxOutputBytes),
       processGraceMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_EXECUTION_LIMITS.processGraceMs),
       gitTimeoutMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_EXECUTION_LIMITS.gitTimeoutMs),
@@ -217,6 +224,7 @@ export class CrewService extends TypertRemoteService {
   private readonly workspace: CrewWorkspace
   private readonly lifecycle = new AbortController()
   private readonly background = new Set<Promise<void>>()
+  private readonly managerIntegrations = new Set<SessionId>()
   private readonly terminalEnds = new Map<SessionId, SubagentRunEndInfo>()
   private readonly terminalProcessing = new Set<SessionId>()
   private readonly terminalReschedule = new Set<SessionId>()
@@ -250,6 +258,7 @@ export class CrewService extends TypertRemoteService {
       allowedTestPrograms,
       sharedDirectories: (config.sharedDirectories ?? DEFAULT_SHARED_DIRECTORIES).map(path => repositoryPath(path, 'sharedDirectories')),
       execution: {
+        ignoredDirectories: [...(config.execution?.ignoredDirectories ?? DEFAULT_EXECUTION_LIMITS.ignoredDirectories)],
         maxOutputBytes: positiveSafeInteger(config.execution?.maxOutputBytes ?? DEFAULT_EXECUTION_LIMITS.maxOutputBytes, 'execution.maxOutputBytes'),
         processGraceMs: crewTimerDuration(config.execution?.processGraceMs ?? DEFAULT_EXECUTION_LIMITS.processGraceMs, 'execution.processGraceMs'),
         gitTimeoutMs: crewTimerDuration(config.execution?.gitTimeoutMs ?? DEFAULT_EXECUTION_LIMITS.gitTimeoutMs, 'execution.gitTimeoutMs'),
@@ -269,6 +278,9 @@ export class CrewService extends TypertRemoteService {
     }
     this.journal = new CrewJournal(ctx)
     this.workspace = new CrewWorkspace(ctx)
+    installRequestLimits(ctx,
+      positiveSafeInteger(config.maxConcurrentRequests ?? DEFAULT_MAX_CONCURRENT_REQUESTS, 'maxConcurrentRequests'),
+      config.providerRequestLimits ?? {}, config.providerRequestGroups ?? {}, this.lifecycle.signal)
     ctx.on('app/active-work', () => this.background.size > 0 || this.notificationBatches.size > 0 ? true : undefined)
     ctx.effect(() => ctx.root.sessionProjections.register(crewProjectionDefinition), 'crew.projection()')
     const observeTerminal = (parent: Agent, info: SubagentRunEndInfo): void => { this.observeTerminal(parent, info) }
@@ -343,6 +355,7 @@ export class CrewService extends TypertRemoteService {
     this.assertHostServices()
     const configuration = await this.ensureConfigured(caller)
     const { root } = this.lead(caller)
+    if (this.managerIntegrations.has(root.id)) throw new CrewError('Manager verification is running', 'CREW_INVALID_TRANSITION')
     for (const blocker of request.blockedBy ?? []) {
       const task = this.ctx.agentTeams.getTask(root, blocker)
       if (task.status !== 'completed') {
@@ -390,10 +403,25 @@ export class CrewService extends TypertRemoteService {
    */
   async append(caller: Agent, request: AppendCrewWorkRequest): Promise<CrewWorkItemSnapshot> {
     const { root, id } = this.lead(caller)
+    if (this.managerIntegrations.has(root.id)) throw new CrewError('Manager verification is running', 'CREW_INVALID_TRANSITION')
     let current = this.requireWork(root, request.taskId, request.expectedRevision)
     const childId = current.developerSessionId
     if (childId === undefined) throw new CrewError('Crew work item has no developer to continue', 'CREW_UNAUTHORIZED_WORKER')
     if (current.stage !== 'running') {
+      if (current.stage === 'integration_ready') {
+        current = await this.updateWorkItem(root, {
+          taskId: current.taskId, expectedRevision: current.revision,
+          stage: 'paused', reason: 'Manager requested revisions from the existing developer.',
+        })
+      }
+      const task = this.ctx.agentTeams.getTask(root, current.taskId)
+      if (task.status === 'completed') {
+        if (current.developerName === undefined) throw new CrewError('Developer name is missing', 'CREW_UNAUTHORIZED_WORKER')
+        const reopened = await this.ctx.agentTeams.updateTask(root, { taskId: task.id, expectedRevision: task.revision, action: 'reopen' })
+        await this.ctx.agentTeams.updateTask(root, {
+          taskId: task.id, expectedRevision: reopened.revision, action: 'reassign', owner: current.developerName,
+        })
+      }
       if (current.stage === 'failed') {
         current = await this.updateWorkItem(root, {
           taskId: current.taskId,
@@ -479,6 +507,7 @@ export class CrewService extends TypertRemoteService {
    */
   async reassign(caller: Agent, request: ReassignCrewWorkRequest): Promise<CrewWorkItemSnapshot> {
     const { root } = this.lead(caller)
+    if (this.managerIntegrations.has(root.id)) throw new CrewError('Manager verification is running', 'CREW_INVALID_TRANSITION')
     const current = this.requireWork(root, request.taskId, request.expectedRevision)
     if (!['paused', 'failed', 'revision_required'].includes(current.stage)) {
       throw new CrewError(`Crew work item cannot be reassigned from "${current.stage}"`, 'CREW_INVALID_TRANSITION')
@@ -487,15 +516,17 @@ export class CrewService extends TypertRemoteService {
   }
 
   /**
-   * Freeze reviewed work and start one read-only native integration worker.
+   * Verify manager-reviewed files directly, or delegate independently reviewed modules.
    * @param caller - Exact live Team Lead managing the workflow.
-   * @param request - Reviewed work selection, combined tests, and cancellation signal.
-   * @returns Durable running integration record.
+   * @param request - Execution owner, review assessment, selected work, and combined commands.
+   * @returns Terminal manager integration or running delegated integration.
    */
   async integrate(caller: Agent, request: IntegrateCrewRequest): Promise<CrewIntegrationSnapshot> {
+    if (request.execution !== 'worker') return await this.integrateManager(caller, request)
     this.assertHostServices()
     const configuration = await this.ensureConfigured(caller)
     const { root, id } = this.lead(caller)
+    if (this.managerIntegrations.has(root.id)) throw new CrewError('Manager verification is running', 'CREW_INVALID_TRANSITION')
     const state = this.journal.state(root)
     if (state.integrations.some(item => item.status === 'running')) {
       throw new CrewError('a Crew integration is already running', 'CREW_INVALID_TRANSITION')
@@ -535,7 +566,7 @@ export class CrewService extends TypertRemoteService {
     const inputCheckout = await this.host(configuration).inspectCheckout(configuration.repositoryRoot, this.operationSignal(request.signal))
     for (const { workItem, verification } of selected) {
       if (!sameWorkCheckout(verification.checkout, inputCheckout, workItem, verification.changedPaths)) {
-        throw new CrewError(`Crew work item "${workItem.taskId}" checkout changed after verification`, 'CREW_STALE_REVISION')
+        throw new CrewError(`Crew work item "${workItem.taskId}" changed after verification. Preserve the files; use manager integration with a current review summary and corrected verification commands, or continue the original developer. Do not delete work to restore an old checkout.`, 'CREW_STALE_REVISION')
       }
     }
     if (inputCheckout.stagedPaths.length > 0) {
@@ -606,6 +637,164 @@ export class CrewService extends TypertRemoteService {
     const terminal = this.terminalEnds.get(integratorSessionId)
     if (terminal !== undefined) this.scheduleTerminal(root, terminal)
     return structuredClone(integration)
+  }
+
+  /** Verify a manager-reviewed checkout without delegating another model turn. */
+  private async integrateManager(caller: Agent, request: IntegrateCrewRequest): Promise<CrewIntegrationSnapshot> {
+    this.assertHostServices()
+    const configuration = await this.ensureConfigured(caller)
+    const { root, id } = this.lead(caller)
+    if (this.managerIntegrations.has(root.id)) throw new CrewError('Manager verification is running', 'CREW_INVALID_TRANSITION')
+    const summary = crewText(request.reviewSummary ?? '', 'manager review summary', 16_384)
+    const state = this.journal.state(root)
+    const eligible = ['integration_ready', 'paused', 'failed', 'revision_required']
+    if (state.integrations.some(item => item.status === 'running')
+      || state.workItems.some(item => workItemActive(item.stage))) {
+      throw new CrewError('Stop active workers before manager repair and integration', 'CREW_INVALID_TRANSITION')
+    }
+    const selectedIds = request.taskIds ?? state.workItems.filter(item => eligible.includes(item.stage)).map(item => item.taskId)
+    if (selectedIds.length === 0 || new Set(selectedIds).size !== selectedIds.length) {
+      throw new CrewError('Manager integration requires unique completed or paused work items', 'CREW_INVALID_TRANSITION')
+    }
+    const selected = selectedIds.map((taskId) => {
+      const item = this.requireWork(root, taskId)
+      if (!eligible.includes(item.stage)) throw new CrewError(`Cannot integrate work in ${item.stage}`, 'CREW_INVALID_TRANSITION')
+      return item
+    })
+    const allowedPrograms = new Set(configuration.allowedTestPrograms)
+    const testCommands = request.testCommands.map(command => crewCommand(command, allowedPrograms))
+    if (new Set(testCommands.map(command => command.id)).size !== testCommands.length) {
+      throw new CrewError('Crew integration repeats a test command id', 'CREW_INVALID_COMMAND')
+    }
+    const managerPaths = (request.changedPaths ?? []).map(path => repositoryPath(path, 'manager changed path'))
+    const signal = this.operationSignal(request.signal)
+    this.managerIntegrations.add(root.id)
+    const verifying: CrewWorkItemSnapshot[] = []
+    try {
+      const host = this.host(configuration)
+      const before = await host.inspectCheckout(configuration.repositoryRoot, signal)
+      if (before.stagedPaths.length > 0) throw new CrewError('Manager integration requires an unstaged checkout', 'CREW_STALE_REVISION')
+      const observedChanges = new Set(selected.flatMap(item => changedSince(item.baseline, before)))
+      const unobserved = managerPaths.filter(path => !observedChanges.has(path))
+      if (unobserved.length > 0) throw new CrewError(`Manager paths have no observed change: ${unobserved.join(', ')}`, 'CREW_CHECKOUT_DRIFT')
+      for (const item of selected) {
+        const report: CrewReportSnapshot = {
+          id: brandString<CrewReportId>(randomUUID()), taskId: item.taskId, workItemRevision: item.revision,
+          role: 'developer', workerSessionId: root.id, specRevision: item.specRevision,
+          verdict: 'ready', summary: `Manager handoff: ${summary}`,
+          changedPaths: changedSince(item.baseline, before).filter(path =>
+            [...item.writeScopes, ...configuration.sharedDirectories].some(scope => pathInCrewScope(path, scope))),
+          issues: [],
+        }
+        await this.journal.transact(root.id, async () => {
+          this.requireWork(root, item.taskId, item.revision)
+          await this.journal.appendAndFlush(root, 'crew/report', { version: 1, teamId: id, report })
+        })
+        verifying.push(await this.updateWorkItem(root, {
+          taskId: item.taskId, expectedRevision: item.revision, stage: 'verifying',
+          latestReportId: report.id, reason: 'Manager is verifying the current files; existing artifacts are retained.',
+        }))
+      }
+      const startedAt = Date.now()
+      const commands: CrewCommandResult[] = []
+      for (const command of testCommands) commands.push(await host.runCommand(configuration.repositoryRoot, command, signal))
+      const checkout = await host.inspectCheckout(configuration.repositoryRoot, signal)
+      const commonFailures = [
+        ...(sameCheckoutWorld(before, checkout) ? [] : ['project inputs changed during manager verification']),
+        ...(checkout.stagedPaths.length === 0 ? [] : ['checkout contains staged paths']),
+        ...commands.filter(command => command.timedOut || command.exitCode !== 0).map(command => `test ${command.commandId} failed`),
+      ]
+      const inputs: CrewIntegrationSnapshot['inputs'] = []
+      const failures: string[] = []
+      const approvedPaths = new Set(managerPaths)
+      for (const item of verifying) {
+        const report = this.journal.state(root).reports.find(value => value.id === item.latestReportId)
+        if (report === undefined) throw new CrewError('Manager handoff report is missing', 'CREW_EVIDENCE_NOT_FOUND')
+        const missingArtifacts = await host.missingArtifacts(configuration.repositoryRoot, item.requiredArtifacts, signal)
+        const issues = [...commonFailures,
+          ...(item.baseline.head === checkout.head ? [] : ['repository HEAD changed']),
+          ...missingArtifacts.map(path => `required artifact is missing: ${path}`),
+        ]
+        const verification: CrewVerificationSnapshot = {
+          id: brandString<CrewVerificationId>(randomUUID()), taskId: item.taskId, reportId: report.id,
+          workerSessionId: root.id, specRevision: item.specRevision, startedAt, finishedAt: Date.now(),
+          workerStopReason: 'completed', checkout, changedPaths: report.changedPaths,
+          outOfScopePaths: [], missingArtifacts, commands, verdict: issues.length === 0 ? 'passed' : 'failed',
+          summary: issues.length === 0 ? 'Host verified the manager-reviewed files.' : issues.join('; '),
+        }
+        await this.publishVerification(root, item, verification)
+        if (issues.length > 0) {
+          failures.push(`${item.moduleKey}: ${verification.summary}`)
+          await this.updateWorkItem(root, {
+            taskId: item.taskId, expectedRevision: item.revision, stage: 'paused',
+            latestVerificationId: verification.id, reason: verification.summary,
+          })
+          continue
+        }
+        const reviewReport: CrewReportSnapshot = {
+          id: brandString<CrewReportId>(randomUUID()), taskId: item.taskId, workItemRevision: item.revision,
+          role: 'reviewer', workerSessionId: root.id, specRevision: item.specRevision,
+          verificationId: verification.id, verdict: 'passed', summary: `Manager review: ${summary}`, changedPaths: [], issues: [],
+        }
+        await this.journal.transact(root.id, async () => {
+          this.requireWork(root, item.taskId, item.revision)
+          await this.journal.appendAndFlush(root, 'crew/report', { version: 1, teamId: id, report: reviewReport })
+        })
+        const review: CrewReviewSnapshot = {
+          id: brandString<CrewReviewId>(randomUUID()), taskId: item.taskId, reportId: reviewReport.id,
+          reviewerSessionId: root.id, specRevision: item.specRevision, verificationId: verification.id,
+          round: item.reviewRound + 1, verdict: 'passed', issues: [], summary: reviewReport.summary, stopReason: 'completed',
+        }
+        await this.publishReview(root, item, review)
+        let teamTask = this.ctx.agentTeams.getTask(root, item.taskId)
+        if (teamTask.status === 'pending') teamTask = await this.ctx.agentTeams.updateTask(root, {
+          taskId: teamTask.id, expectedRevision: teamTask.revision, action: 'claim',
+        })
+        if (teamTask.status !== 'completed') await this.ctx.agentTeams.updateTask(root, {
+          taskId: teamTask.id, expectedRevision: teamTask.revision, action: 'complete',
+        })
+        const ready = await this.updateWorkItem(root, {
+          taskId: item.taskId, expectedRevision: item.revision, stage: 'integration_ready',
+          latestVerificationId: verification.id, latestReviewId: review.id, reason: review.summary,
+        })
+        inputs.push({ taskId: item.taskId, workItemRevision: ready.revision, verificationId: verification.id, reviewId: review.id })
+        for (const path of verification.changedPaths) approvedPaths.add(path)
+      }
+      if (failures.length > 0) throw new CrewError(`Manager verification failed; files were retained. ${failures.join('; ')}`, 'CREW_EVIDENCE_NOT_FOUND')
+      const integration: CrewIntegrationSnapshot = {
+        id: brandString<CrewIntegrationId>(randomUUID()), revision: 1, status: 'running',
+        integratorSessionId: root.id, execution: 'manager', inputCheckout: checkout,
+        inputs, testCommands, commands: [], issues: [], summary: `Manager integration: ${summary}`,
+      }
+      await this.journal.transact(root.id, async () => {
+        for (const input of inputs) this.requireWork(root, input.taskId, input.workItemRevision)
+        await this.journal.appendAndFlush(root, 'crew/integration', { version: 1, teamId: id, integration })
+      })
+      const passed: CrewIntegrationSnapshot = {
+        ...integration, revision: 2, status: 'passed', commands, checkout,
+        approvedPaths: [...approvedPaths].sort(), stopReason: 'completed',
+      }
+      await this.publishIntegrationTerminal(root, integration, passed)
+      for (const input of inputs) {
+        const task = this.ctx.agentTeams.getTask(root, input.taskId)
+        if (task.status !== 'completed') await this.ctx.agentTeams.updateTask(root, { taskId: task.id, expectedRevision: task.revision, action: 'complete' })
+        await this.updateWorkItem(root, {
+          taskId: input.taskId, expectedRevision: input.workItemRevision, stage: 'accepted',
+          reason: 'Accepted by manager review and current host verification.', acceptedIntegrationId: passed.id,
+        })
+      }
+      return structuredClone(passed)
+    } finally {
+      try {
+        for (const item of verifying) {
+          const current = this.requireWork(root, item.taskId)
+          if (current.stage === 'verifying') await this.updateWorkItem(root, {
+            taskId: current.taskId, expectedRevision: current.revision, stage: 'paused',
+            reason: 'Manager verification did not finish. Preserve files and retry with corrected commands.',
+          })
+        }
+      } finally { this.managerIntegrations.delete(root.id) }
+    }
   }
 
   /** Execute one local commit after the Consumer's generic approval has completed. */
@@ -1023,6 +1212,7 @@ export class CrewService extends TypertRemoteService {
         taskId: request.taskId,
         revision: 1,
         moduleKey,
+        reviewMode: request.reviewMode ?? 'manager',
         specPath,
         specRevision,
         readScopes,
@@ -1058,6 +1248,11 @@ export class CrewService extends TypertRemoteService {
           `stale Crew work item "${request.taskId}" revision ${request.expectedRevision}; current revision is ${current.revision}`,
           'CREW_STALE_REVISION',
         )
+      }
+      if ((request.stage === 'running' || request.stage === 'queued') && !workItemActive(current.stage)
+        && state.workItems.filter(item => item.taskId !== current.taskId && workItemActive(item.stage)).length
+          >= (state.configuration?.maxConcurrentWorkers ?? DEFAULT_MAX_CONCURRENT_WORKERS)) {
+        throw new CrewError('Crew worker limit reached; continue this task after another worker finishes', 'CREW_INVALID_TRANSITION')
       }
       if (!canTransitionCrewStage(current.stage, request.stage)) {
         throw new CrewError(
@@ -1529,6 +1724,13 @@ export class CrewService extends TypertRemoteService {
     }
     for (const workItem of state.workItems) {
       if (workItem.stage === 'queued') await this.recoverQueuedDeveloper(root, workItem)
+      if (workItem.stage === 'verifying' && !this.managerIntegrations.has(root.id)
+        && state.reports.find(item => item.id === workItem.latestReportId)?.workerSessionId === root.id) {
+        await this.updateWorkItem(root, {
+          taskId: workItem.taskId, expectedRevision: workItem.revision, stage: 'paused',
+          reason: 'Manager verification was interrupted. Files are retained; verify the current checkout again.',
+        })
+      }
     }
     const refreshed = this.journal.state(root)
     for (const workItem of refreshed.workItems) {
@@ -1552,6 +1754,13 @@ export class CrewService extends TypertRemoteService {
       }
     }
     for (const integration of this.journal.state(root).integrations.filter(item => item.status === 'running')) {
+      if (integration.execution === 'manager') {
+        if (!this.managerIntegrations.has(root.id)) await this.publishIntegrationTerminal(root, integration, {
+          ...integration, revision: integration.revision + 1, status: 'failed',
+          summary: 'Manager integration was interrupted. Files are retained; review and verify them again.',
+        })
+        continue
+      }
       await this.recoverIntegratorProvisioning(root, integration)
       const latest = this.journal.state(root).integrations.find(item => item.id === integration.id)
       if (latest?.status === 'running') {
@@ -1825,6 +2034,17 @@ export class CrewService extends TypertRemoteService {
     }
     await this.publishVerification(root, verifying, verification)
     if (verification.verdict === 'passed') {
+      if (verifying.reviewMode === 'manager') {
+        const task = this.ctx.agentTeams.getTask(root, verifying.taskId)
+        await this.ctx.agentTeams.updateTask(root, { taskId: task.id, expectedRevision: task.revision, action: 'complete' })
+        const ready = await this.updateWorkItem(root, {
+          taskId: verifying.taskId, expectedRevision: verifying.revision,
+          stage: 'integration_ready', reason: 'Host verification passed; manager review and integration are pending.',
+          latestVerificationId: verification.id,
+        })
+        this.queueWorkNotification(root, ready)
+        return
+      }
       await this.launchReviewer(root, verifying, report, verification)
       return
     }
@@ -2245,7 +2465,6 @@ export class CrewService extends TypertRemoteService {
   private assertTeamTaskStage(task: TeamTaskView, stage: CrewStage): void {
     const expectsCompleted = stage === 'integration_ready' || stage === 'accepted'
     const expectsInProgress = stage === 'running'
-      || stage === 'verifying'
       || stage === 'reviewing'
       || stage === 'revision_required'
     if (expectsCompleted && task.status !== 'completed') {

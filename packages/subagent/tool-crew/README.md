@@ -7,6 +7,8 @@ kind: "package-reference"
 
 English | [中文](README.zh.md)
 
+`crew_dispatch.review_mode` defaults to `manager`. `crew_integrate` defaults to manager execution, requires `review_summary`, and accepts additional `changed_paths` and corrected combined `test_commands`. Worker capability limits cover every registration layer, including later tools; ordinary subagent and workflow tools cannot bypass the role.
+
 ## Summary
 
 `dsh-tool-crew` exposes the native Crew service to models without an external CLI adapter. Team Leads receive repository-file operations, workflow controls, and global memory access. Crew workers receive only the role-specific filesystem, declared-test, and structured-report tools that the durable assignment permits. `crew_commit` always enters the generic approval pipeline, derives its approval identity from the tool call, commits only integration-approved paths, and never pushes.
@@ -72,7 +74,7 @@ Manager-action waits remain pending while the current integration runs host veri
 
 #### What the model sees
 
-Managers receive the fixed Crew coordination policy and the manager subset in the [generated tool catalog](../../../docs/tool-catalog.md#deepseek-aidsh-tool-crew). The policy states Crew mechanics, which are the same for every manager, and names the three cases that engage a Crew: an Agent preset that mandates orchestration, a user asking for a development team, or work that benefits from independent implementation and review. Which case applies is the selected Agent preset's choice, not this plugin's — the [`crew-manager` preset](../../bundle/crew-profile/README.md#role-presets) mandates orchestration through its own persona and by composing no implementation tools, while an ordinary preset keeps its tools and the discretion. Developers, reviewers, and integrators receive a fixed worker policy plus only the schemas allowed by `CREW_ROLE_TOOL_NAMES`; the Crew service rejects any call whose live durable role no longer matches that scope. The manager policy treats Git as optional for local development and honors requests to work without commits. Dispatch, review, and integration do not require repository initialization, a first commit, or remote access.
+The manager policy favors broad delegation, member reuse, direct small repairs, and optional independent review. Workers receive only role-permitted tools; local development requires no Git commit or remote access.
 
 #### Token effect
 

@@ -2094,8 +2094,7 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 
 ### `crew_dispatch`
 
-创建一项带版本 Crew 工单，冻结其 checkout baseline，并启动一名 DSH 原生开发工人。
-
+将一块实质性模块委派给持久开发成员。优先按大块职责划分，并通过 crew_append 复用成员进行修订；不要逐文件拆分工人。
 ```json
 {
   "type": "object",
@@ -2103,6 +2102,14 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
     "module_key": {
       "type": "string",
       "description": "Stable lower-kebab-case module key."
+    },
+    "review_mode": {
+      "type": "string",
+      "description": "Defaults to manager review without a separate reviewer. Use independent for work that needs a dedicated review.",
+      "enum": [
+        "manager",
+        "independent"
+      ]
     },
     "subject": {
       "type": "string",
@@ -2234,12 +2241,30 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 
 ### `crew_integrate`
 
-启动原生整合工人以衔接已审查模块、执行必要的项目编辑并运行组合测试。
-
+验证并接收主智能体已审查的当前文件，无需创建另一个智能体。停止受影响成员后直接修复小问题，保留现有文件，并提供修正后的组合验证命令。仅在已独立审查的输入需要专门整合时选择 worker。
 ```json
 {
   "type": "object",
   "properties": {
+    "execution": {
+      "type": "string",
+      "description": "Defaults to manager; worker starts a dedicated integrator.",
+      "enum": [
+        "manager",
+        "worker"
+      ]
+    },
+    "review_summary": {
+      "type": "string",
+      "description": "Required for manager execution: what you reviewed, repaired, and concluded."
+    },
+    "changed_paths": {
+      "type": "array",
+      "description": "Additional project-relative files changed by your repairs or integration.",
+      "items": {
+        "type": "string"
+      }
+    },
     "task_ids": {
       "type": "array",
       "description": "Reviewed task ids; omit to select every integration-ready task.",

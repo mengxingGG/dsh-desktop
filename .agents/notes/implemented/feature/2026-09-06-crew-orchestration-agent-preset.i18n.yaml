@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-06-crew-orchestration-agent-preset.md
-2026-09-06-crew-orchestration-agent-preset.md: 03dcf81fdd866c9e3f785c46b1a0a8f28c843098
-2026-09-06-crew-orchestration-agent-preset.zh.md: 6ff2d1d9d91448731fde264178c63031d9e9b9f4
+2026-09-06-crew-orchestration-agent-preset.md: efe8831d511728b63189953ca8b5492c9d9e69f8
+2026-09-06-crew-orchestration-agent-preset.zh.md: efa210694ffd56ad6edc40f74f0b786255813d90

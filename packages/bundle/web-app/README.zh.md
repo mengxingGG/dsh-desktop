@@ -15,6 +15,8 @@ kind: "package-bundle"
 
 内置 [Claude Code 设置](../../client/ui-claude-code/README.zh.md)提供原生登录和额度刷新。执行器挂载后，主智能体与 Crew 模型选择器会发现它。
 
+[外部 CLI 设置](../../client/ui-cli-agents/README.zh.md)为同一套主智能体和 Crew 模型选择器增加 Grok、Antigravity 与 Codex 账号控制及执行路由。
+
 ## 目录
 
 - [使用本包](#use-this-package)

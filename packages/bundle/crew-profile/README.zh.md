@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-`dsh-crew-profile` 为用户选择的 DSH Agent 增加原生软件团队协作。默认 Web profile 已包含本层；自定义 profile 可以将它添加到基础和应用 bundle 之后。厂长的普通工具和 Agent 预设保持可用，本包另外随附一个 Agent 预设，选中它的会话被强制以 Crew 编排工作。开发、审查和整合工人分别使用可独立配置的模型与任务专用工具。
+`dsh-crew-profile` 为用户选择的 DSH Agent 增加原生软件团队协作。默认 Web profile 已包含本层；自定义 profile 可以将它添加到基础和应用 bundle 之后。厂长的普通工具和 Agent 预设保持可用，本包另外随附一个 Agent 预设，选中它的会话由主智能体主导开发并按需委派。开发、审查和整合工人分别使用可独立配置的模型与任务专用工具。
 
 厂长 Agent 预设将岗位文本放入 persona 插件的 `prefix`，并显式清空 `suffix`。Profile 校验要求此前缀与厂长岗位文件相同，使两种组合获得一致身份。
 
@@ -35,14 +35,14 @@ pnpm dsh plugin --profile headless add ./packages/bundle/crew-profile
 pnpm dsh --profile headless "Plan two independent modules, dispatch the native Crew, and report verified results."
 ```
 
-厂长 Session 的 cwd 就是仓库根。本层在第一次使用 Crew 时记录该根，最多允许四名并发工人，只接受 `pnpm`、`npm` 和 `node` 作为声明的验证程序，并要求在具名分支上执行本地提交。部署值应通过额外 profile patch 覆盖；同一个厂长 Session 中已经持久化的 Crew 配置保持不可变。
+厂长 Session 的 cwd 就是仓库根。本层在第一次使用 Crew 时记录该根，最多允许两名并发工人，只接受 `pnpm`、`npm` 和 `node` 作为声明的验证程序，并要求在具名分支上执行本地提交。部署值应通过额外 profile patch 覆盖；同一个厂长 Session 中已经持久化的 Crew 配置保持不可变。
 
 <a id="role-presets"></a>
 ## 角色预设
 
 本包拥有四个必需 YAML 角色预设。厂长工具补充用户选择的 Agent 预设。开发工人获得模块范围文件权限、共享 `docs`、`test`、`tests` 目录、声明测试和报告工具。审查工人可以读取完整项目并运行声明测试；整合工人还可以写入整合修改。工人预设先清除继承工具，再安装精确角色工具，允许覆盖 provider、model 和 reasoning effort。
 
-`crew-manager` Agent 预设就是强制 Crew 编排的那个。它的组合本身即强制手段：persona、仓库指令，加上一层协作面——询问用户、todo、Skills、计划模式和 compaction——除此之外别无他物，因此运行它的会话没有任何 Shell、无作用域文件系统、子代理或工作流工具可以绕开 Crew 工作流修改项目代码。厂长 persona 陈述同一件事，加载器逐字节比对这两段文本。要增加能力就得同时改组合与 [`src/index.ts`](src/index.ts) 里的模块白名单；任何命名了白名单之外模块的行都会使加载失败，嵌套在 group 内部的行也一样。
+`crew-manager` 保留 Shell、文件编辑和搜索工具供主智能体直接修复和集成。它按大块职责委派并复用开发子智能体，独立审查和专门集成按需启用。加载器比对角色 persona 与 Agent 预设，并校验组合模块白名单。
 
 选不选这个预设是用户的逐会话决定。任何普通预设都保留完整工具集和可自行判断的 Crew 策略，部署默认值也停留在那里。把 `presets/agents/` 发布到 Web 预设列表的是 [`@deepseek-ai/dsh-crew-web-profile`](../crew-web-profile/README.zh.md)；本 Host 层只把该目录暴露为 `ctx.crewProfilePresets.agentPresetRoots`。角色声明缺失或不一致会使加载失败。
 
@@ -57,7 +57,7 @@ pnpm dsh --profile headless "Plan two independent modules, dispatch the native C
 | 路径 | 职责 |
 |---|---|
 | [`presets/roles/`](presets/roles/) | 四种角色的精确 persona、工具、路由、筛选和深度声明 |
-| [`presets/agents/crew-manager/`](presets/agents/crew-manager/) | 强制 Crew 编排的 Agent 预设 |
+| [`presets/agents/crew-manager/`](presets/agents/crew-manager/) | 主智能体主导开发的 Agent 预设 |
 | [`src/index.ts`](src/index.ts) | 启动验证与 `ctx.crewProfilePresets` provider |
 | [`cordis.patch.yml`](cordis.patch.yml) | 应用在所选应用 bundle 之上的有序 Host 组合 |
 
@@ -82,7 +82,7 @@ pnpm dsh --profile headless "Plan two independent modules, dispatch the native C
 
 #### 模型看到什么
 
-根模型保留所选 persona 与普通工具，同时获得 Crew 协作策略、已记录的 DSH 全局记忆和 `crew_*` 厂长 schema。该策略陈述 Crew 机制并列出何时该启用 Crew；具体命中哪一种由所选预设决定，因此运行 `crew-manager` 的会话读到的是强制编排的 persona，而普通预设保留自行判断的余地。子模型收到自己的角色 persona、持久任务和岗位工具。需要处理的 Crew 通知在厂长当前回合结束后以持久用户消息进入上下文。
+根模型保留所选 persona 与编码工具，同时获得 Crew 协作策略、已记录的 DSH 全局记忆和 `crew_*` 主智能体 schema。它可以直接处理小改动、按大块职责委派，并在需要时安排独立审查。子模型收到自己的角色 persona、持久任务和岗位工具。需要处理的 Crew 通知在主智能体当前回合结束后以持久用户消息进入上下文。
 
 #### Token 影响
 

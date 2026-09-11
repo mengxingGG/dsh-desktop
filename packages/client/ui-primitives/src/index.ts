@@ -68,3 +68,5 @@ export type { MarkdownCodeLabels, MarkdownFileMentions, MarkdownLabels } from '.
 export { extractMarkdownPlainText } from './markdown/plain-text.ts'
 export type { MarkdownPlainTextMode, MarkdownPlainTextOptions } from './markdown/plain-text.ts'
 export * from './icons/index.tsx'
+export { AnimatedIcon } from './AnimatedIcon.tsx'
+export type { AnimatedIconName } from './AnimatedIcon.tsx'

@@ -698,6 +698,7 @@ class ToolLayer implements ScopeLayer {
   readonly tools: NamedEntries<ToolDefinition>
   readonly restrictions = new AnonymousEntries<CompiledToolRestriction>()
   readonly guards = new AnonymousEntries<ToolGuard>()
+  readonly capabilityLimits = new AnonymousEntries<ReadonlySet<string>>()
   /**
    * Presentation this scope's agent declared for itself, shadowing the
    * deployment default. One cell rather than an entry table: two answers to
@@ -713,7 +714,7 @@ class ToolLayer implements ScopeLayer {
 
   /** Whether every contribution table in this aggregate layer is empty. */
   isEmpty(): boolean {
-    return this.tools.isEmpty() && this.restrictions.isEmpty() && this.guards.isEmpty()
+    return this.tools.isEmpty() && this.restrictions.isEmpty() && this.guards.isEmpty() && this.capabilityLimits.isEmpty()
       && this.mode === undefined
   }
 
@@ -1095,6 +1096,20 @@ export class ToolRuntime extends Service {
     )
   }
 
+  /**
+   * Limit all capabilities, including later exact-scope registrations, to a role's tool names.
+   * Limits intersect across the scope chain and affect discovery and execution.
+   * @param names - Permitted capability names; registrations may arrive after this limit.
+   * @returns Disposer restoring the preceding scoped capability set.
+   */
+  limitCapabilities(names: readonly string[]): () => void {
+    if (scopeOf(this.ctx) === undefined) throw new Error('tools.limitCapabilities() requires an Agent scope')
+    if (names.includes(RUN_CODE_NAME)) throw new Error('Limit end capabilities instead of the PTC transport')
+    return this.layers.effect(this.ctx, layer => layer.capabilityLimits.append(new Set(names)), {
+      label: 'tools.limitCapabilities()',
+    })
+  }
+
   /** First monotonic denial from the global then the scope chain's guard layers, farthest first. */
   private guardReason(exec: ToolExecution): string | undefined {
     const globalReason = this.layers.global.guardReason(exec)
@@ -1159,6 +1174,11 @@ export class ToolRuntime extends Service {
       for (const [name, definition] of own.tools.entries()) {
         knownNames.add(name)
         visible.set(name, definition)
+      }
+    }
+    for (const layer of layers) {
+      for (const allowed of layer.capabilityLimits.values()) {
+        for (const name of visible.keys()) if (!allowed.has(name)) visible.delete(name)
       }
     }
     // Presentation infrastructure is resolved last and outside capability

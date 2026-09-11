@@ -1,6 +1,6 @@
 /** Manager header entry that opens the shared Crew details view. */
 
-import { IconUserOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { AnimatedIcon } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { CrewProjectionView } from '@deepseek-ai/dsh-crew/client'
 import { NS } from './locales.ts'
@@ -19,9 +19,9 @@ export type CrewActionProps =
   & PropsLocale<typeof NS>
 
 function activeCount(projection: CrewProjectionView | undefined): number {
-  return projection?.workItems.filter(item => (
-    item.stage !== 'accepted' && item.stage !== 'failed' && item.stage !== 'cancelled'
-  )).length ?? 0
+  if (projection === undefined) return 0
+  return projection.workItems.filter(item => ['queued', 'running', 'reviewing'].includes(item.stage)).length
+    + projection.integrations.filter(item => item.status === 'running' && item.execution !== 'manager').length
 }
 
 /** Render the manager-only Crew trigger with a live active-worker count. */
@@ -37,7 +37,7 @@ export function CrewAction({ useProjection, useSession, openCrew, t }: CrewActio
       aria-label={t('open')}
       onClick={() => { openCrew({ kind: 'crew' }) }}
     >
-      <IconUserOutline16 size={14} />
+      <AnimatedIcon name={count > 0 ? 'working' : 'team'} size={16} />
       <span>{t('trigger')}</span>
       {count > 0 && <span className={css.count} aria-label={String(count)}>{count}</span>}
     </button>

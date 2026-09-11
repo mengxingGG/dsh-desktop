@@ -2,6 +2,8 @@
 
 [English](README.md) | 中文
 
+应用图标源文件是 `assets/icon.png`。根目录的 `scripts/build-desktop-icon.ps1` 生成 Windows ICO；壳窗口、Windows 与 Linux 安装包、根目录 EXE 启动器使用同一图标。通过 `scripts/build-desktop-launcher.ps1` 重建启动器，现有快捷方式保留原目标。
+
 桌面应用是包裹 dsh Web UI 的 Electron 壳。它不打开监听端口：内置的上游 Node.js 子进程启动已安装的 dsh 项目，带版本的分帧字节管道在没有外层 Base64 信封的情况下承载 Fetch 请求与流式响应，Node IPC 承载生命周期控制，`dsh-app://` 则提供与后端版本匹配的客户端资源。
 
 ## 关键技术决策

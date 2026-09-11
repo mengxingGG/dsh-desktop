@@ -87,10 +87,10 @@ async stop(caller: Agent, request: StopCrewWorkRequest): Promise<CrewWorkItemSna
 async reassign(caller: Agent, request: ReassignCrewWorkRequest): Promise<CrewWorkItemSnapshot>
 
 /**
- * Freeze reviewed work and start one read-only native integration worker.
+ * Verify manager-reviewed files directly, or delegate independently reviewed modules.
  * @param caller - Exact live Team Lead managing the workflow.
- * @param request - Reviewed work selection, combined tests, and cancellation signal.
- * @returns Durable running integration record.
+ * @param request - Execution owner, review assessment, selected work, and combined commands.
+ * @returns Terminal manager integration or running delegated integration.
  */
 async integrate(caller: Agent, request: IntegrateCrewRequest): Promise<CrewIntegrationSnapshot>
 

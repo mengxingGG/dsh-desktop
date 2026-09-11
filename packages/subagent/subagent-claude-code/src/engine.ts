@@ -340,7 +340,10 @@ export class ClaudeCodeEngine extends TypertRemoteService<Config> {
         if (measurement !== undefined) agent.session.append('claude-code/usage', measurement)
         tools.observe(transcript.accept(message))
         if (message.type === 'result') {
-          if (message.subtype !== 'success' || message.is_error) throw new Error(`Claude Code execution failed: ${message.subtype}`)
+          if (message.subtype !== 'success' || message.is_error) {
+            const detail = message.subtype === 'success' ? message.result : message.errors.join('; ')
+            throw new Error(`Claude Code execution failed: ${detail || message.subtype}`)
+          }
           agent.session.append('claude-code/checkpoint', { sessionId, messageIds: agent.session.deriveMessages().map(message => message.id) })
           return { kind: 'completed' }
         }

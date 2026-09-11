@@ -685,6 +685,49 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'cliAgents',
+    summary: 'Publishes execution routes, native account controls and invocation usage.',
+    description: 'Publishes execution routes, native account controls and invocation usage.',
+    methods: [
+      {
+        signature: '@Remote(\'status\') status(provider: CliProvider): CliAccountStatus',
+        description: 'Read cached native observations; no account probe starts implicitly.',
+        parameters: [{ name: 'provider', description: 'Selected native account.' }],
+        returns: 'Latest account, model and login observations.',
+      },
+      {
+        signature: '@Remote(\'refresh\') async refresh(provider: CliProvider): Promise<CliAccountStatus>',
+        description: 'Refresh model availability without a model prompt or credential-file reads.',
+        parameters: [{ name: 'provider', description: 'Selected native account.' }],
+        returns: 'Current native account observations.',
+      },
+      {
+        signature: '@Remote(\'startLogin\') async startLogin(provider: CliProvider): Promise<CliLoginSnapshot>',
+        description: 'Start native device authorization or the Antigravity login terminal.',
+        parameters: [{ name: 'provider', description: 'User-selected account.' }],
+        returns: 'Bounded login terminal output.',
+      },
+      {
+        signature: '@Remote(\'loginInput\') async loginInput(provider: CliProvider, id: CliLoginId, text: string): Promise<void>',
+        description: 'Forward explicit user input to a native authorization terminal.',
+        parameters: [{ name: 'provider', description: 'Account shown in settings.' }, { name: 'id', description: 'Displayed login identity.' }, { name: 'text', description: 'Explicit terminal input.' }],
+        returns: 'Completion after input delivery.',
+      },
+      {
+        signature: '@Remote(\'closeLogin\') async closeLogin(provider: CliProvider, id: CliLoginId): Promise<CliAccountStatus>',
+        description: 'Close native authorization and refresh availability without inference.',
+        parameters: [{ name: 'provider', description: 'Selected account.' }, { name: 'id', description: 'Displayed login identity.' }],
+        returns: 'Account observation after terminal cleanup.',
+      },
+      {
+        signature: '@Remote(\'refreshQuota\') async refreshQuota(provider: CliProvider, signal: AbortSignal): Promise<readonly CliQuotaWindow[] | null>',
+        description: 'Request native quota only on explicit user action; Codex needs no model turn.',
+        parameters: [{ name: 'provider', description: 'Selected native account; Grok has no supported query.' }, { name: 'signal', description: 'Remote caller cancellation.' }],
+        returns: 'Native quota windows, or null when unavailable; unsupported commands reject.',
+      },
+    ],
+  },
+  {
     key: 'clientModules',
     summary: 'The web plugin table service: incremental `dsh.client` scan + wire composition + bundle route + index injection rows.',
     description: 'The web plugin table service: incremental `dsh.client` scan + wire composition + bundle route + index injection rows. Construction runs the activation scan synchronously — a malformed declaration or missing bundle among the already-loaded entries aggregates into one loud throw (FAILED fiber; the boot activation audit reports it).',
@@ -941,9 +984,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'async integrate(caller: Agent, request: IntegrateCrewRequest): Promise<CrewIntegrationSnapshot>',
-        description: 'Freeze reviewed work and start one read-only native integration worker.',
-        parameters: [{ name: 'caller', description: 'Exact live Team Lead managing the workflow.' }, { name: 'request', description: 'Reviewed work selection, combined tests, and cancellation signal.' }],
-        returns: 'Durable running integration record.',
+        description: 'Verify manager-reviewed files directly, or delegate independently reviewed modules.',
+        parameters: [{ name: 'caller', description: 'Exact live Team Lead managing the workflow.' }, { name: 'request', description: 'Execution owner, review assessment, selected work, and combined commands.' }],
+        returns: 'Terminal manager integration or running delegated integration.',
       },
       {
         signature: 'workerBinding(caller: Agent): CrewWorkerBinding',
@@ -1085,7 +1128,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     methods: [
       {
         signature: 'readonly managerAgentPresetId: \'crew-manager\'',
-        description: 'Agent preset that mandates Crew orchestration for the sessions selecting it.',
+        description: 'Agent preset that supports manager-led Crew development for the sessions selecting it.',
         parameters: [],
       },
       {
@@ -2918,6 +2961,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the exact disposer that unregisters the guard.',
       },
       {
+        signature: 'limitCapabilities(names: readonly string[]): () => void',
+        description: 'Limit all capabilities, including later exact-scope registrations, to a role\'s tool names. Limits intersect across the scope chain and affect discovery and execution.',
+        parameters: [{ name: 'names', description: 'Permitted capability names; registrations may arrive after this limit.' }],
+        returns: 'Disposer restoring the preceding scoped capability set.',
+      },
+      {
         signature: 'get(name: string, scope?: ScopeKey): ToolDefinition | undefined',
         description: 'Look up a tool as one scope sees it (scoped shadows global; a restricted-away global reads as absent). Presenters pass the calling agent so the rendered card matches the definition that actually executed.',
         parameters: [{ name: 'name', description: 'the tool name as registered.' }, { name: 'scope', description: 'the viewing scope (the agent); omitted = the global view.' }],
@@ -3408,6 +3457,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     summary: 'The turn is about to close: the model owes no response (no live tool calls, no fresh steering).',
     description: 'The turn is about to close: the model owes no response (no live tool calls, no fresh steering). Awaited before the boundary commits — a listener that objects steers (`agent.steer(...)`) and the machine re-reads its inbox: fresh steering runs another step, none closes the turn. Data decides, so listener order cannot change the outcome. The inverse control (stop a tool loop early) is data too: a tool result carrying `concludesTurn` ends the turn at its step. The conclusion never short-circuits already-submitted next-step work: same-step `additionalContexts` or racing steering still runs, and the turn closes only when that inbox drains.',
     parameters: [{ name: 'payload', description: '.signal - the current turn\'s explicit abort signal. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.' }],
+  },
+  {
+    name: 'agents/execute',
+    mode: 'waterfall',
+    signature: '\'agents/execute\'(input: AgentExecutionRequest, next: (input: AgentExecutionRequest) => Promise<AgentExecutionResult>): Promise<AgentExecutionResult>',
+    summary: 'Wrap an external execution with host-owned admission and resource accounting.',
+    description: 'Wrap an external execution with host-owned admission and resource accounting.',
+    parameters: [{ name: 'input', description: 'Exact admitted input, including the scoped tool callback.' }, { name: 'next', description: 'Continue execution with the supplied input.' }],
   },
   {
     name: 'agents/execution-request',
@@ -4154,8 +4211,28 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ClaudeQuotaWindow {\n    readonly usedPercent: number | null;\n    readonly resetsAt: number | null;\n    readonly updatedAt: number;\n}',
   },
   {
+    name: 'CliAccountStatus',
+    declaration: 'export interface CliAccountStatus {\n    readonly provider: CliProvider;\n    readonly installed: boolean;\n    readonly authenticated: boolean | null;\n    readonly modelCount: number;\n    readonly error: string | null;\n    readonly quota: readonly CliQuotaWindow[] | null;\n    readonly quotaObservedAt: number | null;\n    readonly login: CliLoginSnapshot | null;\n}',
+  },
+  {
     name: 'ClientArtifactBaseline',
     declaration: 'export interface ClientArtifactBaseline {\n    readonly path: string;\n    readonly mtimeMs: number;\n    readonly size: number;\n}',
+  },
+  {
+    name: 'CliLoginId',
+    declaration: 'export type CliLoginId = Branded<\'CliLoginId\'>;',
+  },
+  {
+    name: 'CliLoginSnapshot',
+    declaration: 'export interface CliLoginSnapshot {\n    readonly id: CliLoginId;\n    readonly provider: CliProvider;\n    readonly status: \'running\' | \'completed\' | \'cancelled\' | \'failed\';\n    readonly output: string;\n    readonly truncated: boolean;\n    readonly error: string | null;\n}',
+  },
+  {
+    name: 'CliProvider',
+    declaration: 'export type CliProvider = \'grok-cli\' | \'antigravity-cli\' | \'codex-cli\';',
+  },
+  {
+    name: 'CliQuotaWindow',
+    declaration: 'export interface CliQuotaWindow {\n    readonly pool: string;\n    readonly window: string;\n    readonly usedPercent: number;\n    readonly resetsAt: number | null;\n}',
   },
   {
     name: 'CodeBindingErrorClass',
@@ -4363,7 +4440,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'CreateCrewWorkItemRequest',
-    declaration: 'export interface CreateCrewWorkItemRequest {\n    readonly taskId: TeamTaskId;\n    readonly moduleKey: string;\n    readonly specPath: string;\n    readonly specRevision: number;\n    readonly readScopes: readonly string[];\n    readonly writeScopes: readonly string[];\n    readonly requiredArtifacts: readonly string[];\n    readonly testCommands: readonly CrewCommandSpec[];\n    readonly baseline: CrewCheckoutSnapshot;\n}',
+    declaration: 'export interface CreateCrewWorkItemRequest {\n    readonly reviewMode?: \'manager\' | \'independent\';\n    readonly taskId: TeamTaskId;\n    readonly moduleKey: string;\n    readonly specPath: string;\n    readonly specRevision: number;\n    readonly readScopes: readonly string[];\n    readonly writeScopes: readonly string[];\n    readonly requiredArtifacts: readonly string[];\n    readonly testCommands: readonly CrewCommandSpec[];\n    readonly baseline: CrewCheckoutSnapshot;\n}',
   },
   {
     name: 'CreateGoalRequest',
@@ -4439,7 +4516,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'CrewExecutionLimits',
-    declaration: 'export interface CrewExecutionLimits {\n    readonly maxOutputBytes: number;\n    readonly processGraceMs: number;\n    readonly gitTimeoutMs: number;\n}',
+    declaration: 'export interface CrewExecutionLimits {\n    readonly maxOutputBytes: number;\n    readonly processGraceMs: number;\n    readonly gitTimeoutMs: number;\n    readonly ignoredDirectories?: readonly string[];\n}',
   },
   {
     name: 'CrewFileEntry',
@@ -4459,7 +4536,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'CrewIntegrationSnapshot',
-    declaration: 'export interface CrewIntegrationSnapshot {\n    readonly id: CrewIntegrationId;\n    readonly revision: number;\n    readonly status: \'running\' | \'passed\' | \'failed\' | \'cancelled\';\n    readonly integratorSessionId: SessionId;\n    readonly inputCheckout: CrewCheckoutSnapshot;\n    readonly inputs: CrewIntegrationInput[];\n    readonly testCommands: CrewCommandSpec[];\n    readonly commands: CrewCommandResult[];\n    readonly issues: CrewIssue[];\n    readonly summary: string;\n    readonly stopReason?: SubagentStopReason;\n    readonly checkout?: CrewCheckoutSnapshot;\n    readonly approvedPaths?: string[];\n}',
+    declaration: 'export interface CrewIntegrationSnapshot {\n    readonly id: CrewIntegrationId;\n    readonly revision: number;\n    readonly status: \'running\' | \'passed\' | \'failed\' | \'cancelled\';\n    readonly integratorSessionId: SessionId;\n    readonly execution?: \'manager\' | \'worker\';\n    readonly inputCheckout: CrewCheckoutSnapshot;\n    readonly inputs: CrewIntegrationInput[];\n    readonly testCommands: CrewCommandSpec[];\n    readonly commands: CrewCommandResult[];\n    readonly issues: CrewIssue[];\n    readonly summary: string;\n    readonly stopReason?: SubagentStopReason;\n    readonly checkout?: CrewCheckoutSnapshot;\n    readonly approvedPaths?: string[];\n}',
   },
   {
     name: 'CrewIssue',
@@ -4555,7 +4632,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'CrewWorkItemSnapshot',
-    declaration: 'export interface CrewWorkItemSnapshot {\n    readonly taskId: TeamTaskId;\n    readonly revision: number;\n    readonly moduleKey: string;\n    readonly specPath: string;\n    readonly specRevision: number;\n    readonly readScopes: string[];\n    readonly writeScopes: string[];\n    readonly requiredArtifacts: string[];\n    readonly testCommands: CrewCommandSpec[];\n    readonly baseline: CrewCheckoutSnapshot;\n    readonly stage: CrewStage;\n    readonly reason?: string;\n    readonly developerName?: string;\n    readonly developerSessionId?: SessionId;\n    readonly reviewerName?: string;\n    readonly reviewerSessionId?: SessionId;\n    readonly workerSessionIds: SessionId[];\n    readonly attempt: number;\n    readonly automaticRepairCount: number;\n    readonly reviewRound: number;\n    readonly latestReportId?: CrewReportId;\n    readonly latestVerificationId?: CrewVerificationId;\n    readonly latestReviewId?: CrewReviewId;\n    readonly acceptedIntegrationId?: CrewIntegrationId;\n}',
+    declaration: 'export interface CrewWorkItemSnapshot {\n    readonly taskId: TeamTaskId;\n    readonly revision: number;\n    readonly moduleKey: string;\n    readonly reviewMode?: \'manager\' | \'independent\';\n    readonly specPath: string;\n    readonly specRevision: number;\n    readonly readScopes: string[];\n    readonly writeScopes: string[];\n    readonly requiredArtifacts: string[];\n    readonly testCommands: CrewCommandSpec[];\n    readonly baseline: CrewCheckoutSnapshot;\n    readonly stage: CrewStage;\n    readonly reason?: string;\n    readonly developerName?: string;\n    readonly developerSessionId?: SessionId;\n    readonly reviewerName?: string;\n    readonly reviewerSessionId?: SessionId;\n    readonly workerSessionIds: SessionId[];\n    readonly attempt: number;\n    readonly automaticRepairCount: number;\n    readonly reviewRound: number;\n    readonly latestReportId?: CrewReportId;\n    readonly latestVerificationId?: CrewVerificationId;\n    readonly latestReviewId?: CrewReviewId;\n    readonly acceptedIntegrationId?: CrewIntegrationId;\n}',
   },
   {
     name: 'DeepSeekLlmApiExtensionMap',
@@ -4611,7 +4688,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'DispatchCrewWorkRequest',
-    declaration: 'export interface DispatchCrewWorkRequest {\n    readonly moduleKey: string;\n    readonly subject: string;\n    readonly description: string;\n    readonly specPath: string;\n    readonly specRevision: number;\n    readonly blockedBy?: readonly TeamTaskId[];\n    readonly readScopes: readonly string[];\n    readonly writeScopes: readonly string[];\n    readonly requiredArtifacts: readonly string[];\n    readonly testCommands: readonly CrewCommandSpec[];\n    readonly signal: AbortSignal;\n}',
+    declaration: 'export interface DispatchCrewWorkRequest {\n    readonly reviewMode?: \'manager\' | \'independent\';\n    readonly moduleKey: string;\n    readonly subject: string;\n    readonly description: string;\n    readonly specPath: string;\n    readonly specRevision: number;\n    readonly blockedBy?: readonly TeamTaskId[];\n    readonly readScopes: readonly string[];\n    readonly writeScopes: readonly string[];\n    readonly requiredArtifacts: readonly string[];\n    readonly testCommands: readonly CrewCommandSpec[];\n    readonly signal: AbortSignal;\n}',
   },
   {
     name: 'Domain',
@@ -4887,7 +4964,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'IntegrateCrewRequest',
-    declaration: 'export interface IntegrateCrewRequest {\n    readonly taskIds?: readonly TeamTaskId[];\n    readonly testCommands: readonly CrewCommandSpec[];\n    readonly signal: AbortSignal;\n}',
+    declaration: 'export interface IntegrateCrewRequest {\n    readonly execution?: \'manager\' | \'worker\';\n    readonly reviewSummary?: string;\n    readonly changedPaths?: readonly string[];\n    readonly taskIds?: readonly TeamTaskId[];\n    readonly testCommands: readonly CrewCommandSpec[];\n    readonly signal: AbortSignal;\n}',
   },
   {
     name: 'InvariantFailure',
@@ -6615,7 +6692,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolRuntime',
-    declaration: 'export class ToolRuntime extends Service {\n    static inject;\n    static Config: z<Config>;\n    readonly [TOOL_RUNTIME_SCHEDULER]: ToolRuntimeScheduler;\n    constructor(ctx: Context, config: Config = {});\n    presentAs(mode: ToolPresentationMode): () => void;\n    register(definition: ToolDefinition): () => void;\n    restrict(filter: ToolRestriction): () => void;\n    guard(guard: ToolGuard): () => void;\n    get(name: string, scope?: ScopeKey): ToolDefinition | undefined;\n    schemas(scope?: ScopeKey): ToolSchema[];\n    executionMode(exec: ToolExecutionInput): ToolExecutionMode;\n    async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>;\n}',
+    declaration: 'export class ToolRuntime extends Service {\n    static inject;\n    static Config: z<Config>;\n    readonly [TOOL_RUNTIME_SCHEDULER]: ToolRuntimeScheduler;\n    constructor(ctx: Context, config: Config = {});\n    presentAs(mode: ToolPresentationMode): () => void;\n    register(definition: ToolDefinition): () => void;\n    restrict(filter: ToolRestriction): () => void;\n    guard(guard: ToolGuard): () => void;\n    limitCapabilities(names: readonly string[]): () => void;\n    get(name: string, scope?: ScopeKey): ToolDefinition | undefined;\n    schemas(scope?: ScopeKey): ToolSchema[];\n    executionMode(exec: ToolExecutionInput): ToolExecutionMode;\n    async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>;\n}',
   },
   {
     name: 'ToolRuntimeScheduler',

@@ -27,8 +27,8 @@ function allowedTeamStatuses(stage: CrewStage): readonly string[] {
     case 'planned': return ['pending']
     case 'queued': return ['pending', 'in_progress']
     case 'running':
-    case 'verifying':
     case 'revision_required': return ['in_progress']
+    case 'verifying': return ['pending', 'in_progress', 'completed']
     case 'reviewing': return ['in_progress', 'completed']
     case 'integration_ready':
     case 'accepted': return ['completed']
@@ -54,7 +54,7 @@ function workerIdentityFailure(
   if (member.name !== expectedName) {
     return `Crew ${role} Session "${id}" does not match Team member name`
   }
-  if (member.phase === 'failed' && !['failed', 'paused', 'cancelled'].includes(work.stage)) {
+  if (member.phase === 'failed' && !['failed', 'paused', 'cancelled', 'verifying', 'integration_ready', 'accepted'].includes(work.stage)) {
     return `Crew ${role} Session "${id}" failed while work item is ${work.stage}`
   }
   return undefined

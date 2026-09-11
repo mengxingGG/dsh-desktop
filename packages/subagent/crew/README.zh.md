@@ -7,6 +7,12 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
+派发默认使用 `reviewMode: "manager"`：按大块职责委派，通过 `append()` 复用开发子智能体，由主智能体负责审查、修复和集成。独立审查按需启用。自动修复默认次数为零；默认允许两个活跃工单，暂停和可集成工单不占名额。
+
+主智能体执行 `integrate()` 时必须提供 `reviewSummary`，可提供额外 `changedPaths`。修复前先停止相关子智能体。本次完整的 `testCommands` 验证当前文件，可修正先前的命令声明。证据记录主 Session，不创建审查子智能体，也不宣称独立审查。验证失败时保留文件供重试。`execution: "worker"` 保留独立审查后的专门集成路径。
+
+Host 的 `maxConcurrentRequests` 默认为每个提供商分组两个请求，包含主智能体。`providerRequestLimits` 覆盖分组上限，`providerRequestGroups` 合并共享账号的路由。外部执行在工具运行期间释放名额，因此等待中的主智能体不会阻塞子智能体请求。
+
 ## 概述
 
 通过持久软件工单协调原生开发、独立审查和整合工人。Crew 把工单绑定到 Agent Teams 任务，在厂长 Session 中记录修订与证据，并通过 `ctx.sessionProjections` 重建。Agent Teams 拥有成员、消息、任务所有权和依赖；子 Session 拥有工人记录。
@@ -63,7 +69,7 @@ Checkout 摘要绑定已变化路径的内容、文件类型与权限位。链�
 
 Checkout 摘要还包含 Git 索引的逻辑条目。采集过程拒绝索引条目变化，但允许正常的文件状态缓存刷新。整合与提交比较完整摘要；获批的暂存步骤单独比较工作文件证据。隐藏已跟踪文件变化的索引标志会导致拒绝，Crew 不会修改这些标志。重试前需在 Crew 外清除 `assume-unchanged` 和 `skip-worktree`。
 
-根目录没有 `.git` 条目或 Git 分支尚无首次提交时，Crew 使用 SHA-256 内容、类型和权限证据建立本地文件清单。受保护的 `.git` 和 `.env` 条目被排除，目录链接只记录而不遍历。本地证据记录 `head: null`，没有分支或暂存路径。其路径列表是完整清单，通过比较清单识别新增、修改和删除。此模式也读取依赖与生成文件，因此验证成本随项目大小增长。已有提交的 Git 仓库保留 Git 检查，并明确报告 Git 故障。
+没有根目录 `.git` 或分支尚无提交时，Crew 使用本地文件摘要。`execution.ignoredDirectories` 默认排除 `node_modules`、`.npm-cache`、`.pnpm-store`、`dist`、`build`、`coverage` 和 `.next` 目录；`.git` 和 `.env` 始终受保护。此本地清单规则不排除 Git 跟踪文件。
 
 声明命令通过现有子进程提供方在实际项目中运行，使用已安装依赖，并保留生成文件。宿主验证真实工作目录，过滤凭据环境变量，限制输出与截止时间，并等待受管进程完成。Windows npm/pnpm Node 包装脚本解析到已安装的 JavaScript 入口，不经过 shell 插值。此执行器不强制执行 OS 文件系统或网络隔离。
 

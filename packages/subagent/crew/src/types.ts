@@ -185,6 +185,8 @@ export interface CrewWorkItemSnapshot {
   readonly taskId: TeamTaskId
   readonly revision: number
   readonly moduleKey: string
+  /** Review owner; absent in released records means independent review. */
+  readonly reviewMode?: 'manager' | 'independent'
   readonly specPath: string
   readonly specRevision: number
   readonly readScopes: string[]
@@ -296,6 +298,8 @@ export interface CrewIntegrationSnapshot {
   readonly revision: number
   readonly status: 'running' | 'passed' | 'failed' | 'cancelled'
   readonly integratorSessionId: SessionId
+  /** Manager execution uses the lead Session; absent means a delegated integrator. */
+  readonly execution?: 'manager' | 'worker'
   /** Quiescent checkout frozen before the integrator starts. */
   readonly inputCheckout: CrewCheckoutSnapshot
   readonly inputs: CrewIntegrationInput[]
@@ -375,6 +379,12 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
 
 /** Deployment-time native Crew configuration. */
 export interface Config {
+  /** Host-wide simultaneous native or external requests per provider group; defaults to two. */
+  readonly maxConcurrentRequests?: number
+  /** Per-provider or account-group request limits, including manager requests. */
+  readonly providerRequestLimits?: Readonly<Record<string, number>>
+  /** Routes using the same account can share one named request pool. */
+  readonly providerRequestGroups?: Readonly<Record<string, string>>
   /** Project-relative directories shared by developer file tools; defaults to docs, test, and tests. */
   readonly sharedDirectories?: readonly string[]
   /** Local process and output limit overrides, resolved at plugin load. */
@@ -403,6 +413,8 @@ export interface Config {
 
 /** Initial binding between one existing Team task and Crew workflow metadata. */
 export interface CreateCrewWorkItemRequest {
+  /** Review owner resolved when the work assignment is created. */
+  readonly reviewMode?: 'manager' | 'independent'
   readonly taskId: TeamTaskId
   readonly moduleKey: string
   readonly specPath: string
@@ -436,6 +448,8 @@ export interface UpdateCrewWorkItemRequest {
 
 /** Manager request for one new Team task and native developer worker. */
 export interface DispatchCrewWorkRequest {
+  /** Defaults to manager review; independent creates a dedicated reviewer. */
+  readonly reviewMode?: 'manager' | 'independent'
   readonly moduleKey: string
   readonly subject: string
   readonly description: string
@@ -483,6 +497,12 @@ export interface RecordCrewReportRequest {
 
 /** Manager request for one frozen integration set and its exact combined tests. */
 export interface IntegrateCrewRequest {
+  /** Defaults to manager verification without creating another Agent. */
+  readonly execution?: 'manager' | 'worker'
+  /** Manager assessment of the selected modules and any repairs; required for manager execution. */
+  readonly reviewSummary?: string
+  /** Exact paths edited or removed by the manager during repair and integration. */
+  readonly changedPaths?: readonly string[]
   readonly taskIds?: readonly TeamTaskId[]
   readonly testCommands: readonly CrewCommandSpec[]
   readonly signal: AbortSignal

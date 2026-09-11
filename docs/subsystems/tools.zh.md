@@ -525,6 +525,14 @@ restrict(filter: ToolRestriction): () => void
 guard(guard: ToolGuard): () => void
 
 /**
+ * Limit all capabilities, including later exact-scope registrations, to a role's tool names.
+ * Limits intersect across the scope chain and affect discovery and execution.
+ * @param names - Permitted capability names; registrations may arrive after this limit.
+ * @returns Disposer restoring the preceding scoped capability set.
+ */
+limitCapabilities(names: readonly string[]): () => void
+
+/**
  * Look up a tool as one scope sees it (scoped
  * shadows global; a restricted-away global reads as absent). Presenters pass
  * the calling agent so the rendered card matches the definition that

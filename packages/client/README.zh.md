@@ -26,6 +26,7 @@ kind: "package-group"
 
 | 包 | 职责 | ctx 键 |
 |---|---|---|
+| [`ui-cli-agents/`](ui-cli-agents/README.zh.md) | 原生 Grok、Antigravity 与 Codex 账号控制和对话用量 | — |
 | [`web/`](web/README.zh.md) | 启动浏览器外壳 | — |
 | [`modules/`](modules/README.zh.md) | 加载浏览器侧客户端模块 | `ctx.clientModules` / `ctx.modules` |
 | [`connection/`](connection/README.zh.md) | 维护浏览器与宿主之间的 RPC 通信与事件投递 | `ctx.connection` |

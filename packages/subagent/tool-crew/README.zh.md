@@ -7,6 +7,8 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
+`crew_dispatch.review_mode` 默认为 `manager`。`crew_integrate` 默认由主智能体执行，必须提供 `review_summary`，并接受额外 `changed_paths` 和修正后的完整 `test_commands`。子智能体工具限制覆盖所有注册层，包括后续工具；普通子代理和工作流工具无法绕过角色限制。
+
 ## 概述
 
 `dsh-tool-crew` 在不接入外部 CLI 适配器的前提下向模型暴露原生 Crew 服务。Team Lead 获得仓库文件操作、工作流控制工具和全局记忆访问；Crew worker 只能获得持久任务授权的角色专用文件、声明测试与结构化报告工具。`crew_commit` 必须经过通用审批流水线，审批身份取自工具调用本身，只提交集成通过的路径，并且绝不推送。
@@ -72,7 +74,7 @@ kind: "package-reference"
 
 #### 模型看到什么
 
-厂长会收到固定 Crew 协调策略，以及[生成的工具目录](../../../docs/tool-catalog.zh.md#deepseek-aidsh-tool-crew)中的厂长子集。该策略陈述对每个厂长都相同的 Crew 机制，并列出启用 Crew 的三种情形：Agent 预设强制编排、用户要求组建开发团队，或工作能从独立实现与评审中受益。命中哪一种由所选 Agent 预设决定，而不由本插件决定——[`crew-manager` 预设](../../bundle/crew-profile/README.zh.md#role-presets)通过自己的 persona 以及不组合任何实现工具来强制编排，普通预设则保留工具与自行判断的余地。开发、审查和整合工人会收到固定工人策略，以及 `CREW_ROLE_TOOL_NAMES` 允许的 schema；若实时持久角色不再匹配该作用域，Crew 服务会拒绝调用。 厂长策略将 Git 视为本地开发的可选项，并遵守用户不提交代码的要求。派发、审查和整合无需初始化仓库、首次提交或远程访问。
+主智能体策略鼓励按大块职责委派、复用成员、直接处理小问题，并按需安排独立审查。子智能体只获得角色允许的工具，本地开发不要求 Git 提交或远程访问。
 
 #### Token 影响
 

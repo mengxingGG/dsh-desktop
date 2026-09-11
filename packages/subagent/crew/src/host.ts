@@ -115,6 +115,7 @@ export class CrewHost {
         if (name === '.git' || name === '.env' || name.startsWith('.env.')) continue
         const absolute = join(directory, entry.name)
         if (entry.isDirectory() && !entry.isSymbolicLink()) {
+          if (this.limits.ignoredDirectories?.some(value => value.toLowerCase() === name)) continue
           await visit(absolute)
         } else {
           const path = gitPath(relative(repositoryRoot, absolute).split(sep).join('/'))
@@ -306,7 +307,7 @@ export class CrewHost {
       }
     } catch (error: unknown) {
       if (signal.aborted) signal.throwIfAborted()
-      throw new CrewError(`Crew command "${command.id}" could not run`, 'CREW_HOST_FAILURE', { cause: error })
+      throw new CrewError(`Crew command "${command.id}" could not run: ${error instanceof Error ? error.message : String(error)}`, 'CREW_HOST_FAILURE', { cause: error })
     } finally {
       clearTimeout(timer)
     }

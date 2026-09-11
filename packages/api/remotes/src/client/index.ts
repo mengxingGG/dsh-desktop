@@ -17,6 +17,7 @@ import sessionRemote from '@deepseek-ai/dsh-api-session-controller/remote'
 import workspaceRemote from '@deepseek-ai/dsh-api-workspace-controller/remote'
 import workspaceFilesRemote from '@deepseek-ai/dsh-api-workspace-files/remote'
 import claudeCodeRemote from '@deepseek-ai/dsh-subagent-claude-code/remote'
+import cliAgentsRemote from '@deepseek-ai/dsh-agent-cli/remote'
 import type { ClientRemote } from '@deepseek-ai/dsh-api-gateway/client'
 
 export type { ClientRemote } from '@deepseek-ai/dsh-api-gateway/client'
@@ -37,6 +38,7 @@ export type {} from '@deepseek-ai/dsh-api-settings-controller/remote'
 export type {} from '@deepseek-ai/dsh-goal/remote'
 export type {} from '@deepseek-ai/dsh-llm/remote'
 export type {} from '@deepseek-ai/dsh-subagent-claude-code/remote'
+export type {} from '@deepseek-ai/dsh-agent-cli/remote'
 export type {} from '@deepseek-ai/dsh-host-plugin-inventory/remote'
 export type {} from '@deepseek-ai/dsh-host-plugin-marketplace-github/remote'
 export type {} from '@deepseek-ai/dsh-message-feedback/remote'
@@ -165,7 +167,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     for (const contribution of [
       agentPresetsRemote, commandsRemote, settingsControllerRemote, goalsRemote, llmRemote, dynamicRemote,
       pluginInventoryRemote, pluginMarketplaceRemote, messageFeedbackRemote, fileUploadsRemote, sessionReferencesRemote,
-      subagentsRemote, sessionRemote, workspaceRemote, workspaceFilesRemote, claudeCodeRemote,
+      subagentsRemote, sessionRemote, workspaceRemote, workspaceFilesRemote, claudeCodeRemote, cliAgentsRemote,
     ]) {
       disposers.push(await ctx.remote.$mount(contribution))
     }

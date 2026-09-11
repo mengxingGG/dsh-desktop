@@ -7,6 +7,12 @@ kind: "package-reference"
 
 English | [中文](README.zh.md)
 
+Dispatch defaults to `reviewMode: "manager"`: delegate broad modules, reuse developers through `append()`, and let the manager review, repair, and integrate. Independent review is opt-in. Automatic repair defaults to zero; two active work items are allowed by default, excluding paused and integration-ready items.
+
+Manager `integrate()` requires `reviewSummary` and accepts additional `changedPaths`. Stop affected workers before repairs. The supplied combined `testCommands` verifies current files and can correct earlier command declarations. Evidence names the manager Session, without creating a reviewer or claiming independent review. Failed verification preserves files for retry. `execution: "worker"` retains dedicated integration of independently reviewed modules.
+
+Host `maxConcurrentRequests` defaults to two per provider group, including the manager. `providerRequestLimits` overrides group limits; `providerRequestGroups` joins routes sharing one account. External execution releases admission while tools run, so waiting managers do not block child requests.
+
 ## Summary
 
 Coordinate native developers, independent reviewers, and integrators through durable software work items. Crew binds those work items to Agent Teams tasks, records revisions and evidence in the manager Session, and reconstructs them through `ctx.sessionProjections`. Agent Teams owns membership, messages, task ownership, and dependencies; child Sessions own worker transcripts.
@@ -57,13 +63,13 @@ Crew file tools reject symbolic links and regular files whose hard-link count is
 
 The service dispatches DSH-native continuable developers, resumes the same child for bounded repair, starts independent reviewers and editing integrators, and reconciles active records after restart. Every developer handoff is followed by host-owned artifact, path, and exact-command verification. Actionable terminal changes become durable manager messages after the current manager turn; progress changes only update the live projection. Local commit rechecks the quiet checkout, passing integration, approval identity, and exact staged paths and never pushes.
 
-Verification retains the checkout observed after declared tests. Review completion and integration admission reject stale module inputs, specifications, HEAD, or branch. Integration permits its reported cross-module edits, verifies their exact changed paths, and rejects further checkout changes during combined tests. Unrelated changes in disjoint developer scopes do not invalidate module-only verification.
+Delegated review and integration require evidence matching current inputs. Manager recovery records fresh evidence instead of reverting files to an old digest.
 
 Checkout digests bind changed-path content, file type, and permission bits. A link contributes its link text, not its target file. Checkout reads reject linked parent directories before hashing descendants and reject Git path spellings that require whitespace or separator normalization. Only filesystem-observed absence becomes deletion evidence; failed Git hashing, truncated Git output, or a file changing during collection rejects the observation. Git writes retain their independent exit and diagnostic-truncation results; subsequent checkout reads establish the durable outcome.
 
 The checkout digest also includes logical Git index entries. Collection rejects index changes but tolerates ordinary file-stat cache refreshes. Integration and commit compare the complete digest; the authorized staging step compares working-file evidence separately. Index flags that hide tracked changes cause rejection without modifying the flags. Clear `assume-unchanged` and `skip-worktree` outside Crew before retrying.
 
-Without a root `.git` entry or with an unborn Git branch, Crew inventories local files with SHA-256 content, type, and permission evidence. Protected `.git` and `.env` entries are excluded; directory links are recorded without traversal. Local evidence records `head: null`, no branch, and no staged paths. Its path list is the complete inventory; comparing inventories identifies additions, edits, and deletions. This mode reads dependencies and generated files too, so verification cost grows with project size. Existing Git repositories retain Git checks and report Git failures explicitly.
+Without a root `.git` or committed HEAD, Crew uses local file digests. `execution.ignoredDirectories` defaults to `node_modules`, `.npm-cache`, `.pnpm-store`, `dist`, `build`, `coverage`, and `.next`; `.git` and `.env` remain protected. This local-inventory rule never excludes tracked Git files.
 
 Declared commands run in the actual project through the existing subprocess provider, using installed dependencies and retaining generated files. The host validates the real working directory, filters credential environment variables, bounds output and deadlines, and awaits managed process completion. Windows npm/pnpm Node shims resolve to their installed JavaScript entry without shell interpolation. This runner does not enforce OS filesystem or network isolation.
 

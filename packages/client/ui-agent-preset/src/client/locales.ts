@@ -46,7 +46,7 @@ export const en: Record<AgentPresetSettingsKey, string> = {
     'Built for creating custom agent presets, with all Standard mode capabilities plus runtime inspection, plugin experiments, and preset-authoring guidance.',
   presetCrewManagerName: 'Orchestration mode',
   presetCrewManagerDescription:
-    'Manager agent that always orchestrates a Crew: it writes specifications, dispatches workers, and requires verification and review. It has no shell, file-editing, subagent, or workflow tools, so project code is only ever written by Crew workers.',
+    'Lead agent with coding tools: delegates substantial modules, reuses workers, and can directly repair, review, and integrate their work. Independent review is available when needed.',
   duplicate: 'Duplicate',
   duplicateUnavailable: 'This deployment has no writable preset directory',
   delete: 'Delete',
@@ -106,7 +106,7 @@ export const zh: Record<AgentPresetSettingsKey, string> = {
   presetCordisName: '创造模式',
   presetCordisDescription: '用于创建自定义 Agent preset：具备标准模式的全部能力，并提供运行时检查、插件实验和 preset 创作指导。',
   presetCrewManagerName: '编排模式',
-  presetCrewManagerDescription: '始终以 Crew 编排工作的管理者 Agent：编写规格、派发 worker，并强制验证与评审。它没有 Shell、文件编辑、子代理和工作流工具，项目代码只能由 Crew worker 编写。',
+  presetCrewManagerDescription: '主智能体保留开发工具，按大块职责委派并复用子智能体，可直接接手修复、审查和集成；需要时再安排独立审查。',
   duplicate: '复制',
   duplicateUnavailable: '此部署未配置可写的预设目录',
   delete: '删除',

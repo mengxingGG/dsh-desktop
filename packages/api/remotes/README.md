@@ -13,6 +13,8 @@ Two-sided BFF for Host Remote capabilities selected by this application. The Hos
 
 Claude account operations expose public status, login progress and quota refresh through the generated Remote client. Executor directory invalidations refresh model selectors.
 
+Grok, Antigravity and Codex account controls mount the generated `cliAgents` contribution, including native login terminals and manual quota queries.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

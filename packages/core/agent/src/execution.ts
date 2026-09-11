@@ -7,6 +7,13 @@ import type { Agent } from './types.ts'
 declare module '@deepseek-ai/cordis' {
   interface Events {
     /**
+     * Wrap an external execution with host-owned admission and resource accounting.
+     * @mode waterfall
+     * @param input - Exact admitted input, including the scoped tool callback.
+     * @param next - Continue execution with the supplied input.
+     */
+    'agents/execute'(input: AgentExecutionRequest, next: (input: AgentExecutionRequest) => Promise<AgentExecutionResult>): Promise<AgentExecutionResult>
+    /**
      * A frozen, recorded request is entering an external Agent executor.
      * @mode emit
      * @param request - exact request whose header and messages are committed in its Session.

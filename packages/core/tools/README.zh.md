@@ -7,6 +7,8 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
+`limitCapabilities(names)` 限制继承和当前作用域的工具，包括后续注册。发现和执行使用同一份过滤目录；PTC 调用仍受最终能力限制。释放返回的 effect 即移除此限制。
+
 ## 概述
 
 使用 `dsh-tools`，工具插件注册 schema 与执行器，每次模型工具调用都经过一条受守卫的流水线——允许／拒绝／询问策略、单调守卫、环绕分发包装层、结果检查、由工具定义持有的内容终结，以及最终的仅观测通知。该包还控制工具向模型呈现的方式：`mode` 配置选择原生 Function Calling（函数调用）、[PTC mode](#ptc-mode) 或两者，单个 agent 可用 `presentAs` 为自己遮蔽该默认值。工具作者使用 `defineTool` 定义类型化参数与输出 schema、可选的协作式超时、并行安全分类与可选的 UI 呈现意图。把任何希望模型触达的能力做成注册表时请选择本包——schema 会自动流入提示词组装。

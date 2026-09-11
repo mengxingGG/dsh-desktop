@@ -96,3 +96,5 @@
 .plain {
   color: var(--dsw-alias-label-primary);
 }
+
+.copyButton { display: inline-flex; align-items: center; gap: 6px; }

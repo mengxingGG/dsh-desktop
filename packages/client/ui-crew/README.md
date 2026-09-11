@@ -7,6 +7,8 @@ kind: "package-reference"
 
 English | [中文](README.zh.md)
 
+The header count includes queued or running developers, reviewers, and delegated integrators. Paused modules, finished handoffs, and manager verification do not count as active child Agents. The icon morphs only when activity changes.
+
 ## Summary
 
 Inspect active and finished workers, verification, review, integration, and commit evidence beside the manager conversation. The Crew settings section independently selects four role models and lets users view, edit, and delete DSH-global operating memory. Worker evidence remains read-only; the panel has no worker input field.

@@ -24,6 +24,7 @@ The subagent group is the delegation family: it lets an agent hand a task to a c
 
 | Package | Role | ctx key |
 |---|---|---|
+| [`agent-cli/`](agent-cli/README.md) | Runs main and Crew Agents through native Grok, Antigravity and Codex with DSH-owned tools | `ctx.cliAgents` |
 | [`subagent/`](subagent/README.md) | Defines the delegation service: provider registry, one-shot runs, continuable children, and discovery | `ctx.subagents` |
 | [`subagent-in-process-driver/`](subagent-in-process-driver/README.md) | Provides the shared in-process run driver | — |
 | [`subagent-spawn-in-process/`](subagent-spawn-in-process/README.md) | Runs a fresh in-process child | registers on `ctx.subagents` |

@@ -1,0 +1,5 @@
+.card { padding: 16px 0; border-bottom: 1px solid var(--border-color, #8883); }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.hint { opacity: .7; font-size: 12px; line-height: 1.6; }
+.terminal { max-height: 280px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; background: #8881; border-radius: 8px; font-size: 12px; }
+.usage { padding: 6px 10px; font-size: 12px; opacity: .85; }

@@ -557,6 +557,62 @@ Types: [LlmResolvedModelInfo](llm-streaming.zh.md)
 
 Source: [`packages/subagent/subagent-claude-code/src/engine.ts`](../../packages/subagent/subagent-claude-code/src/engine.ts)
 
+<a id="ctxcliagents--cliagents"></a>
+
+### `ctx.cliAgents` — `CliAgents`
+
+Publishes execution routes, native account controls and invocation usage.
+
+```ts cordis-catalog
+/**
+ * Read cached native observations; no account probe starts implicitly.
+ * @param provider - Selected native account.
+ * @returns Latest account, model and login observations.
+ */
+@Remote('status') status(provider: CliProvider): CliAccountStatus
+
+/**
+ * Refresh model availability without a model prompt or credential-file reads.
+ * @param provider - Selected native account.
+ * @returns Current native account observations.
+ */
+@Remote('refresh') async refresh(provider: CliProvider): Promise<CliAccountStatus>
+
+/**
+ * Start native device authorization or the Antigravity login terminal.
+ * @param provider - User-selected account.
+ * @returns Bounded login terminal output.
+ */
+@Remote('startLogin') async startLogin(provider: CliProvider): Promise<CliLoginSnapshot>
+
+/**
+ * Forward explicit user input to a native authorization terminal.
+ * @param provider - Account shown in settings.
+ * @param id - Displayed login identity.
+ * @param text - Explicit terminal input.
+ * @returns Completion after input delivery.
+ */
+@Remote('loginInput') async loginInput(provider: CliProvider, id: CliLoginId, text: string): Promise<void>
+
+/**
+ * Close native authorization and refresh availability without inference.
+ * @param provider - Selected account.
+ * @param id - Displayed login identity.
+ * @returns Account observation after terminal cleanup.
+ */
+@Remote('closeLogin') async closeLogin(provider: CliProvider, id: CliLoginId): Promise<CliAccountStatus>
+
+/**
+ * Request native quota only on explicit user action; Codex needs no model turn.
+ * @param provider - Selected native account; Grok has no supported query.
+ * @param signal - Remote caller cancellation.
+ * @returns Native quota windows, or null when unavailable; unsupported commands reject.
+ */
+@Remote('refreshQuota') async refreshQuota(provider: CliProvider, signal: AbortSignal): Promise<readonly CliQuotaWindow[] | null>
+```
+
+Source: [`packages/subagent/agent-cli/src/index.ts`](../../packages/subagent/agent-cli/src/index.ts)
+
 <a id="ctxsubagentmodelselection--subagentmodelselectionconfig"></a>
 
 ### `ctx.subagentModelSelection` — `SubagentModelSelectionConfig`

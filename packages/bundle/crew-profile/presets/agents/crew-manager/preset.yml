@@ -1,3 +1,3 @@
 name: 编排模式
-description: 强制 Crew 编排的管理者 Agent：只写规格、派工、验收与集成，项目代码一律由 Crew worker 实现。
+description: 主智能体负责开发与交付，按大块职责委派子智能体，并可直接接手修复、审查和集成。
 order: 1

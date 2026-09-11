@@ -2,6 +2,8 @@
 
 English | [中文](README.zh.md)
 
+The app icon source is `assets/icon.png`. The root `scripts/build-desktop-icon.ps1` produces the Windows ICO; the shell window, Windows and Linux packages, and root EXE launcher share this identity. Rebuild the launcher with `scripts/build-desktop-launcher.ps1`; existing shortcuts keep the same target.
+
 The desktop application is an Electron shell around the dsh Web UI. It opens no listening port: a bundled upstream Node.js child boots the installed dsh project, versioned framed byte pipes carry Fetch requests and streaming responses without an outer Base64 envelope, Node IPC carries lifecycle control, and `dsh-app://` serves the matching client assets.
 
 ## Key technical decisions

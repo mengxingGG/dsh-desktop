@@ -7,6 +7,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { CrewRolePresetSnapshot, CrewWorkerRole } from '@deepseek-ai/dsh-crew'
 import type { CrewToolRole } from '@deepseek-ai/dsh-tool-crew'
 import { load } from 'js-yaml'
+import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 
 /** Cordis plugin name. */
 export const name = 'crew-profile-presets'
@@ -41,7 +42,7 @@ export interface CrewAgentPresetRoot {
 
 /** Validated immutable presets supplied to the Crew domain and tool Consumer. */
 export interface CrewProfilePresets {
-  /** Agent preset that mandates Crew orchestration for the sessions selecting it. */
+  /** Agent preset that supports manager-led Crew development for the sessions selecting it. */
   readonly managerAgentPresetId: 'crew-manager'
   /** Root containing the manager Agent preset directory. */
   readonly managerAgentPresetRoot: string
@@ -143,16 +144,14 @@ function readRolePreset(root: string, role: CrewToolRole): ManagerRolePresetDocu
   }
 }
 
-/**
- * Every module the `crew-manager` Agent preset may name. The preset's mandate
- * is enforced by what it cannot compose, so this is an allowlist rather than a
- * list of forbidden capabilities: a row naming anything else — a shell, an
- * unscoped filesystem tool, a delegation backend, a plugin added later — fails
- * profile activation instead of silently giving the manager a way to implement
- * a change outside the Crew workflow.
- */
+/** Modules supplied by the shipped manager preset, including its coding tools. */
 const MANAGER_AGENT_PRESET_MODULES: ReadonlySet<string> = new Set([
   'cordis:group',
+  '@deepseek-ai/dsh-tool-bash',
+  '@deepseek-ai/dsh-tool-pwsh',
+  '@deepseek-ai/dsh-tool-fs',
+  '@deepseek-ai/dsh-tool-fs-search',
+  '@deepseek-ai/dsh-tool-jobs',
   '@deepseek-ai/dsh-persona',
   '@deepseek-ai/dsh-agent-instructions',
   '@deepseek-ai/dsh-tool-ask-user',
@@ -182,7 +181,7 @@ function assertManagerAgentPreset(root: string, manager: ManagerRolePresetDocume
   const directory = join(root, 'agents', 'crew-manager')
   let parsed: unknown
   try {
-    parsed = load(readFileSync(join(directory, 'agent.cordis.yml'), 'utf8'))
+    parsed = load(readFileSync(join(directory, 'agent.cordis.yml'), 'utf8'), { schema: entryListSchema })
     readFileSync(join(directory, 'preset.yml'), 'utf8')
   } catch (cause) {
     throw new Error('crew-profile: required crew-manager Agent preset is missing or unreadable', { cause })
@@ -196,7 +195,7 @@ function assertManagerAgentPreset(root: string, manager: ManagerRolePresetDocume
   }
   const forbidden = rows.find(row => typeof row.name === 'string' && !MANAGER_AGENT_PRESET_MODULES.has(row.name))
   if (forbidden !== undefined) {
-    throw new Error(`crew-profile: crew-manager Agent preset names ${String(forbidden.name)}, which is not a Crew coordination module`)
+    throw new Error(`crew-profile: crew-manager Agent preset names ${String(forbidden.name)}, which is not a shipped Crew manager module`)
   }
 }
 

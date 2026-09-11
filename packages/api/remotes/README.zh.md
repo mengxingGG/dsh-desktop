@@ -13,6 +13,8 @@ kind: "package-reference"
 
 Claude 账号操作通过生成的 Remote 客户端公开账号状态、登录进度和额度刷新。执行器目录失效事件会刷新模型选择器。
 
+Grok、Antigravity 与 Codex 账号控制挂载生成的 `cliAgents` 贡献，包含原生登录终端与手动额度查询。
+
 ## 目录
 
 - [使用本包](#use-this-package)

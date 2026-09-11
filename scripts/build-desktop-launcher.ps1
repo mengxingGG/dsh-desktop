@@ -1,4 +1,4 @@
-# 编译固定路径的 Windows 启动器；不启动应用，不执行测试。
+﻿# 编译固定路径的 Windows 启动器；不启动应用，不执行测试。
 [CmdletBinding()]
 param([switch]$CreateDesktopShortcut)
 $ErrorActionPreference = 'Stop'
@@ -12,16 +12,8 @@ if (-not (Test-Path -LiteralPath $taskCompiler)) {
 }
 if (-not (Test-Path -LiteralPath $taskCompiler)) { throw '未找到 Windows .NET Framework C# 编译器。' }
 New-Item -ItemType Directory -Path $taskBuild -Force | Out-Null
-$taskIcon = Join-Path $taskBuild 'app.ico'
-if ((Test-Path -LiteralPath $taskOutput) -and -not (Test-Path -LiteralPath $taskIcon)) {
-    Add-Type -AssemblyName System.Drawing
-    $taskAssociatedIcon = [Drawing.Icon]::ExtractAssociatedIcon($taskOutput)
-    if ($null -ne $taskAssociatedIcon) {
-        $taskIconStream = [IO.File]::Create($taskIcon)
-        try { $taskAssociatedIcon.Save($taskIconStream) }
-        finally { $taskIconStream.Dispose(); $taskAssociatedIcon.Dispose() }
-    }
-}
+$taskIcon = Join-Path $taskRoot 'apps\desktop\assets\icon.ico'
+if (-not (Test-Path -LiteralPath $taskIcon)) { & (Join-Path $PSScriptRoot 'build-desktop-icon.ps1') }
 $taskBuiltExe = Join-Path $taskBuild 'DeepSeek-Harness.exe'
 $taskArguments = @('/nologo', '/codepage:65001', '/target:winexe', '/optimize+', '/reference:System.Windows.Forms.dll', "/out:$taskBuiltExe")
 if (Test-Path -LiteralPath $taskIcon) { $taskArguments += "/win32icon:$taskIcon" }
@@ -41,7 +33,7 @@ if ($CreateDesktopShortcut) {
         $taskShortcut = $taskShell.CreateShortcut($taskShortcutPath)
         $taskShortcut.TargetPath = $taskOutput
         $taskShortcut.WorkingDirectory = $taskRoot
-        $taskShortcut.IconLocation = "$taskOutput,0"
+        $taskShortcut.IconLocation = "$taskIcon,0"
         $taskShortcut.Description = '启动当前 deepseek-harness 工作目录的桌面构建'
         $taskShortcut.Save()
         Write-Output "桌面快捷方式：$taskShortcutPath"

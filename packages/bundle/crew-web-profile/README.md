@@ -37,7 +37,7 @@ The Host layer supplies Crew state, Remote methods, role presets, and model tool
 
 ### The Crew orchestration preset
 
-The roster gains **Orchestration mode** (`crew-manager`), a read-only `system` preset shipped by the Host layer. A session that selects it runs a manager that always orchestrates a Crew: its composition has no shell, unscoped filesystem, subagent, or workflow row, so project source and tests are only ever changed by dispatched workers. It keeps the coordination surface — asking the user, todos, skills, plan mode, and compaction — beside the `crew_*` manager tools the Host layer installs.
+The roster includes **Orchestration mode** (`crew-manager`), a read-only `system` preset supplied by the Host layer. Its lead retains coding tools, delegates broad responsibilities, and can take over repair, review, and integration.
 
 The deployment default stays `standard`, so the choice is per session: an ordinary preset keeps its full tool set and decides for itself when Crew coordination is worth it. The four presets shipped inside `dsh-agent-presets` are listed first and remain selectable; a later profile patch that restates this row's `roots` drops the Crew preset from the picker.
 

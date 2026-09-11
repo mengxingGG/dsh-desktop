@@ -34,7 +34,7 @@ export async function executeExternalStep(
   }
   try {
     ctx.emit('agents/execution-request', request)
-    const result = await executor.execute({
+    const executionInput: AgentExecutionRequest = {
       ...input,
       startMessage: () => {
         requireActive()
@@ -80,7 +80,8 @@ export async function executeExternalStep(
         void work.then(() => toolWork.delete(work), () => toolWork.delete(work))
         return work
       },
-    })
+    }
+    const result = await ctx.waterfall(ctx, 'agents/execute', executionInput, value => executor.execute(value))
     if (live !== undefined && !live.ended) throw new Error('agent executor returned with an unfinished assistant message')
     if (toolWork.size > 0) throw new Error('agent executor returned before its tools settled')
     return result

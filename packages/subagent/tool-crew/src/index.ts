@@ -56,13 +56,7 @@ export const Config: z<Config> = z.object({
   }),
 }) as unknown as z<Config>
 
-// The policy states Crew MECHANICS, which are the same for every manager. When
-// a session engages the Crew at all is the selected Agent preset's choice, so
-// this text names that condition instead of asserting one: the shipped
-// `crew-manager` preset mandates orchestration through its own persona and by
-// composing no implementation tools, while an ordinary preset keeps its tools
-// and the discretion below.
-const MANAGER_POLICY = 'Act as the manager of a DSH-native software Crew when your Agent preset mandates Crew orchestration, when the user requests a development team, or when work benefits from independent implementation and review; otherwise handle the request directly with the ordinary DSH tools your preset supplies. Read the injected DSH-global memory and applicable project instructions and skills before planning; preferences never replace permission, and dangerous operations still require a clear warning. Split work into non-overlapping module scopes, share docs/test/tests, cite a versioned specification, declare exact verification commands, and use Crew status revisions for every control action. A developer handoff is never accepted from prose alone: Crew verifies the checkout, runs declared commands, and starts a separate read-only reviewer. Integrate only reviewed work. Return after dispatch in a persistent host and let durable Crew notifications start follow-up turns; use crew_wait only when a one-shot host must remain in the current turn, and always re-read crew_status after it returns. Git is optional for local development: never require repository initialization, a first commit, or remote access to dispatch, review, or integrate. Honor requests to work without commits. crew_commit always asks the user for approval, creates one local commit containing only the passing integration\'s approved paths, and never pushes.'
+const MANAGER_POLICY = 'Lead the work and retain responsibility for implementation and delivery. Handle small tasks, minor worker failures, interface repairs, and final integration yourself using the available coding tools. Delegate only substantial independent responsibilities, usually one to three modules such as backend logic, backend API, and frontend UI; combine tightly coupled parts and never split by individual files or functions merely to create workers. Reuse the same developer with crew_append for revisions. Workers must not delegate again. Respect the configured worker and provider limits; queue further work rather than repeatedly dispatching at capacity. Use manager review by default; request independent review only when complexity or risk warrants another model. Before editing a worker-owned area, stop and drain that worker with crew_stop. After reviewing and repairing the current files, use crew_integrate with execution=manager, review_summary, changed_paths, and exact corrected combined test_commands. Failed or stale verification never requires deleting completed source, lockfiles, or build artifacts: retain them and verify the current checkout. A dedicated integrator is optional and consumes another worker. Read project instructions, skills, and injected memory; current user instructions override older remembered workflow preferences. Share a concise versioned specification and broad non-overlapping scopes, and use current Crew revisions for control actions. Persistent hosts can return after dispatch and receive durable notifications; one-shot hosts may use crew_wait and then re-read crew_status. Git is optional: never require initialization, commits, or network access for local development. Honor requests without tests or commits. crew_commit asks for approval, commits only approved paths, and never pushes.'
 
 const WORKER_POLICY = 'You are a DSH-native Crew worker. Use only the Crew tools exposed in this scope. File access is confined to the durable work assignment; test execution accepts only predeclared command ids. Do not use Git, raw shell commands, external CLIs, or unscoped filesystem tools. Before ending the turn, call crew_report exactly once with structured evidence. A developer reports ready or blocked; a reviewer or integrator reports passed or rejected.'
 
@@ -582,9 +576,10 @@ function installManager(agent: Agent, ctx: Context): () => void {
     })))
     register(scoped.tools.register(defineTool({
       name: 'crew_dispatch',
-      description: 'Create one versioned Crew work item, freeze its checkout baseline, and start a DSH-native developer.',
+      description: 'Delegate one substantial module to a persistent developer. Prefer broad responsibilities and reuse crew_append for revisions; do not split individual files into workers.',
       parameters: {
         module_key: { type: 'string', required: true, description: 'Stable lower-kebab-case module key.' },
+        review_mode: { type: 'string', enum: ['manager', 'independent'], description: 'Defaults to manager review without a separate reviewer. Use independent for work that needs a dedicated review.' },
         subject: { type: 'string', required: true, description: 'Concise work item title.' },
         description: { type: 'string', required: true, description: 'Complete implementation task and acceptance criteria.' },
         spec_path: { type: 'string', required: true, description: 'Repository-relative versioned specification path.' },
@@ -599,6 +594,7 @@ function installManager(agent: Agent, ctx: Context): () => void {
       async execute(args, exec) {
         const result = await ctx.crew.dispatch(callingAgent(exec.agent, 'crew_dispatch'), {
           moduleKey: args.module_key,
+          ...(args.review_mode === undefined ? {} : { reviewMode: args.review_mode }),
           subject: args.subject,
           description: args.description,
           specPath: args.spec_path,
@@ -715,14 +711,20 @@ function installManager(agent: Agent, ctx: Context): () => void {
     })))
     register(scoped.tools.register(defineTool({
       name: 'crew_integrate',
-      description: 'Start a native integrator to connect reviewed modules, make necessary project edits, and run combined tests.',
+      description: 'Verify and accept the current manager-reviewed files without creating another Agent. Repair small issues yourself after stopping affected workers, preserve existing files, and provide corrected combined commands. Use worker execution only when a dedicated integrator is needed for independently reviewed inputs.',
       parameters: {
+        execution: { type: 'string', enum: ['manager', 'worker'], description: 'Defaults to manager; worker starts a dedicated integrator.' },
+        review_summary: { type: 'string', description: 'Required for manager execution: what you reviewed, repaired, and concluded.' },
+        changed_paths: { type: 'array', items: { type: 'string' }, description: 'Additional project-relative files changed by your repairs or integration.' },
         task_ids: { type: 'array', items: { type: 'string' }, description: 'Reviewed task ids; omit to select every integration-ready task.' },
         test_commands: { type: 'array', required: true, items: COMMAND_PARAMETER, description: 'Exact combined verification commands.' },
       },
       output: jsonOutput(INTEGRATION_RESULT_SCHEMA),
       async execute(args, exec) {
         return integrationResult(await ctx.crew.integrate(callingAgent(exec.agent, 'crew_integrate'), {
+          ...(args.execution === undefined ? {} : { execution: args.execution }),
+          ...(args.review_summary === undefined ? {} : { reviewSummary: args.review_summary }),
+          ...(args.changed_paths === undefined ? {} : { changedPaths: args.changed_paths }),
           ...(args.task_ids === undefined ? {} : { taskIds: args.task_ids.map(TeamTaskId) }),
           testCommands: args.test_commands.map(command),
           signal: exec.signal,
@@ -761,6 +763,10 @@ function installWorker(agent: Agent, ctx: Context, binding: CrewWorkerBinding): 
   const disposers: Array<() => unknown> = []
   const register = (disposer: () => unknown): void => { disposers.push(disposer) }
   try {
+    const allowed = new Set(CREW_ROLE_TOOL_NAMES[binding.role])
+    register(scoped.tools.limitCapabilities([...allowed]))
+    register(scoped.tools.guard(exec => allowed.has(exec.name) || exec.name === 'run_code'
+      ? undefined : 'Crew workers cannot delegate or use unscoped tools; ask the manager to handle this operation.'))
     register(scoped.systemPrompt.section({
       name: 'crew:policy',
       order: scoped.systemPrompt.getSectionOrder('TEAM_POLICY'),
